@@ -67,11 +67,8 @@ const HF_PLAYER = (() => {
           <div style="font-size:11px;color:rgba(255,255,255,.5)">Overall rating</div>
         </div>
       </div>
-
-      <div class="scripture-strip" style="margin-bottom:var(--sp-xl);padding:var(--sp-lg)">
-        <span style="color:var(--faith);font-size:18px"><i class="ti ti-cross"></i></span>
-        <span>"I can do all things through Christ who strengthens me." ~ Philippians 4:13</span>
-      </div>
+      
+      ${HF_SCRIPTURE.stripHTML()}
 
       <div class="metrics-grid">
         <div class="metric-card">
@@ -428,8 +425,8 @@ const HF_PLAYER = (() => {
         <div style="font-size:13px;opacity:.8;line-height:1.6">Your talent is God-given.<br>Your discipline is your worship.</div>
       </div>
       <div class="faith-verse-card">
-        <div class="verse-text">"But those who hope in the LORD will renew their strength. They will soar on wings like eagles; they will run and not grow weary."</div>
-        <div class="verse-ref">Isaiah 40:31</div>
+        <div class="verse-text">${HF_SCRIPTURE.getToday().verse}</div>
+        <div class="verse-ref">${HF_SCRIPTURE.getToday().ref}</div>
       </div>
       <div class="card faith-card">
         <div class="card-title"><div class="card-dot faith"></div>Daily prayers for athletes</div>

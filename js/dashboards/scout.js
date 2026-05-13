@@ -147,10 +147,7 @@ const HF_SCOUT = (() => {
           <div style="font-size:11px;color:rgba(255,255,255,.5)">Prospects tracked</div>
         </div>
       </div>
-      <div class="scripture-strip">
-        <span style="color:var(--faith);font-size:18px"><i class="ti ti-cross"></i></span>
-        <span>"For I know the plans I have for you, declares the LORD, plans to prosper you." ~ Jeremiah 29:11</span>
-      </div>
+      ${HF_SCRIPTURE.stripHTML()}
       <div class="metrics-grid">
         <div class="metric-card"><div class="metric-val" style="color:var(--gold)">${PROSPECTS.length}</div><div class="metric-label">Tracked</div></div>
         <div class="metric-card"><div class="metric-val" style="color:var(--red)">${PROSPECTS.filter((p) => p.pot === "Elite").length}</div><div class="metric-label">Elite prospects</div></div>

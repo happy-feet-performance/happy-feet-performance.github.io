@@ -109,10 +109,7 @@ const HF_COACH = (() => {
           <div style="font-size:11px;color:rgba(255,255,255,.5)">Squad size</div>
         </div>
       </div>
-      <div class="scripture-strip" style="margin-bottom:var(--sp-xl);padding:var(--sp-lg)">
-        <i class="ti ti-cross" style="color:var(--faith);font-size:18px;flex-shrink:0"></i>
-        <span>"Whatever you do, work at it with all your heart, as working for the Lord." ~ Colossians 3:23</span>
-      </div>
+      ${HF_SCRIPTURE.stripHTML()}
       <div class="metrics-grid">
         <div class="metric-card"><div class="metric-val" style="color:var(--green)">87%</div><div class="metric-label">Squad readiness</div><div class="metric-sub" style="color:var(--green)">+4% this week</div></div>
         <div class="metric-card"><div class="metric-val" style="color:var(--red)">2</div><div class="metric-label">Risk alerts</div><div class="metric-sub">Review today</div></div>
@@ -448,8 +445,8 @@ const HF_COACH = (() => {
         <div style="font-size:13px;opacity:.8">Lead your players in faith as well as football.</div>
       </div>
       <div class="faith-verse-card">
-        <div class="verse-text">"Whatever you do, work at it with all your heart, as working for the Lord, not for human masters."</div>
-        <div class="verse-ref">Colossians 3:23</div>
+        <div class="verse-text">${HF_SCRIPTURE.getToday().verse}</div>
+        <div class="verse-ref">${HF_SCRIPTURE.getToday().ref}</div>
       </div>
       <div class="card faith-card">
         <div class="card-title"><div class="card-dot faith"></div>How to run team devotion</div>
