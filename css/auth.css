@@ -1,0 +1,172 @@
+/* ============================================================
+   HappyFeet — auth.css
+   Login, signup, role selection screens
+   ============================================================ */
+
+.auth-screen {
+  display: none;
+  min-height: 100vh;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-xl);
+  background: var(--bg2);
+}
+.auth-screen.active { display: flex; }
+
+.auth-card {
+  background: var(--bg);
+  border: 0.5px solid var(--border);
+  border-top: 3px solid var(--gold);
+  border-radius: 0;
+  padding: var(--sp-2xl);
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+}
+
+/* ── LOGO ── */
+.auth-logo { text-align: center; margin-bottom: var(--sp-2xl); }
+.auth-logo-hex {
+  width: 64px; height: 64px;
+  background: #0f0f0d;
+  border-radius: 0;
+  border: 2px solid var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--sp-md);
+  font-family: var(--font-head);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--gold);
+}
+.auth-logo-name {
+  font-family: var(--font-head);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.auth-logo-name span { color: var(--gold); }
+.auth-logo-tag {
+  font-family: var(--font-head);
+  font-size: var(--font-size-xs);
+  color: var(--text3);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* ── HEADINGS ── */
+.auth-title {
+  font-family: var(--font-head);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text);
+  text-align: center;
+  margin-bottom: 6px;
+}
+.auth-sub {
+  font-size: var(--font-size-base);
+  color: var(--text2);
+  text-align: center;
+  margin-bottom: var(--sp-xl);
+}
+
+/* ── AUTH LINK ── */
+.auth-link { text-align: center; font-size: var(--font-size-sm); color: var(--text2); margin-top: var(--sp-lg); }
+.auth-link a { color: var(--gold); font-weight: 600; cursor: pointer; }
+.auth-link a:hover { text-decoration: underline; }
+
+/* ── ROLE GRID ── */
+.role-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-sm);
+  margin-bottom: var(--sp-lg);
+}
+.role-card {
+  padding: var(--sp-lg) var(--sp-sm);
+  border: 0.5px solid var(--border);
+  border-radius: 0;
+  cursor: pointer;
+  text-align: center;
+  transition: var(--trans);
+  background: var(--bg2);
+  user-select: none;
+}
+.role-card:hover { border-color: var(--gold); background: rgba(196,154,10,.04); }
+.role-card.selected {
+  border: 1.5px solid var(--gold);
+  border-top: 3px solid var(--gold);
+  background: rgba(196,154,10,.06);
+}
+.role-icon { font-size: 24px; margin-bottom: 8px; }
+.role-name {
+  font-family: var(--font-head);
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.role-desc { font-size: var(--font-size-xs); color: var(--text2); margin-top: 4px; line-height: 1.5; }
+
+/* ── CONFIRM BOX ── */
+.confirm-box {
+  background: var(--bg2);
+  border-left: 3px solid var(--gold);
+  border-radius: 0;
+  padding: var(--sp-md) var(--sp-lg);
+  margin-bottom: var(--sp-lg);
+  font-size: var(--font-size-base);
+  color: var(--text2);
+  line-height: 2;
+}
+
+/* ── DEMO BUTTONS ── */
+.demo-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-sm); }
+.demo-btn {
+  padding: 8px;
+  border-radius: 0;
+  font-family: var(--font-head);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 0.5px solid;
+  transition: var(--trans);
+}
+.demo-btn.player { background: rgba(26,122,46,.08);  border-color: rgba(26,122,46,.3);  color: var(--green); }
+.demo-btn.coach  { background: rgba(196,154,10,.08); border-color: rgba(196,154,10,.3); color: var(--gold);  }
+.demo-btn.scout  { background: rgba(24,95,165,.08);  border-color: rgba(24,95,165,.3);  color: var(--blue);  }
+.demo-btn:hover  { opacity: 0.82; }
+
+/* ── WHATSAPP NOTE ── */
+.whatsapp-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 8px var(--sp-md);
+  background: rgba(37,211,102,.07);
+  border-left: 2px solid rgba(37,211,102,.4);
+  border-radius: 0;
+  margin-top: 6px;
+  font-size: var(--font-size-xs);
+  color: var(--text2);
+  line-height: 1.5;
+}
+.whatsapp-note .wa-icon { font-size: 14px; flex-shrink: 0; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 480px) {
+  .auth-card { padding: var(--sp-lg); }
+  .role-grid { grid-template-columns: 1fr; }
+  .role-card { display: flex; align-items: center; gap: var(--sp-md); text-align: left; }
+  .role-icon { margin-bottom: 0; font-size: 20px; }
+}
