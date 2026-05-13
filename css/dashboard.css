@@ -66,6 +66,46 @@
   gap: var(--sp-lg);
 }
 
+/* ── THEME TOGGLE ── */
+.theme-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.theme-switch input { opacity: 0; width: 0; height: 0; }
+.theme-slider {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  border: 0.5px solid rgba(255,255,255,.4);
+  transition: var(--trans);
+}
+.theme-slider::before {
+  content: '☀';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  left: 3px;
+  top: 2px;
+  font-size: 11px;
+  line-height: 14px;
+  text-align: center;
+  transition: var(--trans);
+  color: #0f0f0d;
+}
+.theme-switch input:checked + .theme-slider {
+  background: #0f0f0d;
+  border-color: rgba(255,255,255,.15);
+}
+.theme-switch input:checked + .theme-slider::before {
+  content: '☾';
+  transform: translateX(16px);
+  color: #ffffff;
+}
+
 /* ── ROLE PILL ── */
 .role-pill {
   font-family: var(--font-head);

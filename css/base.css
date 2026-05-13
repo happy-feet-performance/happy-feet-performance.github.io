@@ -57,9 +57,9 @@
   --trans: all 0.12s ease;
 }
 
-/* ── DARK MODE ── */
+/* ── LIGHT/DARK MODE ── */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --bg: #111110;
     --bg2: #1a1a18;
     --bg3: #222220;
@@ -69,6 +69,28 @@
     --text2: #9c9a90;
     --text3: #6b6a62;
   }
+}
+
+[data-theme="dark"] {
+  --bg: #111110;
+  --bg2: #1a1a18;
+  --bg3: #222220;
+  --border: rgba(255, 255, 255, 0.09);
+  --shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  --text: #e8e6dc;
+  --text2: #9c9a90;
+  --text3: #6b6a62;
+}
+
+[data-theme="light"] {
+  --bg: #ffffff;
+  --bg2: #f5f4f0;
+  --bg3: #eeece6;
+  --border: rgba(0, 0, 0, 0.09);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --text: #0f0f0d;
+  --text2: #6b6a62;
+  --text3: #9c9a90;
 }
 
 /* ── RESET ── */
