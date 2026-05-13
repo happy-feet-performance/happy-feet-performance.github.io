@@ -8,6 +8,7 @@
     />
     <meta name="theme-color" content="#C49A0A" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="HappyFeet" />
     <title>HappyFeet Performance Hub</title>
 
@@ -238,7 +239,7 @@
           </div>
           <div id="su-phone-fields" style="display: none">
             <div class="fg">
-              <label>Phone number (WhatsApp works!)</label>
+              <label>Phone number</label>
               <div class="input-group">
                 <select id="su-country-code">
                   <option value="+233">🇬🇭 +233</option>
@@ -316,7 +317,7 @@
             <div class="step active"></div>
           </div>
           <div style="text-align: center; padding: 16px 0">
-            <div class="role-icon"><i class="ti ti-ball-football"></i></div>
+            <div class="role-icon" id="confirm-icon"></div>
             <div class="auth-title" id="confirm-title">You're all set!</div>
             <div class="auth-sub" id="confirm-sub">Your account is ready.</div>
           </div>
@@ -326,6 +327,13 @@
             onclick="HF_AUTH.completeSignup()"
           >
             Enter HappyFeet →
+          </button>
+          <button
+            class="btn btn-outline btn-full"
+            style="margin-top: 8px"
+            onclick="HF_AUTH.showScreen('screen-signup-info')"
+          >
+            ← Edit my details
           </button>
         </div>
       </div>

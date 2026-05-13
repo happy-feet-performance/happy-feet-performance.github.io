@@ -160,24 +160,20 @@ const HF_AUTH = (() => {
     const pass = el("su-pass")?.value;
     hideError("signup-err");
 
-    // Validate name
+    // 1. Name
     if (!name) {
       showError("signup-err", "Please enter your full name.");
       return;
     }
-    if (pass?.length < 6) {
-      showError("signup-err", "Password must be at least 6 characters.");
-      return;
-    }
 
-    // Collect contact
+    // 2. Contact
     let contact = "",
       contactType = "",
       localPhone = "",
       displayContact = "";
     if (state.signupTab === "email") {
       contact = el("su-email")?.value.trim().toLowerCase();
-      if (!contact || !contact.includes("@")) {
+      if (!contact || !contact.includes("@") || !contact.includes(".")) {
         showError("signup-err", "Please enter a valid email address.");
         return;
       }
@@ -196,7 +192,13 @@ const HF_AUTH = (() => {
       displayContact = `${code} ${num}`;
     }
 
-    // Collect role profile
+    // 3. Password
+    if (!pass || pass.length < 6) {
+      showError("signup-err", "Password must be at least 6 characters.");
+      return;
+    }
+
+    // 4. Role fields
     let profile = {};
     if (state.role === "player") {
       profile = {
@@ -207,22 +209,62 @@ const HF_AUTH = (() => {
         ratings: { speed: 60, tech: 60, tact: 55, phys: 60 },
         faithStreak: 0,
       };
+      if (!profile.pos) {
+        showError("signup-err", "Please select your position.");
+        return;
+      }
+      if (!profile.club) {
+        showError("signup-err", "Please enter your current club or academy.");
+        return;
+      }
+      if (!profile.hometown) {
+        showError("signup-err", "Please enter your hometown or region.");
+        return;
+      }
     } else if (state.role === "coach") {
       profile = {
         licence: el("su-licence")?.value || "",
-        exp: el("su-exp")?.value || "0",
+        exp: el("su-exp")?.value || "",
         club: el("su-club")?.value.trim() || "",
         spec: el("su-spec")?.value || "All-round",
         teamSize: 0,
       };
+      if (!profile.licence) {
+        showError("signup-err", "Please select your coaching licence.");
+        return;
+      }
+      if (!profile.exp) {
+        showError("signup-err", "Please enter your years of experience.");
+        return;
+      }
+      if (!profile.club) {
+        showError("signup-err", "Please enter your current club or academy.");
+        return;
+      }
     } else {
       profile = {
         org: el("su-org")?.value.trim() || "",
         region: el("su-region")?.value.trim() || "",
-        exp: el("su-exp")?.value || "0",
+        exp: el("su-exp")?.value || "",
         dest: el("su-dest")?.value.trim() || "",
         prospectsTracked: 0,
       };
+      if (!profile.org) {
+        showError("signup-err", "Please enter your organisation or agency.");
+        return;
+      }
+      if (!profile.region) {
+        showError("signup-err", "Please enter the region you cover.");
+        return;
+      }
+      if (!profile.exp) {
+        showError("signup-err", "Please enter your years of experience.");
+        return;
+      }
+      if (!profile.dest) {
+        showError("signup-err", "Please enter your target destinations.");
+        return;
+      }
     }
 
     state.signup = {
@@ -247,9 +289,9 @@ const HF_AUTH = (() => {
         ? `<strong>Phone:</strong> ${displayContact}`
         : `<strong>Email:</strong> ${displayContact}`;
     const summaryRows = {
-      player: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Player<br><strong>Position:</strong> ${profile.pos || "—"}<br><strong>Tier:</strong> ${profile.tier}<br><strong>Club:</strong> ${profile.club || "—"}`,
-      coach: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Coach<br><strong>Licence:</strong> ${profile.licence}<br><strong>Club:</strong> ${profile.club || "—"}`,
-      scout: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Scout<br><strong>Organisation:</strong> ${profile.org || "—"}<br><strong>Region:</strong> ${profile.region || "—"}`,
+      player: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Player<br><strong>Position:</strong> ${profile.pos || "-"}<br><strong>Tier:</strong> ${profile.tier}<br><strong>Club:</strong> ${profile.club || "-"}`,
+      coach: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Coach<br><strong>Licence:</strong> ${profile.licence}<br><strong>Club:</strong> ${profile.club || "-"}`,
+      scout: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Scout<br><strong>Organisation:</strong> ${profile.org || "-"}<br><strong>Region:</strong> ${profile.region || "-"}`,
     };
     el("confirm-icon").innerHTML = icons[state.role];
     el("confirm-title").textContent = `You're set, ${name.split(" ")[0]}!`;
