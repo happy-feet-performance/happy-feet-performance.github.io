@@ -1,179 +1,358 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#C9961A">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="HappyFeet">
-  <title>HappyFeet Performance Hub</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#C9961A" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="HappyFeet" />
+    <title>HappyFeet Performance Hub</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
 
-  <link rel="stylesheet" href="css/base.css">
-  <link rel="stylesheet" href="css/auth.css">
-  <link rel="stylesheet" href="css/dashboard.css">
-</head>
-<body>
-
-  <div id="auth-screens" style="display:flex;flex-direction:column;min-height:100vh">
-
-  <!-- LOGIN -->
-  <div class="auth-screen active" id="screen-login">
-    <div class="auth-card">
-      <div class="auth-logo">
-        <div class="auth-logo-hex">HF</div>
-        <div class="auth-logo-name"><span>Happy</span>Feet</div>
-        <div class="auth-logo-tag">Performance Hub · Changing the narrative of African football</div>
-      </div>
-      <div class="auth-title">Welcome back</div>
-      <div class="auth-sub">Sign in to your account</div>
-      <div class="tab-toggle">
-        <button id="ltab-email" class="active" onclick="HF_AUTH.switchLoginTab('email')">📧 Email</button>
-        <button id="ltab-phone" onclick="HF_AUTH.switchLoginTab('phone')">📱 Phone number</button>
-      </div>
-      <div class="error-box" id="login-err"></div>
-      <div id="login-email-fields">
-        <div class="fg"><label>Email address</label><input type="email" id="login-email" placeholder="you@example.com" autocomplete="email"></div>
-      </div>
-      <div id="login-phone-fields" style="display:none">
-        <div class="fg"><label>Phone number</label>
-          <div class="input-group">
-            <select id="login-country-code">
-              <option value="+233">🇬🇭 +233</option><option value="+234">🇳🇬 +234</option>
-              <option value="+221">🇸🇳 +221</option><option value="+225">🇨🇮 +225</option>
-              <option value="+256">🇺🇬 +256</option><option value="+254">🇰🇪 +254</option>
-              <option value="+27">🇿🇦 +27</option><option value="+1">🇺🇸 +1</option><option value="+44">🇬🇧 +44</option>
-            </select>
-            <input type="tel" id="login-phone" placeholder="024 123 4567">
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/auth.css" />
+    <link rel="stylesheet" href="css/dashboard.css" />
+  </head>
+  <body>
+    <div
+      id="auth-screens"
+      style="display: flex; flex-direction: column; min-height: 100vh"
+    >
+      <!-- LOGIN -->
+      <div class="auth-screen active" id="screen-login">
+        <div class="auth-card">
+          <div class="auth-logo">
+            <div class="auth-logo-hex">HF</div>
+            <div class="auth-logo-name"><span>Happy</span>Feet</div>
+            <div class="auth-logo-tag">
+              Changing the narrative of African football
+            </div>
+          </div>
+          <div class="auth-title">Welcome back</div>
+          <div class="auth-sub">Sign in to your account</div>
+          <div class="tab-toggle">
+            <button
+              id="ltab-email"
+              class="active"
+              onclick="HF_AUTH.switchLoginTab('email')"
+            >
+              📧 Email
+            </button>
+            <button id="ltab-phone" onclick="HF_AUTH.switchLoginTab('phone')">
+              📱 Phone number
+            </button>
+          </div>
+          <div class="error-box" id="login-err"></div>
+          <div id="login-email-fields">
+            <div class="fg">
+              <label>Email address</label
+              ><input
+                type="email"
+                id="login-email"
+                placeholder="you@example.com"
+                autocomplete="email"
+              />
+            </div>
+          </div>
+          <div id="login-phone-fields" style="display: none">
+            <div class="fg">
+              <label>Phone number</label>
+              <div class="input-group">
+                <select id="login-country-code">
+                  <option value="+233">🇬🇭 +233</option>
+                  <option value="+234">🇳🇬 +234</option>
+                  <option value="+221">🇸🇳 +221</option>
+                  <option value="+225">🇨🇮 +225</option>
+                  <option value="+256">🇺🇬 +256</option>
+                  <option value="+254">🇰🇪 +254</option>
+                  <option value="+27">🇿🇦 +27</option>
+                  <option value="+1">🇺🇸 +1</option>
+                  <option value="+44">🇬🇧 +44</option>
+                </select>
+                <input type="tel" id="login-phone" placeholder="024 123 4567" />
+              </div>
+            </div>
+          </div>
+          <div class="fg">
+            <label>Password</label
+            ><input
+              type="password"
+              id="login-pass"
+              placeholder="Your password"
+            />
+          </div>
+          <button
+            class="btn btn-primary btn-full"
+            onclick="HF_AUTH.handleLogin()"
+          >
+            Sign in →
+          </button>
+          <div class="auth-link">
+            New here?
+            <a onclick="HF_AUTH.showScreen('screen-signup-role')"
+              >Create account</a
+            >
+          </div>
+          <div class="divider">or try a demo</div>
+          <div class="demo-row">
+            <button
+              class="demo-btn player"
+              onclick="HF_AUTH.demoLogin('player')"
+            >
+              ⚽ Player
+            </button>
+            <button class="demo-btn coach" onclick="HF_AUTH.demoLogin('coach')">
+              📋 Coach
+            </button>
+            <button class="demo-btn scout" onclick="HF_AUTH.demoLogin('scout')">
+              🔭 Scout
+            </button>
           </div>
         </div>
       </div>
-      <div class="fg"><label>Password</label><input type="password" id="login-pass" placeholder="Your password"></div>
-      <button class="btn btn-primary btn-full" onclick="HF_AUTH.handleLogin()">Sign in →</button>
-      <div class="auth-link">New here? <a onclick="HF_AUTH.showScreen('screen-signup-role')">Create account</a></div>
-      <div class="divider">or try a demo</div>
-      <div class="demo-row">
-        <button class="demo-btn player" onclick="HF_AUTH.demoLogin('player')">⚽ Player</button>
-        <button class="demo-btn coach"  onclick="HF_AUTH.demoLogin('coach')">📋 Coach</button>
-        <button class="demo-btn scout"  onclick="HF_AUTH.demoLogin('scout')">🔭 Scout</button>
-      </div>
-    </div>
-  </div>
 
-  <!-- ROLE SELECTION -->
-  <div class="auth-screen" id="screen-signup-role">
-    <div class="auth-card">
-      <div class="auth-logo"><div class="auth-logo-hex">HF</div><div class="auth-logo-name"><span>Happy</span>Feet</div></div>
-      <div class="step-row"><div class="step active"></div><div class="step"></div><div class="step"></div></div>
-      <div class="auth-title">Who are you?</div>
-      <div class="auth-sub">Choose your role to get started</div>
-      <div class="role-grid">
-        <div class="role-card" id="role-player" onclick="HF_AUTH.selectRole('player')">
-          <div class="role-icon">⚽</div><div class="role-name">Player</div>
-          <div class="role-desc">Track development & find your team</div>
-        </div>
-        <div class="role-card" id="role-coach" onclick="HF_AUTH.selectRole('coach')">
-          <div class="role-icon">📋</div><div class="role-name">Coach</div>
-          <div class="role-desc">Manage squad & build sessions</div>
-        </div>
-        <div class="role-card" id="role-scout" onclick="HF_AUTH.selectRole('scout')">
-          <div class="role-icon">🔭</div><div class="role-name">Scout</div>
-          <div class="role-desc">Discover talent & placements</div>
-        </div>
-      </div>
-      <button class="btn btn-primary btn-full" onclick="HF_AUTH.goStep2()">Continue →</button>
-      <div class="auth-link">Have an account? <a onclick="HF_AUTH.showScreen('screen-login')">Sign in</a></div>
-    </div>
-  </div>
-
-  <!-- SIGNUP INFO -->
-  <div class="auth-screen" id="screen-signup-info">
-    <div class="auth-card">
-      <div class="auth-logo"><div class="auth-logo-hex">HF</div><div class="auth-logo-name"><span>Happy</span>Feet</div></div>
-      <div class="step-row"><div class="step done"></div><div class="step active"></div><div class="step"></div></div>
-      <div class="auth-title" id="signup-step2-title">Create your account</div>
-      <div class="auth-sub" id="signup-step2-sub">Fill in your details</div>
-      <div class="error-box" id="signup-err"></div>
-      <div class="fg"><label>Full name</label><input type="text" id="su-name" placeholder="Your full name"></div>
-      <div class="fg" style="margin-bottom:6px"><label>Sign in with</label></div>
-      <div class="tab-toggle" style="margin-bottom:12px">
-        <button id="stab-email" class="active" onclick="HF_AUTH.switchSignupTab('email')">📧 Email</button>
-        <button id="stab-phone" onclick="HF_AUTH.switchSignupTab('phone')">📱 Phone number</button>
-      </div>
-      <div id="su-email-fields">
-        <div class="fg"><label>Email address</label><input type="email" id="su-email" placeholder="you@example.com"></div>
-      </div>
-      <div id="su-phone-fields" style="display:none">
-        <div class="fg"><label>Phone number (WhatsApp works!)</label>
-          <div class="input-group">
-            <select id="su-country-code">
-              <option value="+233">🇬🇭 +233</option><option value="+234">🇳🇬 +234</option>
-              <option value="+221">🇸🇳 +221</option><option value="+225">🇨🇮 +225</option>
-              <option value="+256">🇺🇬 +256</option><option value="+254">🇰🇪 +254</option>
-              <option value="+27">🇿🇦 +27</option><option value="+1">🇺🇸 +1</option><option value="+44">🇬🇧 +44</option>
-            </select>
-            <input type="tel" id="su-phone" placeholder="024 123 4567">
+      <!-- ROLE SELECTION -->
+      <div class="auth-screen" id="screen-signup-role">
+        <div class="auth-card">
+          <div class="auth-logo">
+            <div class="auth-logo-hex">HF</div>
+            <div class="auth-logo-name"><span>Happy</span>Feet</div>
           </div>
-          <div class="whatsapp-note"><span class="wa-icon">💬</span>Your WhatsApp number works perfectly for sign-in.</div>
+          <div class="step-row">
+            <div class="step active"></div>
+            <div class="step"></div>
+            <div class="step"></div>
+          </div>
+          <div class="auth-title">Who are you?</div>
+          <div class="auth-sub">Choose your role to get started</div>
+          <div class="role-grid">
+            <div
+              class="role-card"
+              id="role-player"
+              onclick="HF_AUTH.selectRole('player')"
+            >
+              <div class="role-icon">⚽</div>
+              <div class="role-name">Player</div>
+              <div class="role-desc">Track development & find your team</div>
+            </div>
+            <div
+              class="role-card"
+              id="role-coach"
+              onclick="HF_AUTH.selectRole('coach')"
+            >
+              <div class="role-icon">📋</div>
+              <div class="role-name">Coach</div>
+              <div class="role-desc">Manage squad & build sessions</div>
+            </div>
+            <div
+              class="role-card"
+              id="role-scout"
+              onclick="HF_AUTH.selectRole('scout')"
+            >
+              <div class="role-icon">🔭</div>
+              <div class="role-name">Scout</div>
+              <div class="role-desc">Discover talent & placements</div>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-full" onclick="HF_AUTH.goStep2()">
+            Continue →
+          </button>
+          <div class="auth-link">
+            Have an account?
+            <a onclick="HF_AUTH.showScreen('screen-login')">Sign in</a>
+          </div>
         </div>
       </div>
-      <div class="fg"><label>Password</label><input type="password" id="su-pass" placeholder="Min 6 characters"></div>
-      <div id="signup-role-fields"></div>
-      <button class="btn btn-primary btn-full" onclick="HF_AUTH.goStep3()">Continue →</button>
-      <div class="auth-link"><a onclick="HF_AUTH.showScreen('screen-signup-role')">← Back</a></div>
-    </div>
-  </div>
 
-  <!-- CONFIRM -->
-  <div class="auth-screen" id="screen-signup-confirm">
-    <div class="auth-card">
-      <div class="auth-logo"><div class="auth-logo-hex">HF</div><div class="auth-logo-name"><span>Happy</span>Feet</div></div>
-      <div class="step-row"><div class="step done"></div><div class="step done"></div><div class="step active"></div></div>
-      <div style="text-align:center;padding:16px 0">
-        <div style="font-size:52px;margin-bottom:12px" id="confirm-icon">⚽</div>
-        <div class="auth-title" id="confirm-title">You're all set!</div>
-        <div class="auth-sub" id="confirm-sub">Your account is ready.</div>
+      <!-- SIGNUP INFO -->
+      <div class="auth-screen" id="screen-signup-info">
+        <div class="auth-card">
+          <div class="auth-logo">
+            <div class="auth-logo-hex">HF</div>
+            <div class="auth-logo-name"><span>Happy</span>Feet</div>
+          </div>
+          <div class="step-row">
+            <div class="step done"></div>
+            <div class="step active"></div>
+            <div class="step"></div>
+          </div>
+          <div class="auth-title" id="signup-step2-title">
+            Create your account
+          </div>
+          <div class="auth-sub" id="signup-step2-sub">Fill in your details</div>
+          <div class="error-box" id="signup-err"></div>
+          <div class="fg">
+            <label>Full name</label
+            ><input type="text" id="su-name" placeholder="Your full name" />
+          </div>
+          <div class="fg" style="margin-bottom: 6px">
+            <label>Sign in with</label>
+          </div>
+          <div class="tab-toggle" style="margin-bottom: 12px">
+            <button
+              id="stab-email"
+              class="active"
+              onclick="HF_AUTH.switchSignupTab('email')"
+            >
+              📧 Email
+            </button>
+            <button id="stab-phone" onclick="HF_AUTH.switchSignupTab('phone')">
+              📱 Phone number
+            </button>
+          </div>
+          <div id="su-email-fields">
+            <div class="fg">
+              <label>Email address</label
+              ><input
+                type="email"
+                id="su-email"
+                placeholder="you@example.com"
+              />
+            </div>
+          </div>
+          <div id="su-phone-fields" style="display: none">
+            <div class="fg">
+              <label>Phone number (WhatsApp works!)</label>
+              <div class="input-group">
+                <select id="su-country-code">
+                  <option value="+233">🇬🇭 +233</option>
+                  <option value="+234">🇳🇬 +234</option>
+                  <option value="+221">🇸🇳 +221</option>
+                  <option value="+225">🇨🇮 +225</option>
+                  <option value="+256">🇺🇬 +256</option>
+                  <option value="+254">🇰🇪 +254</option>
+                  <option value="+27">🇿🇦 +27</option>
+                  <option value="+1">🇺🇸 +1</option>
+                  <option value="+44">🇬🇧 +44</option>
+                </select>
+                <input type="tel" id="su-phone" placeholder="024 123 4567" />
+              </div>
+              <div class="whatsapp-note">
+                <span class="wa-icon">💬</span>Your WhatsApp number works
+                perfectly for sign-in.
+              </div>
+            </div>
+          </div>
+          <div class="fg">
+            <label>Password</label
+            ><input
+              type="password"
+              id="su-pass"
+              placeholder="Min 6 characters"
+            />
+          </div>
+          <div id="signup-role-fields"></div>
+          <button class="btn btn-primary btn-full" onclick="HF_AUTH.goStep3()">
+            Continue →
+          </button>
+          <div class="auth-link">
+            <a onclick="HF_AUTH.showScreen('screen-signup-role')">← Back</a>
+          </div>
+        </div>
       </div>
-      <div class="confirm-box" id="confirm-summary"></div>
-      <button class="btn btn-primary btn-full" onclick="HF_AUTH.completeSignup()">Enter HappyFeet →</button>
+
+      <!-- CONFIRM -->
+      <div class="auth-screen" id="screen-signup-confirm">
+        <div class="auth-card">
+          <div class="auth-logo">
+            <div class="auth-logo-hex">HF</div>
+            <div class="auth-logo-name"><span>Happy</span>Feet</div>
+          </div>
+          <div class="step-row">
+            <div class="step done"></div>
+            <div class="step done"></div>
+            <div class="step active"></div>
+          </div>
+          <div style="text-align: center; padding: 16px 0">
+            <div style="font-size: 52px; margin-bottom: 12px" id="confirm-icon">
+              ⚽
+            </div>
+            <div class="auth-title" id="confirm-title">You're all set!</div>
+            <div class="auth-sub" id="confirm-sub">Your account is ready.</div>
+          </div>
+          <div class="confirm-box" id="confirm-summary"></div>
+          <button
+            class="btn btn-primary btn-full"
+            onclick="HF_AUTH.completeSignup()"
+          >
+            Enter HappyFeet →
+          </button>
+        </div>
+      </div>
     </div>
-  </div>
 
-</div>
-
-<!-- ═══════ APP SHELL ═══════ -->
-<div id="app-shell">
-  <div class="topbar">
-    <button class="hamburger" onclick="HF_ROUTER.toggleMobileNav()">☰</button>
-    <div class="topbar-brand">
-      <div class="topbar-hex" style="font-family:var(--font-head);font-size:13px;letter-spacing:0.05em;">HF</div>
-      <div class="topbar-name"><em>Happy</em>Feet</div>
+    <!-- ═══════ APP SHELL ═══════ -->
+    <div id="app-shell">
+      <div class="topbar">
+        <button class="hamburger" onclick="HF_ROUTER.toggleMobileNav()">
+          ☰
+        </button>
+        <div class="topbar-brand">
+          <div
+            class="topbar-hex"
+            style="
+              font-family: var(--font-head);
+              font-size: 13px;
+              letter-spacing: 0.05em;
+            "
+          >
+            HF
+          </div>
+          <div class="topbar-name"><em>Happy</em>Feet</div>
+        </div>
+        <div
+          class="topbar-right"
+          style="display: flex; align-items: center; gap: 16px"
+        >
+          <div style="text-align: right; line-height: 1.3">
+            <div
+              style="
+                font-size: 10px;
+                font-family: var(--font-head);
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+                color: rgba(255, 255, 255, 0.45);
+              "
+            >
+              Signed in as
+              <span id="topbar-role-pill" style="color: var(--gold)"></span>
+            </div>
+            <div
+              id="topbar-name-display"
+              style="font-size: 13px; font-weight: 600; color: #fff"
+            ></div>
+          </div>
+          <button class="btn-logout" onclick="HF_AUTH.logout()">
+            Sign out
+          </button>
+        </div>
+      </div>
+      <div class="layout">
+        <nav class="sidenav" id="sidenav"></nav>
+        <div
+          class="sidenav-overlay"
+          id="nav-overlay"
+          onclick="HF_ROUTER.toggleMobileNav()"
+        ></div>
+        <main class="main" id="main-content"></main>
+      </div>
     </div>
-    <div class="topbar-right" style="display:flex;align-items:center;gap:16px;">
-       <div style="text-align:right;line-height:1.3;">
-          <div style="font-size:10px;font-family:var(--font-head);letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.45);">Signed in as <span id="topbar-role-pill" style="color:var(--gold);"></span></div>
-          <div id="topbar-name-display" style="font-size:13px;font-weight:600;color:#fff;"></div>
-       </div>
-       <button class="btn-logout" onclick="HF_AUTH.logout()">Sign out</button>
-    </div>
-  </div>
-  <div class="layout">
-    <nav class="sidenav" id="sidenav"></nav>
-    <div class="sidenav-overlay" id="nav-overlay" onclick="HF_ROUTER.toggleMobileNav()"></div>
-    <main class="main" id="main-content"></main>
-  </div>
-</div>
 
-  <script src="js/utils.js"></script>
-  <script src="js/db.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/router.js"></script>
-  <script src="js/dashboards/player.js"></script>
-  <script src="js/dashboards/coach.js"></script>
-  <script src="js/dashboards/scout.js"></script>
-
-</body>
+    <script src="js/utils.js"></script>
+    <script src="js/db.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/router.js"></script>
+    <script src="js/dashboards/player.js"></script>
+    <script src="js/dashboards/coach.js"></script>
+    <script src="js/dashboards/scout.js"></script>
+  </body>
 </html>
