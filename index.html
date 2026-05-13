@@ -254,18 +254,44 @@
                 <input type="tel" id="su-phone" placeholder="024 123 4567" />
               </div>
               <div class="whatsapp-note">
-                <span class="wa-icon"><i class="ti ti-message"></i></span>Your WhatsApp number works
-                perfectly for sign-in.
+                <span class="wa-icon"><i class="ti ti-message"></i></span>Your
+                WhatsApp number works perfectly for sign-in.
               </div>
             </div>
           </div>
           <div class="fg">
-            <label>Password</label
-            ><input
+            <label>Password</label>
+            <input
               type="password"
               id="su-pass"
               placeholder="Min 6 characters"
+              oninput="HF_AUTH.checkPassword(this.value)"
             />
+            <div
+              id="password-strength-bar"
+              style="
+                height: 3px;
+                background: var(--border);
+                margin-top: 6px;
+                transition: all 0.3s;
+              "
+            >
+              <div
+                id="password-strength-fill"
+                style="height: 100%; width: 0%; transition: all 0.3s"
+              ></div>
+            </div>
+            <div
+              id="password-strength-label"
+              style="
+                font-size: 10px;
+                font-family: var(--font-head);
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                margin-top: 4px;
+                color: var(--text3);
+              "
+            ></div>
           </div>
           <div id="signup-role-fields"></div>
           <button class="btn btn-primary btn-full" onclick="HF_AUTH.goStep3()">
@@ -370,6 +396,8 @@
       </div>
     </div>
 
+    <script src="js/config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/scripture.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/db.js"></script>

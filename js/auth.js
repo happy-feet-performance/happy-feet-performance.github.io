@@ -391,6 +391,34 @@ const HF_AUTH = (() => {
     showScreen("screen-login");
   };
 
+  const checkPassword = (val) => {
+    const fill = document.getElementById("password-strength-fill");
+    const label = document.getElementById("password-strength-label");
+    if (!fill || !label) return;
+
+    let strength = 0;
+    if (val.length >= 6) strength++;
+    if (val.length >= 10) strength++;
+    if (/[A-Z]/.test(val)) strength++;
+    if (/[0-9]/.test(val)) strength++;
+    if (/[^A-Za-z0-9]/.test(val)) strength++;
+
+    const levels = [
+      { width: "0%", color: "transparent", text: "" },
+      { width: "25%", color: "var(--red)", text: "Weak" },
+      { width: "50%", color: "var(--red)", text: "Fair" },
+      { width: "75%", color: "var(--gold)", text: "Good" },
+      { width: "90%", color: "var(--green)", text: "Strong" },
+      { width: "100%", color: "var(--green)", text: "Very strong" },
+    ];
+
+    const level = levels[strength];
+    fill.style.width = level.width;
+    fill.style.background = level.color;
+    label.textContent = level.text;
+    label.style.color = level.color;
+  };
+
   // ─── Expose to window (called from onclick) ─────────────────
   return {
     showScreen,
@@ -403,6 +431,7 @@ const HF_AUTH = (() => {
     handleLogin,
     demoLogin,
     logout,
+    checkPassword,
   };
 })();
 
