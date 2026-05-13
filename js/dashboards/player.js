@@ -59,7 +59,7 @@ const HF_PLAYER = (() => {
     setMain(`
       <div class="welcome-banner">
         <div>
-          <div class="welcome-title">Welcome back, ${s.name.split(" ")[0]} 👋</div>
+          <div class="welcome-title">Welcome back, ${s.name.split(" ")[0]}</div>
           <div class="welcome-sub">${p.pos || "Player"} · ${p.tier || "U21"} · ${p.club || "—"}</div>
         </div>
         <div style="text-align:right">
@@ -69,7 +69,7 @@ const HF_PLAYER = (() => {
       </div>
 
       <div class="scripture-strip" style="margin-bottom:var(--sp-xl);padding:var(--sp-lg)">
-        <span style="color:var(--faith);font-size:18px">✝</span>
+        <span style="color:var(--faith);font-size:18px"><i class="ti ti-cross"></i></span>
         <span>"I can do all things through Christ who strengthens me." ~ Philippians 4:13</span>
       </div>
 
@@ -90,25 +90,25 @@ const HF_PLAYER = (() => {
           <div class="metric-sub">Days in a row</div>
         </div>
         <div class="metric-card">
-          <div class="metric-val" style="color:var(--blue)">3</div>
+        <div class="metric-val" style="color:var(--red)">3</div>
           <div class="metric-label">Messages</div>
-          <div class="metric-sub" style="color:var(--red)">Unread</div>
+          <div class="metric-sub" style="color:var(--text2)">Unread</div>
         </div>
       </div>
 
       <div class="quick-actions">
         <button class="quick-action" onclick="HF_ROUTER.navTo('stats')">
-          <div class="quick-action-icon">📊</div>
+          <div class="quick-action-icon"><i class="ti ti-chart-bar"></i></div>
           <div class="quick-action-label">View my stats</div>
           <div class="quick-action-sub">Performance data</div>
         </button>
         <button class="quick-action" onclick="HF_ROUTER.navTo('health')">
-          <div class="quick-action-icon">🩺</div>
+          <div class="quick-action-icon"><i class="ti ti-stethoscope"></i></div>
           <div class="quick-action-label">Log wellness</div>
           <div class="quick-action-sub">How are you today?</div>
         </button>
         <button class="quick-action" onclick="HF_ROUTER.navTo('faith')">
-          <div class="quick-action-icon">🙏</div>
+          <div class="quick-action-icon"><i class="ti ti-cross"></i></div>
           <div class="quick-action-label">Morning devotion</div>
           <div class="quick-action-sub">Prayer & scripture</div>
         </button>
@@ -116,9 +116,9 @@ const HF_PLAYER = (() => {
 
       <div class="card">
         <div class="card-title"><div class="card-dot"></div>Recent activity</div>
-        ${activityHTML("📊", "rgba(201,150,26,.1)", "Session rated by coach", "Technical: 78/100. Strong first touch. Work on weak foot.", "2 hours ago")}
-        ${activityHTML("🏆", "rgba(26,122,46,.1)", "Achievement unlocked", '"5-day faith streak"! Keep going!', "Yesterday")}
-        ${activityHTML("✝", "rgba(123,63,160,.1)", "Devotion completed", "Day 5: Discipline is worship", "Yesterday")}
+        ${activityHTML('<i class="ti ti-chart-bar"></i>', "rgba(201,150,26,.1)", "Session rated by coach", "Technical: 78/100. Strong first touch. Work on weak foot.", "2 hours ago")}
+        ${activityHTML('<i class="ti ti-trophy"></i>', "rgba(26,122,46,.1)", "Achievement unlocked", '"5-day faith streak"! Keep going!', "Yesterday")}
+        ${activityHTML('<i class="ti ti-cross"></i>', "rgba(123,63,160,.1)", "Devotion completed", "Day 5: Discipline is worship", "Yesterday")}
       </div>`);
   };
 
@@ -146,7 +146,7 @@ const HF_PLAYER = (() => {
           <div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club || "—"}</div></div>
           <div class="info-cell"><div class="info-label">Hometown</div><div class="info-val">${p.hometown || "—"}</div></div>
           <div class="info-cell"><div class="info-label">${s.contactType === "phone" ? "Phone" : "Email"}</div><div class="info-val">${s.displayContact || s.contact}</div></div>
-          <div class="info-cell"><div class="info-label">Faith streak</div><div class="info-val" style="color:var(--faith)">${p.faithStreak || 0} days ✝</div></div>
+          <div class="info-cell"><div class="info-label">Faith streak</div><div class="info-val" style="color:var(--faith)">${p.faithStreak || 0} days <i class="ti ti-cross"></i></div></div>
         </div>
       </div>
       <div class="card">
@@ -219,7 +219,11 @@ const HF_PLAYER = (() => {
       ["Technical rondos 5v2", "25 min", "high"],
       ["1v1 duels & pressing", "20 min", "high"],
       ["Tactical shape work", "20 min", "med"],
-      ["✝ Team prayer & devotion", "10 min", "low"],
+      [
+        '<i class="ti ti-cross" style="color:var(--faith)"></i> Team prayer & devotion',
+        "10 min",
+        "low",
+      ],
       ["Cooldown & stretch", "15 min", "low"],
     ];
     const badgeCls = { high: "red", med: "gold", low: "green" };
@@ -297,25 +301,35 @@ const HF_PLAYER = (() => {
   const achievements = (s) => {
     const list = [
       [
-        "🌟",
+        '<i class="ti ti-star"></i>',
         "First session logged",
         "You started your HappyFeet journey",
         "Day 1",
       ],
       [
-        "✝",
+        '<i class="ti ti-cross"></i>',
         "5-day faith streak",
         "Completed 5 consecutive devotions",
         "This week",
       ],
       [
-        "📈",
+        '<i class="ti ti-trending-up"></i>',
         "First rating improvement",
         "Rating jumped +8 in one session",
         "Last week",
       ],
-      ["🏃", "10 sessions completed", "Double-digit dedication", "This month"],
-      ["⚽", "First clean sheet", "Recorded a 90-min shutout", "Last match"],
+      [
+        '<i class="ti ti-run"></i>',
+        "10 sessions completed",
+        "Double-digit dedication",
+        "This month",
+      ],
+      [
+        '<i class="ti ti-ball-football"></i>',
+        "First clean sheet",
+        "Recorded a 90-min shutout",
+        "Last match",
+      ],
     ];
     setMain(`
       <div class="card">
@@ -344,17 +358,17 @@ const HF_PLAYER = (() => {
   // ── HIGHLIGHTS ───────────────────────────────────────────────
   const highlights = (s) => {
     setMain(`
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>My highlights</div>
-        <div style="text-align:center;padding:40px 20px;color:var(--text2)">
-          <div style="font-size:48px;margin-bottom:12px">🎬</div>
-          <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">Upload your highlights</div>
-          <div style="font-size:13px;margin-bottom:20px;line-height:1.6">Share clips of your best moments.<br>Coaches and scouts can see your game.</div>
-          <button class="btn btn-primary" onclick="HF_UTILS.toast('Video upload coming in the next version!','success')">
-            📹 Upload video clip
-          </button>
-        </div>
-      </div>`);
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>My highlights</div>
+      <div style="text-align:center;padding:40px 20px;color:var(--text2)">
+        <i class="ti ti-video" style="font-size:48px;margin-bottom:12px;display:block;color:var(--text3)"></i>
+        <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">Upload your highlights</div>
+        <div style="font-size:13px;margin-bottom:20px;line-height:1.6">Share clips of your best moments.<br>Coaches and scouts can see your game.</div>
+        <button class="btn btn-primary" onclick="HF_UTILS.toast('Video upload coming in the next version!','success')">
+          <i class="ti ti-upload"></i> Upload video clip
+        </button>
+      </div>
+    </div>`);
   };
 
   // ── MESSAGES ─────────────────────────────────────────────────
@@ -409,7 +423,7 @@ const HF_PLAYER = (() => {
   const faith = (s) => {
     setMain(`
       <div class="faith-hero">
-        <div style="font-size:32px;margin-bottom:10px">✝</div>
+        <div style="font-size:32px;margin-bottom:10px"><i class="ti ti-cross"></i></div>
         <div style="font-size:20px;font-weight:700;margin-bottom:6px">Faith & Purpose</div>
         <div style="font-size:13px;opacity:.8;line-height:1.6">Your talent is God-given.<br>Your discipline is your worship.</div>
       </div>

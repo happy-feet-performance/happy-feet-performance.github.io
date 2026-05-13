@@ -101,8 +101,8 @@ const HF_COACH = (() => {
     setMain(`
       <div class="welcome-banner">
         <div>
-          <div class="welcome-title">Coach ${s.name.split(" ").pop()} 📋</div>
-          <div class="welcome-sub">${p.spec || "Head coach"} · ${p.club || "—"} · ${p.licence || "—"} licence</div>
+          <div class="welcome-title">Coach ${s.name.split(" ").pop()}</div>
+          <div class="welcome-sub">${p.spec || "Head coach"} · ${p.club || "-"} · ${p.licence || "-"} licence</div>
         </div>
         <div style="text-align:right">
           <div style="font-size:32px;font-weight:700;color:var(--gold)">${p.teamSize || 22}</div>
@@ -110,37 +110,37 @@ const HF_COACH = (() => {
         </div>
       </div>
       <div class="scripture-strip" style="margin-bottom:var(--sp-xl);padding:var(--sp-lg)">
-        <span style="color:var(--faith);font-size:18px">✝</span>
+        <i class="ti ti-cross" style="color:var(--faith);font-size:18px;flex-shrink:0"></i>
         <span>"Whatever you do, work at it with all your heart, as working for the Lord." ~ Colossians 3:23</span>
       </div>
       <div class="metrics-grid">
         <div class="metric-card"><div class="metric-val" style="color:var(--green)">87%</div><div class="metric-label">Squad readiness</div><div class="metric-sub" style="color:var(--green)">+4% this week</div></div>
         <div class="metric-card"><div class="metric-val" style="color:var(--red)">2</div><div class="metric-label">Risk alerts</div><div class="metric-sub">Review today</div></div>
         <div class="metric-card"><div class="metric-val" style="color:var(--gold)">${p.teamSize || 22}</div><div class="metric-label">Active players</div><div class="metric-sub">2 monitoring</div></div>
-        <div class="metric-card"><div class="metric-val" style="color:var(--blue)">5</div><div class="metric-label">Messages</div><div class="metric-sub" style="color:var(--red)">Unread</div></div>
+        <div class="metric-card"><div class="metric-val" style="color:var(--red)">5</div><div class="metric-label">Messages</div><div class="metric-sub" style="color:var(--text2)">Unread</div></div>
       </div>
       <div class="quick-actions">
         <button class="quick-action" onclick="HF_ROUTER.navTo('squad')">
-          <div class="quick-action-icon">👥</div>
+          <div class="quick-action-icon"><i class="ti ti-users"></i></div>
           <div class="quick-action-label">View squad</div>
           <div class="quick-action-sub">${p.teamSize || 22} players</div>
         </button>
         <button class="quick-action" onclick="HF_ROUTER.navTo('training')">
-          <div class="quick-action-icon">📋</div>
+          <div class="quick-action-icon"><i class="ti ti-clipboard-list"></i></div>
           <div class="quick-action-label">Today's session</div>
           <div class="quick-action-sub">Technical: high</div>
         </button>
         <button class="quick-action" onclick="HF_ROUTER.navTo('health')">
-          <div class="quick-action-icon">🩺</div>
+          <div class="quick-action-icon"><i class="ti ti-stethoscope"></i></div>
           <div class="quick-action-label">Health flags</div>
           <div class="quick-action-sub">2 alerts pending</div>
         </button>
       </div>
       <div class="card">
         <div class="card-title"><div class="card-dot"></div>AI agent activity</div>
-        ${activityHTML("🤖", "rgba(201,150,26,.1)", "Performance Agent", "Fatigue detected: Kwame Asante. Sprint load reduced 30% tomorrow.", "2 min ago")}
-        ${activityHTML("🩺", "rgba(200,16,46,.08)", "Health Agent", "Emmanuel Ofori: hamstring flag. Physio check 7am. Modified plan activated.", "18 min ago")}
-        ${activityHTML("🔭", "rgba(26,122,46,.08)", "Scout Agent", "3 new prospects identified in Kumasi region. Profiles ready.", "1 hr ago")}
+        ${activityHTML('<i class="ti ti-robot"></i>', "rgba(201,150,26,.1)", "Performance Agent", "Fatigue detected: Kwame Asante. Sprint load reduced 30% tomorrow.", "2 min ago")}
+        ${activityHTML('<i class="ti ti-stethoscope"></i>', "rgba(200,16,46,.08)", "Health Agent", "Emmanuel Ofori: hamstring flag. Physio check 7am. Modified plan activated.", "18 min ago")}
+        ${activityHTML('<i class="ti ti-search"></i>', "rgba(26,122,46,.08)", "Scout Agent", "3 new prospects identified in Kumasi region. Profiles ready.", "1 hr ago")}
       </div>`);
   };
 
@@ -443,7 +443,7 @@ const HF_COACH = (() => {
   const faith = (s) => {
     setMain(`
       <div class="faith-hero">
-        <div style="font-size:32px;margin-bottom:10px">✝</div>
+        <div style="font-size:32px;margin-bottom:10px"><i class="ti ti-cross"></i></div>
         <div style="font-size:20px;font-weight:700;margin-bottom:6px">Team Devotion</div>
         <div style="font-size:13px;opacity:.8">Lead your players in faith as well as football.</div>
       </div>

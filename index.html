@@ -14,13 +14,17 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Oswald:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
 
     <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/auth.css" />
     <link rel="stylesheet" href="css/dashboard.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"
+    />
 
     <script src="js/theme.js"></script>
   </head>
@@ -29,6 +33,17 @@
       id="auth-screens"
       style="display: flex; flex-direction: column; min-height: 100vh"
     >
+      <!-- Theme toggle on auth screens -->
+      <div style="position: fixed; top: 16px; right: 16px; z-index: 999">
+        <label class="theme-switch" title="Toggle dark mode">
+          <input
+            type="checkbox"
+            id="theme-toggle-auth"
+            onchange="HF_THEME.toggle()"
+          />
+          <span class="theme-slider"></span>
+        </label>
+      </div>
       <!-- LOGIN -->
       <div class="auth-screen active" id="screen-login">
         <div class="auth-card">
@@ -47,10 +62,10 @@
               class="active"
               onclick="HF_AUTH.switchLoginTab('email')"
             >
-              📧 Email
+              Email
             </button>
             <button id="ltab-phone" onclick="HF_AUTH.switchLoginTab('phone')">
-              📱 Phone number
+              Phone number
             </button>
           </div>
           <div class="error-box" id="login-err"></div>
@@ -110,13 +125,13 @@
               class="demo-btn player"
               onclick="HF_AUTH.demoLogin('player')"
             >
-              ⚽ Player
+              <i class="ti ti-ball-football"></i> Player
             </button>
             <button class="demo-btn coach" onclick="HF_AUTH.demoLogin('coach')">
-              📋 Coach
+              <i class="ti ti-clipboard-list"></i> Coach
             </button>
             <button class="demo-btn scout" onclick="HF_AUTH.demoLogin('scout')">
-              🔭 Scout
+              <i class="ti ti-search"></i> Scout
             </button>
           </div>
         </div>
@@ -142,7 +157,7 @@
               id="role-player"
               onclick="HF_AUTH.selectRole('player')"
             >
-              <div class="role-icon">⚽</div>
+              <div class="role-icon"><i class="ti ti-ball-football"></i></div>
               <div class="role-name">Player</div>
               <div class="role-desc">Track development & find your team</div>
             </div>
@@ -151,7 +166,7 @@
               id="role-coach"
               onclick="HF_AUTH.selectRole('coach')"
             >
-              <div class="role-icon">📋</div>
+              <div class="role-icon"><i class="ti ti-clipboard-list"></i></div>
               <div class="role-name">Coach</div>
               <div class="role-desc">Manage squad & build sessions</div>
             </div>
@@ -160,7 +175,7 @@
               id="role-scout"
               onclick="HF_AUTH.selectRole('scout')"
             >
-              <div class="role-icon">🔭</div>
+              <div class="role-icon"><i class="ti ti-search"></i></div>
               <div class="role-name">Scout</div>
               <div class="role-desc">Discover talent & placements</div>
             </div>
@@ -205,10 +220,10 @@
               class="active"
               onclick="HF_AUTH.switchSignupTab('email')"
             >
-              📧 Email
+              Email
             </button>
             <button id="stab-phone" onclick="HF_AUTH.switchSignupTab('phone')">
-              📱 Phone number
+              Phone number
             </button>
           </div>
           <div id="su-email-fields">
@@ -239,7 +254,7 @@
                 <input type="tel" id="su-phone" placeholder="024 123 4567" />
               </div>
               <div class="whatsapp-note">
-                <span class="wa-icon">💬</span>Your WhatsApp number works
+                <span class="wa-icon"><i class="ti ti-message"></i></span>Your WhatsApp number works
                 perfectly for sign-in.
               </div>
             </div>
@@ -275,9 +290,7 @@
             <div class="step active"></div>
           </div>
           <div style="text-align: center; padding: 16px 0">
-            <div style="font-size: 52px; margin-bottom: 12px" id="confirm-icon">
-              ⚽
-            </div>
+            <div class="role-icon"><i class="ti ti-ball-football"></i></div>
             <div class="auth-title" id="confirm-title">You're all set!</div>
             <div class="auth-sub" id="confirm-sub">Your account is ready.</div>
           </div>

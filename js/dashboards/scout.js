@@ -139,7 +139,7 @@ const HF_SCOUT = (() => {
     setMain(`
       <div class="welcome-banner">
         <div>
-          <div class="welcome-title">Scout ${s.name.split(" ").pop()} 🔭</div>
+          <div class="welcome-title">Scout ${s.name.split(" ").pop()} <i class="ti ti-telescope"></i></div>
           <div class="welcome-sub">${p.org || "HappyFeet Scouting"} · ${p.region || "Ghana"}</div>
         </div>
         <div style="text-align:right">
@@ -148,7 +148,7 @@ const HF_SCOUT = (() => {
         </div>
       </div>
       <div class="scripture-strip">
-        <span style="color:var(--faith);font-size:18px">✝</span>
+        <span style="color:var(--faith);font-size:18px"><i class="ti ti-cross"></i></span>
         <span>"For I know the plans I have for you, declares the LORD, plans to prosper you." ~ Jeremiah 29:11</span>
       </div>
       <div class="metrics-grid">
@@ -159,26 +159,26 @@ const HF_SCOUT = (() => {
       </div>
       <div class="quick-actions">
         <button class="quick-action" onclick="HF_ROUTER.navTo('discover')">
-          <div class="quick-action-icon">🔍</div>
+          <div class="quick-action-icon"><i class="ti ti-search"></i></div>
           <div class="quick-action-label">Discover talent</div>
           <div class="quick-action-sub">Search prospects</div>
         </button>
         <button class="quick-action" onclick="HF_ROUTER.navTo('prospects')">
-          <div class="quick-action-icon">⭐</div>
+          <div class="quick-action-icon"><i class="ti ti-star"></i></div>
           <div class="quick-action-label">Saved prospects</div>
           <div class="quick-action-sub">${PROSPECTS.length} being tracked</div>
         </button>
         <button class="quick-action" onclick="HF_ROUTER.navTo('pipeline')">
-          <div class="quick-action-icon">📈</div>
+          <div class="quick-action-icon"><i class="ti ti-trending-up"></i></div>
           <div class="quick-action-label">Pipeline</div>
           <div class="quick-action-sub">Track progress</div>
         </button>
       </div>
       <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Recent scouting activity</div>
-        ${activityHTML("⭐", "rgba(200,16,46,.08)", "Elite prospect flagged", "Yaw Darko (ST, 16, Kumasi): ready for club report.", "2 hours ago")}
-        ${activityHTML("✅", "rgba(26,122,46,.08)", "Report shared", "Nana Amponsah profile sent to FC Nordsjælland.", "1 day ago")}
-        ${activityHTML("➕", "rgba(24,95,165,.08)", "New prospect added", "Adjoa Frempong (CM, 15, Accra): High potential.", "2 days ago")}
+      <div class="card-title"><div class="card-dot"></div>Recent scouting activity</div>
+        ${activityHTML('<i class="ti ti-star"></i>', "rgba(200,16,46,.08)", "Elite prospect flagged", "Yaw Darko (ST, 16, Kumasi): ready for club report.", "2 hours ago")}
+        ${activityHTML('<i class="ti ti-circle-check"></i>', "rgba(26,122,46,.08)", "Report shared", "Nana Amponsah profile sent to FC Nordsjælland.", "1 day ago")}
+        ${activityHTML('<i class="ti ti-plus"></i>', "rgba(24,95,165,.08)", "New prospect added", "Adjoa Frempong (CM, 15, Accra): High potential.", "2 days ago")}
       </div>`);
   };
 
@@ -411,7 +411,7 @@ const HF_SCOUT = (() => {
       <div class="card">
         <div class="card-title"><div class="card-dot"></div>Placement record</div>
         <div style="text-align:center;padding:32px;color:var(--text2)">
-          <div style="font-size:36px;margin-bottom:10px">✅</div>
+          <div style="font-size:36px;margin-bottom:10px"><i class="ti ti-circle-check"></i></div>
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No placements yet</div>
           <div style="font-size:13px">Your first placement will appear here once confirmed.</div>
         </div>
@@ -428,7 +428,7 @@ const HF_SCOUT = (() => {
       <div class="card">
         <div class="card-title"><div class="card-dot"></div>Messages</div>
         <div style="text-align:center;padding:32px;color:var(--text2)">
-          <div style="font-size:32px;margin-bottom:8px">💬</div>
+          <div style="font-size:32px;margin-bottom:8px"><i class="ti ti-message"></i></div>
           <div style="font-size:13px">No messages yet. Connect with coaches and clubs to get started.</div>
         </div>
       </div>`);

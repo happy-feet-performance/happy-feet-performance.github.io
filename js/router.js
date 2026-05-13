@@ -22,67 +22,81 @@ const HF_ROUTER = (() => {
   const NAVS = {
     player: [
       { section: "My journey" },
-      { view: "dashboard", icon: "🏠", label: "Dashboard" },
-      { view: "profile", icon: "👤", label: "My profile" },
-      { view: "stats", icon: "📊", label: "My stats" },
-      { view: "training", icon: "📋", label: "Training plan" },
-      { view: "health", icon: "🩺", label: "Health log" },
+      { view: "dashboard", icon: "ti-home", label: "Dashboard" },
+      { view: "profile", icon: "ti-user", label: "My profile" },
+      { view: "stats", icon: "ti-chart-bar", label: "My stats" },
+      { view: "training", icon: "ti-clipboard-list", label: "Training plan" },
+      { view: "health", icon: "ti-heart-rate-monitor", label: "Health log" },
       { section: "Progress" },
-      { view: "achievements", icon: "🏆", label: "Achievements" },
-      { view: "highlights", icon: "🎬", label: "Highlights" },
+      { view: "achievements", icon: "ti-trophy", label: "Achievements" },
+      { view: "highlights", icon: "ti-video", label: "Highlights" },
       { section: "Community" },
       {
         view: "messages",
-        icon: "💬",
+        icon: "ti-message",
         label: "Messages",
         badge: "3",
         badgeColor: "var(--red)",
       },
-      { view: "faith", icon: "✝", label: "Faith & purpose", faithNav: true },
+      {
+        view: "faith",
+        icon: "ti-cross",
+        label: "Faith & purpose",
+        faithNav: true,
+      },
       { section: "Discover" },
-      { view: "findmyteam", icon: "🗺️", label: "Find my team" },
+      { view: "findmyteam", icon: "ti-map-search", label: "Find my team" },
     ],
     coach: [
       { section: "Management" },
-      { view: "dashboard", icon: "🏠", label: "Dashboard" },
-      { view: "profile", icon: "👤", label: "My profile" },
-      { view: "squad", icon: "👥", label: "Squad" },
-      { view: "training", icon: "📋", label: "Session builder" },
-      { view: "tracking", icon: "📊", label: "Player tracking" },
+      { view: "dashboard", icon: "ti-home", label: "Dashboard" },
+      { view: "profile", icon: "ti-user", label: "My profile" },
+      { view: "squad", icon: "ti-users", label: "Squad" },
+      { view: "training", icon: "ti-clipboard-list", label: "Session builder" },
+      { view: "tracking", icon: "ti-chart-line", label: "Player tracking" },
       { section: "Tools" },
-      { view: "health", icon: "🩺", label: "Health & wellness" },
-      { view: "recruitment", icon: "🔍", label: "Recruitment" },
+      {
+        view: "health",
+        icon: "ti-heart-rate-monitor",
+        label: "Health & wellness",
+      },
+      { view: "recruitment", icon: "ti-search", label: "Recruitment" },
       {
         view: "messages",
-        icon: "💬",
+        icon: "ti-message",
         label: "Messages",
         badge: "5",
         badgeColor: "var(--red)",
       },
-      { view: "faith", icon: "✝", label: "Team devotion", faithNav: true },
+      {
+        view: "faith",
+        icon: "ti-cross",
+        label: "Team devotion",
+        faithNav: true,
+      },
       { section: "Discover" },
-      { view: "findmyteam", icon: "🗺️", label: "Find my team" },
+      { view: "findmyteam", icon: "ti-map-search", label: "Find my team" },
     ],
     scout: [
       { section: "Scouting" },
-      { view: "dashboard", icon: "🏠", label: "Dashboard" },
-      { view: "profile", icon: "👤", label: "My profile" },
-      { view: "discover", icon: "🔍", label: "Discover talent" },
+      { view: "dashboard", icon: "ti-home", label: "Dashboard" },
+      { view: "profile", icon: "ti-user", label: "My profile" },
+      { view: "discover", icon: "ti-search", label: "Discover talent" },
       {
         view: "prospects",
-        icon: "⭐",
+        icon: "ti-star",
         label: "Saved prospects",
         badge: "4",
         badgeColor: "var(--gold)",
       },
-      { view: "pipeline", icon: "📈", label: "Pipeline" },
+      { view: "pipeline", icon: "ti-chart-line", label: "Pipeline" },
       { section: "Reports" },
-      { view: "reports", icon: "📄", label: "Scout reports" },
-      { view: "clubs", icon: "🏟️", label: "Club network" },
-      { view: "placements", icon: "✅", label: "Placements" },
-      { view: "messages", icon: "💬", label: "Messages" },
+      { view: "reports", icon: "ti-file-text", label: "Scout reports" },
+      { view: "clubs", icon: "ti-building", label: "Club network" },
+      { view: "placements", icon: "ti-circle-check", label: "Placements" },
+      { view: "messages", icon: "ti-message", label: "Messages" },
       { section: "Discover" },
-      { view: "findmyteam", icon: "🗺️", label: "Find my team" },
+      { view: "findmyteam", icon: "ti-map-search", label: "Find my team" },
     ],
   };
 
@@ -127,7 +141,7 @@ const HF_ROUTER = (() => {
           : "";
         const faithClass = item.faithNav ? " faith-nav" : "";
         return `<div class="nav-item${faithClass}" data-view="${item.view}" onclick="HF_ROUTER.navTo('${item.view}',this)">
-      <div class="nav-icon">${item.icon}</div>
+      <i class="ti ${item.icon}" aria-hidden="true"></i>
       <span>${item.label}</span>
       ${badgeHTML}
     </div>`;
@@ -137,10 +151,10 @@ const HF_ROUTER = (() => {
     nav.innerHTML = `
     <div class="sidenav-scroll">${navHTML}</div>
     <div class="sidenav-footer">
-      <div class="avatar avatar-sm" style="background:${ROLE_COLORS[session.role] || "#C9961A"}">${initials(session.name)}</div>
+      <div class="avatar avatar-sm" style="background:${ROLE_COLORS[session.role] || "#C49A0A"}">${initials(session.name)}</div>
       <div>
         <div class="sidenav-footer-name">${session.name}</div>
-        <div class="sidenav-footer-role">${session.contactType === "phone" ? "📱" : "📧"} ${session.displayContact || session.contact}</div>
+        <div class="sidenav-footer-role">${session.displayContact || session.contact}</div>
       </div>
     </div>`;
   };

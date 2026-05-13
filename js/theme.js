@@ -10,7 +10,9 @@ const HF_THEME = (() => {
     document.documentElement.setAttribute("data-theme", mode);
     localStorage.setItem(STORAGE_KEY, mode);
     const toggle = document.getElementById("theme-toggle");
+    const toggleAuth = document.getElementById("theme-toggle-auth");
     if (toggle) toggle.checked = mode === "dark";
+    if (toggleAuth) toggleAuth.checked = mode === "dark";
   };
 
   const toggle = () => {

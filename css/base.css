@@ -43,16 +43,16 @@
   --sp-2xl: 28px;
   --sp-3xl: 40px;
 
-  --font: "Barlow", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-head: "Barlow Condensed", "Barlow", sans-serif;
+  --font: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-head: "Oswald", "Inter", sans-serif;
 
-  --font-size-xs: 10px;
-  --font-size-sm: 11px;
-  --font-size-base: 13px;
-  --font-size-md: 14px;
-  --font-size-lg: 16px;
-  --font-size-xl: 20px;
-  --font-size-2xl: 28px;
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-base: 14px;
+  --font-size-md: 15px;
+  --font-size-lg: 17px;
+  --font-size-xl: 21px;
+  --font-size-2xl: 30px;
 
   --trans: all 0.12s ease;
 }
@@ -111,7 +111,7 @@ body {
   color: var(--text);
   background: var(--bg2);
   min-height: 100vh;
-  line-height: 1.5;
+  line-height: 1.7;
   -webkit-font-smoothing: antialiased;
 }
 button {
@@ -685,6 +685,13 @@ img {
   cursor: pointer;
   transition: var(--trans);
 }
+[data-theme="dark"] .msg-name {
+  color: var(--text);
+}
+[data-theme="dark"] .msg-preview {
+  color: var(--text2);
+}
+
 .msg-item:hover {
   background: var(--bg2);
   padding-left: var(--sp-sm);
@@ -709,7 +716,7 @@ img {
 .msg-unread {
   width: 18px;
   height: 18px;
-  background: var(--gold);
+  background: var(--red);
   color: #fff;
   display: flex;
   align-items: center;
@@ -717,6 +724,19 @@ img {
   font-family: var(--font-head);
   font-size: var(--font-size-xs);
   font-weight: 700;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
 /* ── SCRIPTURE STRIP ── */
@@ -799,8 +819,12 @@ img {
   border-top-color: var(--gold);
 }
 .quick-action-icon {
-  font-size: 20px;
-  margin-bottom: 6px;
+  font-size: 24px;
+  margin-bottom: 8px;
+  color: var(--gold);
+}
+.quick-action-icon i {
+  font-size: 24px;
 }
 .quick-action-label {
   font-family: var(--font-head);

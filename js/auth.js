@@ -237,7 +237,11 @@ const HF_AUTH = (() => {
     };
 
     // Build confirm screen
-    const icons = { player: "⚽", coach: "📋", scout: "🔭" };
+    const icons = {
+      player: '<i class="ti ti-ball-football"></i>',
+      coach: '<i class="ti ti-clipboard-list"></i>',
+      scout: '<i class="ti ti-search"></i>',
+    };
     const contactLine =
       contactType === "phone"
         ? `<strong>Phone:</strong> ${displayContact}`
@@ -247,7 +251,7 @@ const HF_AUTH = (() => {
       coach: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Coach<br><strong>Licence:</strong> ${profile.licence}<br><strong>Club:</strong> ${profile.club || "—"}`,
       scout: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Scout<br><strong>Organisation:</strong> ${profile.org || "—"}<br><strong>Region:</strong> ${profile.region || "—"}`,
     };
-    el("confirm-icon").textContent = icons[state.role];
+    el("confirm-icon").innerHTML = icons[state.role];
     el("confirm-title").textContent = `You're set, ${name.split(" ")[0]}!`;
     el("confirm-sub").textContent = {
       player: "Your player account is ready.",
