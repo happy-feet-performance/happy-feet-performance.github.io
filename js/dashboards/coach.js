@@ -21,57 +21,6 @@ const HF_COACH = (() => {
     if (mc) mc.innerHTML = html;
   };
 
-  const SQUAD = [
-    {
-      name: "Kwame Asante",
-      pos: "CAM",
-      age: 19,
-      rating: 78,
-      status: "fit",
-      gender: "male",
-    },
-    {
-      name: "Emmanuel Ofori",
-      pos: "CB",
-      age: 21,
-      rating: 72,
-      status: "alert",
-      gender: "male",
-    },
-    {
-      name: "Ama Boateng",
-      pos: "LW",
-      age: 18,
-      rating: 85,
-      status: "fit",
-      gender: "female",
-    },
-    {
-      name: "Kofi Mensah",
-      pos: "DM",
-      age: 22,
-      rating: 80,
-      status: "fit",
-      gender: "male",
-    },
-    {
-      name: "Abena Sarpong",
-      pos: "ST",
-      age: 20,
-      rating: 74,
-      status: "monitor",
-      gender: "female",
-    },
-    {
-      name: "Prince Adjei",
-      pos: "RB",
-      age: 17,
-      rating: 70,
-      status: "fit",
-      gender: "male",
-    },
-  ];
-
   const statusBadge = (st) => {
     const map = { fit: "green", monitor: "gold", alert: "red" };
     const lbl = { fit: "Fit", monitor: "Monitor", alert: "Alert" };
@@ -102,12 +51,18 @@ const HF_COACH = (() => {
     const isVerified = squadStatus === "verified";
     const isPending = squadStatus === "pending";
     const isUnregistered = squadStatus === "unregistered";
+    const isRejected = squadStatus === "rejected";
+    const isAwaitingCoach = squadStatus === "awaiting_coach_approval";
 
     const squadStatusBadge = isVerified
       ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">Verified</span>`
       : isPending
         ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(196,154,10,.15);color:var(--gold);">Pending</span>`
-        : `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:var(--bg3);color:var(--text2);">Unregistered</span>`;
+        : isAwaitingCoach
+          ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(24,95,165,.15);color:var(--blue);">Review required</span>`
+          : isRejected
+            ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(200,16,46,.15);color:var(--red);">Rejected</span>`
+            : `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:var(--bg3);color:var(--text2);">Unregistered</span>`;
 
     setMain(`
     <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
@@ -129,28 +84,50 @@ const HF_COACH = (() => {
     ${HF_SCRIPTURE.stripHTML()}
 
     ${
-      isUnregistered || isPending
+      isUnregistered || isPending || isRejected || isAwaitingCoach
         ? `
-      <div style="padding:var(--sp-lg);background:rgba(196,154,10,.06);border-left:3px solid var(--gold);margin-bottom:var(--sp-lg);">
-        <div style="font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;">
-          ${isPending ? "Squad verification pending" : "Squad not registered"}
-        </div>
-        <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">
-          ${
-            isPending
+  <div style="padding:var(--sp-lg);background:${isRejected ? "rgba(200,16,46,.06)" : isAwaitingCoach ? "rgba(24,95,165,.06)" : "rgba(196,154,10,.06)"};border-left:3px solid ${isRejected ? "var(--red)" : isAwaitingCoach ? "var(--blue)" : "var(--gold)"};margin-bottom:var(--sp-lg);">
+    <div style="font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isRejected ? "var(--red)" : isAwaitingCoach ? "var(--blue)" : "var(--gold)"};margin-bottom:6px;">
+      ${isRejected ? "Squad verification rejected" : isAwaitingCoach ? "Admin has updated your submission" : isPending ? "Squad verification pending" : "Squad not registered"}
+    </div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">
+      ${
+        isRejected
+          ? "Your squad verification was rejected. Please review the reason in your messages and resubmit."
+          : isAwaitingCoach
+            ? "An admin has made changes to your squad registration. Check your messages and accept or decline."
+            : isPending
               ? "Your squad is awaiting admin approval. Full features will unlock once verified."
               : "Register and verify your squad to unlock full coaching features."
-          }
-        </div>
-        ${
-          isUnregistered
-            ? `
-          <button class="btn btn-primary btn-sm" onclick="HF_AUTH.showScreen('screen-squad-verify')">
-            <i class="ti ti-clipboard-check"></i> Register your squad
-          </button>`
-            : ""
-        }
-      </div>`
+      }
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      ${
+        isUnregistered || isRejected
+          ? `
+        <button class="btn btn-primary btn-sm" onclick="${isRejected ? "HF_COACH.resubmitSquad()" : "HF_AUTH.showScreen('screen-squad-verify')"}">
+          <i class="ti ti-clipboard-check"></i> ${isRejected ? "Resubmit squad" : "Register your squad"}
+        </button>`
+          : ""
+      }
+      ${
+        isAwaitingCoach
+          ? `
+        <button class="btn btn-primary btn-sm" onclick="HF_COACH.reviewAdminEdits()">
+          <i class="ti ti-eye"></i> Review changes
+        </button>`
+          : ""
+      }
+      ${
+        isRejected || isAwaitingCoach
+          ? `
+        <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('messages')">
+          <i class="ti ti-message"></i> View messages
+        </button>`
+          : ""
+      }
+    </div>
+  </div>`
         : ""
     }
 
@@ -248,52 +225,59 @@ const HF_COACH = (() => {
   };
 
   // SQUAD
-  const squad = (s) => {
+  const squad = async (s) => {
     const p = s.profile || {};
-    const hasPlayers = SQUAD.length > 0;
+    const squadStatus = s.squadStatus || "unregistered";
+    const isVerified = squadStatus === "verified";
+
+    if (!isVerified) {
+      setMain(`
+      <div class="card">
+        <div style="text-align:center;padding:32px;color:var(--text2)">
+          <i class="ti ti-lock" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Squad locked</div>
+          <div style="font-size:13px">Verify your squad first to start adding players.</div>
+          <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="HF_AUTH.showScreen('screen-squad-verify')">
+            <i class="ti ti-clipboard-check"></i> Register your squad
+          </button>
+        </div>
+      </div>`);
+      return;
+    }
+
     setMain(`
     <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Squad roster - ${p.club || "Your club"}</div>
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <button class="btn btn-primary btn-sm" onclick="HF_UTILS.toast('Add player - connect to Players module.','success')">
-          <i class="ti ti-plus"></i> Add player
-        </button>
-        <button class="btn btn-outline btn-sm" onclick="HF_UTILS.toast('Filter by position.','success')">
-          <i class="ti ti-filter"></i> Filter
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Squad roster — ${p.club || "Your club"}
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="HF_COACH.showInvitePanel()">
+          <i class="ti ti-plus"></i> Invite player
         </button>
       </div>
-      ${
-        !hasPlayers
-          ? `
+
+      <div id="invite-panel" style="display:none;margin-bottom:var(--sp-lg);padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);">
+        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;">
+          Invite a player
+        </div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="player-search-input" placeholder="Search by name or email..."
+            style="flex:1;padding:8px 12px;background:var(--bg);border:0.5px solid var(--border);color:var(--text);font-size:13px;font-family:var(--font);outline:none;"
+            oninput="HF_COACH.searchPlayers(this.value)">
+          <button class="btn btn-outline btn-sm" onclick="HF_COACH.showInvitePanel()">
+            <i class="ti ti-x"></i>
+          </button>
+        </div>
+        <div id="player-search-results" style="margin-top:8px;"></div>
+      </div>
+
+      <div id="squad-roster">
         <div style="text-align:center;padding:32px;color:var(--text2)">
           <i class="ti ti-users" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No players yet</div>
-          <div style="font-size:13px">Add players to your squad to start tracking their performance.</div>
-        </div>`
-          : `
-        <table class="table">
-          <thead><tr><th>Player</th><th>Pos</th><th>Age</th><th>Gender</th><th>Rating</th><th>Status</th></tr></thead>
-          <tbody>
-            ${SQUAD.map(
-              (pl) => `
-              <tr>
-                <td style="font-weight:600">${pl.name}</td>
-                <td>${pl.pos}</td>
-                <td>${pl.age}</td>
-                <td>
-                  <span style="font-size:10px;padding:1px 7px;border-radius:0;font-weight:600;
-                    background:${pl.gender === "female" ? "rgba(212,83,126,.1)" : "rgba(24,95,165,.1)"};
-                    color:${pl.gender === "female" ? "#993556" : "#185FA5"}">
-                    ${pl.gender === "female" ? "Female" : "Male"}
-                  </span>
-                </td>
-                <td style="font-weight:700;color:${ratingColor(pl.rating)}">${pl.rating}</td>
-                <td>${statusBadge(pl.status)}</td>
-              </tr>`,
-            ).join("")}
-          </tbody>
-        </table>`
-      }
+          <div style="font-size:13px">Invite players to your squad using the button above.</div>
+        </div>
+      </div>
     </div>`);
   };
 
@@ -488,8 +472,27 @@ const HF_COACH = (() => {
   // MESSAGES
   const messages = async (s) => {
     const { data: msgs } = await HF_DB.getMessages(s.userId);
+    const { data: archived } = await HF_DB.getArchivedMessages(s.userId);
+    const isAwaitingReview = s.squadStatus === "awaiting_coach_approval";
 
     setMain(`
+    ${
+      isAwaitingReview
+        ? `
+      <div style="padding:var(--sp-lg);background:rgba(24,95,165,.06);border-left:3px solid var(--blue);margin-bottom:var(--sp-lg);">
+        <div style="font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--blue);margin-bottom:6px;">
+          Action required
+        </div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">
+          An admin has made changes to your squad registration. Review and respond below.
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="HF_COACH.reviewAdminEdits()">
+          <i class="ti ti-eye"></i> Review changes
+        </button>
+      </div>`
+        : ""
+    }
+
     <div class="card">
       <div class="card-title"><div class="card-dot"></div>Messages</div>
       ${
@@ -498,27 +501,42 @@ const HF_COACH = (() => {
         <div style="text-align:center;padding:32px;color:var(--text2)">
           <i class="ti ti-message" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No messages yet</div>
-          <div style="font-size:13px">Messages from HappyFeet and your players will appear here.</div>
+          <div style="font-size:13px">Messages from HappyFeet will appear here.</div>
         </div>`
-          : `
-        ${msgs
-          .map(
-            (m) => `
-          <div class="msg-item" onclick="HF_COACH.readMessage('${m.id}', this)">
-            <div class="avatar avatar-md" style="background:#0f0f0d">
-              <i class="ti ti-shield" style="font-size:16px;color:var(--gold)"></i>
-            </div>
-            <div style="flex:1">
-              <div class="msg-name">${m.subject || "Message"}</div>
-              <div class="msg-preview">${m.body}</div>
-              <div class="msg-time">${new Date(m.created_at).toLocaleDateString()}</div>
-            </div>
-            ${!m.read ? `<div class="msg-unread">1</div>` : ""}
-          </div>`,
-          )
-          .join("")}`
+          : HF_UTILS.messageListHTML(msgs, "coach")
       }
-    </div>`);
+    </div>
+
+    ${
+      archived?.length > 0
+        ? `
+      <div class="card">
+        <div class="card-title" style="cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+          <div class="card-dot"></div>Archived
+          <span style="margin-left:auto;font-size:11px;color:var(--text3)">
+            ${archived.length} · click to expand
+          </span>
+        </div>
+        <div style="display:none">
+          ${archived
+            .map(
+              (m) => `
+            <div class="msg-item">
+              <div class="avatar avatar-md" style="background:#0f0f0d;display:flex;align-items:center;justify-content:center;">
+                <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
+              </div>
+              <div style="flex:1;opacity:0.6">
+                <div class="msg-name">${m.subject || "Message"}</div>
+                <div class="msg-preview">${m.body}</div>
+                <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
+              </div>
+            </div>`,
+            )
+            .join("")}
+        </div>
+      </div>`
+        : ""
+    }`);
   };
 
   // FAITH
@@ -571,18 +589,327 @@ const HF_COACH = (() => {
   };
 
   const findmyteam = (s) => {
-    document.getElementById("main-content").innerHTML =
-      '<div id="fmt-container"></div>';
-    HF_FINDTEAM.render("fmt-container", s);
+    setMain(`
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Find my team</div>
+      <div style="text-align:center;padding:32px;color:var(--text2)">
+        <i class="ti ti-map-search" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Coming soon</div>
+        <div style="font-size:13px">Team listings and player discovery coming in the next update.</div>
+      </div>
+    </div>`);
   };
 
   const readMessage = async (messageId, el) => {
     await HF_DB.markMessageRead(messageId);
     const badge = el.querySelector(".msg-unread");
     if (badge) badge.remove();
+
+    const session = HF_DB.getSession();
+    const { data: msgs } = await HF_DB.getMessages(session.userId);
+    const unreadCount = msgs?.filter((m) => !m.read).length || 0;
+    HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
   };
 
-  return { render, readMessage };
+  const showInvitePanel = () => {
+    const panel = document.getElementById("invite-panel");
+    if (panel)
+      panel.style.display = panel.style.display === "none" ? "block" : "none";
+  };
+
+  const searchPlayers = async (query) => {
+    const results = document.getElementById("player-search-results");
+    if (!results) return;
+    if (!query || query.length < 2) {
+      results.innerHTML = "";
+      return;
+    }
+
+    const { data } = await HF_DB.searchPlayers(query);
+    const session = HF_DB.getSession();
+
+    if (!data || data.length === 0) {
+      results.innerHTML = `<div style="font-size:13px;color:var(--text2);padding:8px">No players found.</div>`;
+      return;
+    }
+
+    results.innerHTML = data
+      .map(
+        (p) => `
+    <div style="display:flex;align-items:center;gap:var(--sp-md);padding:10px;background:var(--bg);border:0.5px solid var(--border);margin-bottom:4px;">
+      <div class="avatar avatar-sm" style="background:var(--green)">${HF_UTILS.initials(p.name)}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
+        <div style="font-size:11px;color:var(--text2)">${p.profile?.pos || "-"} · ${p.profile?.tier || "-"} · ${p.profile?.hometown || "-"}</div>
+        <div style="font-size:11px;color:${p.profile?.status === "unattached" ? "var(--green)" : "var(--text3)"}">
+          ${p.profile?.status === "unattached" ? "Unattached — available" : "Already in a squad"}
+        </div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="HF_COACH.invitePlayer('${p.id}', '${p.name}')">
+        <i class="ti ti-send"></i> Invite
+      </button>
+    </div>`,
+      )
+      .join("");
+  };
+
+  const invitePlayer = async (playerId, playerName) => {
+    const session = HF_DB.getSession();
+    const squadName = session.profile?.club || "Unknown squad";
+
+    const result = await HF_DB.sendSquadInvite(
+      session.userId,
+      playerId,
+      squadName,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    HF_UTILS.toast(`Invite sent to ${playerName}!`, "success");
+    document.getElementById("player-search-input").value = "";
+    document.getElementById("player-search-results").innerHTML = "";
+    showInvitePanel();
+  };
+
+  const reviewAdminEdits = async () => {
+    const session = HF_DB.getSession();
+    const { data } = await HF_DB.getCoachVerification(session.userId);
+    if (!data) {
+      HF_UTILS.toast("No pending review found.", "error");
+      return;
+    }
+
+    setMain(`
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Review admin changes</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:var(--sp-lg)">
+        An admin has reviewed your squad registration and proposed the following changes. Please review and accept or decline.
+      </div>
+
+      ${
+        data.admin_notes
+          ? `
+        <div style="padding:12px;background:rgba(24,95,165,.06);border-left:2px solid var(--blue);margin-bottom:var(--sp-lg);font-size:13px;color:var(--text2);">
+          <strong style="color:var(--text)">Admin note:</strong> ${data.admin_notes}
+        </div>`
+          : ""
+      }
+
+      <table class="table" style="margin-bottom:var(--sp-lg);">
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Your submission</th>
+            <th>Admin's version</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:600">Team name</td>
+            <td>${data.team_name}</td>
+            <td style="color:${data.edited_team_name && data.edited_team_name !== data.team_name ? "var(--gold)" : "var(--text2)"}">
+              ${data.edited_team_name || data.team_name}
+              ${data.edited_team_name && data.edited_team_name !== data.team_name ? '<i class="ti ti-edit" style="margin-left:4px"></i>' : ""}
+            </td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">League</td>
+            <td>${data.league}</td>
+            <td style="color:${data.edited_league && data.edited_league !== data.league ? "var(--gold)" : "var(--text2)"}">
+              ${data.edited_league || data.league}
+              ${data.edited_league && data.edited_league !== data.league ? '<i class="ti ti-edit" style="margin-left:4px"></i>' : ""}
+            </td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Founding year</td>
+            <td>${data.founding_year || "-"}</td>
+            <td>${data.edited_founding_year || data.founding_year || "-"}</td>
+          </tr>
+          <tr>
+            <td style="font-weight:600">Home ground</td>
+            <td>${data.home_ground || "-"}</td>
+            <td>${data.edited_home_ground || data.home_ground || "-"}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="HF_COACH.acceptAdminEdits('${data.id}')">
+          <i class="ti ti-circle-check"></i> Accept changes
+        </button>
+        <button class="btn btn-danger" onclick="HF_COACH.declineAdminEdits('${data.id}')">
+          <i class="ti ti-x"></i> Decline & resubmit
+        </button>
+      </div>
+    </div>`);
+  };
+
+  const acceptAdminEdits = async (verificationId) => {
+    const result = await HF_DB.acceptVerificationEdits(verificationId);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    const session = HF_DB.getSession();
+    session.squadStatus = "verified";
+    HF_DB.saveSession(session);
+
+    const overlay = document.getElementById("verification-alert");
+    if (overlay) overlay.remove();
+
+    await HF_DB.deleteAdminVerificationMessage(session.userId);
+
+    HF_UTILS.toast("Changes accepted. Your squad is now verified!", "success");
+
+    HF_ROUTER.refreshSidenavBadge("verifications", 0, "var(--gold)");
+
+    HF_ROUTER.launch(session);
+  };
+  const declineAdminEdits = async (verificationId) => {
+    const result = await HF_DB.declineVerificationEdits(verificationId);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    const session = HF_DB.getSession();
+    session.squadStatus = "rejected";
+    HF_DB.saveSession(session);
+
+    await HF_DB.deleteAdminVerificationMessage(session.userId);
+
+    const overlay = document.getElementById("verification-alert");
+    if (overlay) overlay.remove();
+
+    HF_UTILS.toast(
+      "Changes declined. You can resubmit your squad from the dashboard.",
+      "success",
+    );
+
+    dashboard(session);
+    HF_ROUTER.refreshSidenavBadge("verifications", 0, "var(--gold)");
+  };
+
+  const resubmitSquad = () => {
+    setMain(`
+    <div class="auth-card" style="max-width:480px;margin:0 auto;">
+      <div class="auth-title">Resubmit squad registration</div>
+      <div class="auth-sub">Enter your updated team details for verification</div>
+      <div class="error-box" id="resubmit-err"></div>
+      <div class="fg">
+        <label class="required">Team name</label>
+        <input type="text" id="rs-team" placeholder="e.g. Kumasi Academy FC"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <div class="fg">
+        <label class="required">League / division</label>
+        <input type="text" id="rs-league" placeholder="e.g. Ghana Premier League"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <div class="form-row">
+        <div class="fg">
+          <label>Founding year</label>
+          <input type="number" id="rs-year" placeholder="e.g. 2005" min="1600"
+            style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+        </div>
+        <div class="fg">
+          <label>Home ground</label>
+          <input type="text" id="rs-ground" placeholder="e.g. Baba Yara Stadium"
+            style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:var(--sp-md);">
+        <button class="btn btn-primary" onclick="HF_COACH.submitResubmission()">
+          <i class="ti ti-send"></i> Submit for verification
+        </button>
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('dashboard')">
+          Cancel
+        </button>
+      </div>
+    </div>`);
+
+    // prefill team name from session
+    const session = HF_DB.getSession();
+    const teamInput = document.getElementById("rs-team");
+    if (teamInput) teamInput.value = session.profile?.club || "";
+  };
+
+  const submitResubmission = async () => {
+    const session = HF_DB.getSession();
+    const teamName = document.getElementById("rs-team")?.value.trim();
+    const league = document.getElementById("rs-league")?.value.trim();
+    const year = document.getElementById("rs-year")?.value.trim();
+    const ground = document.getElementById("rs-ground")?.value.trim();
+
+    if (!teamName) {
+      HF_UTILS.toast("Please enter your team name.", "error");
+      return;
+    }
+    if (!league) {
+      HF_UTILS.toast("Please enter your league or division.", "error");
+      return;
+    }
+    if (
+      year &&
+      (parseInt(year) < 1600 || parseInt(year) > new Date().getFullYear())
+    ) {
+      HF_UTILS.toast(
+        `Founding year must be between 1600 and ${new Date().getFullYear()}.`,
+        "error",
+      );
+      return;
+    }
+
+    const result = await HF_DB.submitSquadVerification({
+      coachId: session.userId,
+      teamName: teamName || session.profile?.club || "",
+      league,
+      foundingYear: year,
+      homeGround: ground,
+    });
+
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    await HF_DB.updateSquadStatus(session.userId, "pending");
+    session.squadStatus = "pending";
+    HF_DB.saveSession(session);
+
+    HF_UTILS.toast("Squad resubmitted for verification!", "success");
+    HF_ROUTER.navTo("dashboard");
+  };
+
+  const archiveMessage = async (messageId, el) => {
+    await HF_DB.archiveMessage(messageId);
+    const msgItem = document.getElementById(`msg-${messageId}`);
+    if (msgItem) msgItem.remove();
+
+    const session = HF_DB.getSession();
+    const { data: msgs } = await HF_DB.getMessages(session.userId);
+    const unreadCount = msgs?.filter((m) => !m.read).length || 0;
+    HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
+
+    HF_UTILS.toast("Message archived.", "success");
+  };
+
+  return {
+    render,
+    readMessage,
+    archiveMessage,
+    showInvitePanel,
+    searchPlayers,
+    invitePlayer,
+    reviewAdminEdits,
+    acceptAdminEdits,
+    declineAdminEdits,
+    resubmitSquad,
+    submitResubmission,
+  };
 })();
 
 window.HF_COACH = HF_COACH;

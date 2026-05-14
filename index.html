@@ -76,7 +76,7 @@
                 type="email"
                 id="login-email"
                 placeholder="you@example.com"
-                autocomplete="email"
+                autocomplete="off"
               />
             </div>
           </div>
@@ -95,7 +95,7 @@
                   <option value="+1">🇺🇸 +1</option>
                   <option value="+44">🇬🇧 +44</option>
                 </select>
-                <input type="tel" id="login-phone" placeholder="024 123 4567" />
+                <input type="tel" id="login-phone" placeholder="024 123 4567" autocomplete="off"/>
               </div>
             </div>
           </div>
@@ -105,6 +105,7 @@
               type="password"
               id="login-pass"
               placeholder="Your password"
+              autocomplete="off"
             />
           </div>
           <button
@@ -209,7 +210,7 @@
           <div class="error-box" id="signup-err"></div>
           <div class="fg">
             <label>Full name</label>
-            <input type="text" id="su-name" placeholder="Your full name" />
+            <input type="text" id="su-name" placeholder="Your full name" autocomplete="off"/>
           </div>
           <div class="fg" style="margin-bottom: 6px">
             <label>Sign in with</label>
@@ -229,7 +230,7 @@
           <div id="su-email-fields">
             <div class="fg">
               <label>Email address</label>
-              <input type="email" id="su-email" placeholder="you@example.com" />
+              <input type="email" id="su-email" placeholder="you@example.com" autocomplete="off"/>
             </div>
           </div>
           <div id="su-phone-fields" style="display: none">
@@ -247,7 +248,7 @@
                   <option value="+1">🇺🇸 +1</option>
                   <option value="+44">🇬🇧 +44</option>
                 </select>
-                <input type="tel" id="su-phone" placeholder="024 123 4567" />
+                <input type="tel" id="su-phone" placeholder="024 123 4567" autocomplete="off"/>
               </div>
               <div class="whatsapp-note">
                 <span class="wa-icon"><i class="ti ti-message"></i></span>
@@ -261,6 +262,7 @@
               type="password"
               id="su-pass"
               placeholder="Min 6 characters"
+              autocomplete="new-password"
               oninput="HF_AUTH.checkPassword(this.value)"
             />
             <div
@@ -476,6 +478,7 @@
               type="email"
               id="admin-email"
               placeholder="Your admin email"
+              autocomplete="off"
             />
           </div>
           <div class="fg">
@@ -483,7 +486,8 @@
             <input
               type="password"
               id="admin-pass"
-              placeholder="Your password"
+              placeholder="Your admin password"
+              autocomplete="off"
             />
           </div>
           <button

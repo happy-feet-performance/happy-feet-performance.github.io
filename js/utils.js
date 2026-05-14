@@ -184,6 +184,54 @@ const HF_UTILS = (() => {
       .join("");
   };
 
+  const messageListHTML = (msgs, role) => {
+    if (!msgs || msgs.length === 0) return "";
+
+    const unread = msgs.filter((m) => !m.read);
+    const read = msgs.filter((m) => m.read);
+
+    const msgRow = (m) => `
+    <div class="msg-item" id="msg-${m.id}" onclick="HF_${role.toUpperCase()}.readMessage('${m.id}', this)">
+      <div class="avatar avatar-md" style="background:#0f0f0d;display:flex;align-items:center;justify-content:center;">
+        <i class="ti ti-shield" style="font-size:16px;color:var(--gold)"></i>
+      </div>
+      <div style="flex:1">
+        <div class="msg-name">${m.subject || "Message"}</div>
+        <div class="msg-preview">${m.body}</div>
+        <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+        ${!m.read ? `<div class="msg-unread">1</div>` : ""}
+        <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;" 
+          onclick="event.stopPropagation();HF_${role.toUpperCase()}.archiveMessage('${m.id}', this)">
+          <i class="ti ti-archive"></i>
+        </button>
+      </div>
+    </div>`;
+
+    return `
+    ${
+      unread.length > 0
+        ? `
+      <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--red);margin-bottom:8px;">
+        Unread (${unread.length})
+      </div>
+      ${unread.map(msgRow).join("")}
+      <div style="height:1px;background:var(--border);margin:var(--sp-md) 0;"></div>`
+        : ""
+    }
+
+    ${
+      read.length > 0
+        ? `
+      <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">
+        Read (${read.length})
+      </div>
+      ${read.map(msgRow).join("")}`
+        : ""
+    }`;
+  };
+
   return {
     initials,
     age,
@@ -209,6 +257,7 @@ const HF_UTILS = (() => {
     COUNTRY_CODES,
     countryCodeSelect,
     hashPassword,
+    messageListHTML,
   };
 })();
 

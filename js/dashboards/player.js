@@ -48,11 +48,16 @@ const HF_PLAYER = (() => {
   };
 
   const findmyteam = (s) => {
-    document.getElementById("main-content").innerHTML =
-      `<div id="fmt-container"></div>`;
-    HF_FINDTEAM.render("fmt-container", s);
+    setMain(`
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Find my team</div>
+      <div style="text-align:center;padding:32px;color:var(--text2)">
+        <i class="ti ti-map-search" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Coming soon</div>
+        <div style="font-size:13px">Team listings and player discovery coming in the next update.</div>
+      </div>
+    </div>`);
   };
-
   // ── DASHBOARD ───────────────────────────────────────────────
   const dashboard = (s) => {
     const p = s.profile || {};
@@ -67,7 +72,7 @@ const HF_PLAYER = (() => {
     <div class="welcome-banner">
       <div>
         <div class="welcome-title">Welcome back, ${s.name.split(" ")[0]}</div>
-        <div class="welcome-sub">${p.pos || "Player"} · ${p.tier || "U21"} · ${p.club || "-"}</div>
+        <div class="welcome-sub">${p.pos || "Player"} · ${p.tier || "U21"} · ${p.status === "unattached" ? "Free Agent" : p.club || "unattached"}</div>
       </div>
       <div style="text-align:right">
         <div style="font-size:32px;font-weight:700;color:var(--gold)">${overall !== null ? overall + "%" : "-"}</div>
@@ -161,9 +166,14 @@ const HF_PLAYER = (() => {
         </div>
         <div>
           <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${s.name}</div>
-          <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.pos || "-"} · ${p.tier || "-"} · ${p.club || "-"}</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.pos || "-"} · ${p.tier || "-"}</div>
           <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
             ${badgeHTML("Player", "green")}
+            ${
+              p.status === "unattached" || !p.club
+                ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:var(--bg3);color:var(--text2);">Free Agent</span>`
+                : `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">${p.club} <i class="ti ti-circle-check"></i></span>`
+            }
             <span style="font-size:11px;color:rgba(255,255,255,.4)">${p.hometown || "Ghana"}</span>
           </div>
         </div>
@@ -193,7 +203,12 @@ const HF_PLAYER = (() => {
       <div class="info-grid">
         <div class="info-cell"><div class="info-label">Position</div><div class="info-val">${p.pos || "-"}</div></div>
         <div class="info-cell"><div class="info-label">Age tier</div><div class="info-val">${p.tier || "-"}</div></div>
-        <div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club || "-"}</div></div>
+        <div class="info-cell">
+          <div class="info-label">Club status</div>
+          <div class="info-val" style="color:${p.status === "unattached" || !p.club ? "var(--text2)" : "var(--green)"}">
+            ${p.status === "unattached" || !p.club ? "Free Agent" : p.club + " ✓"}
+          </div>
+        </div>
         <div class="info-cell"><div class="info-label">Hometown</div><div class="info-val">${p.hometown || "-"}</div></div>
         <div class="info-cell"><div class="info-label">${s.contactType === "phone" ? "Phone" : "Email"}</div><div class="info-val">${s.displayContact || s.contact}</div></div>
         <div class="info-cell"><div class="info-label">Faith streak</div><div class="info-val" style="color:var(--faith)">${p.faithStreak || 0} days <i class="ti ti-cross"></i></div></div>
@@ -583,16 +598,86 @@ const HF_PLAYER = (() => {
   };
 
   // ── MESSAGES ─────────────────────────────────────────────────
-  const messages = (s) => {
+  const messages = async (s) => {
+    const { data: msgs } = await HF_DB.getMessages(s.userId);
+    const { data: archived } = await HF_DB.getArchivedMessages(s.userId);
+    const { data: invites } = await HF_DB.getSquadInvites(s.userId);
+
     setMain(`
+    ${
+      invites?.length > 0
+        ? `
+      <div class="card">
+        <div class="card-title"><div class="card-dot"></div>Squad invites</div>
+        ${invites
+          .map(
+            (inv) => `
+          <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">
+              <i class="ti ti-users"></i> Invite to join ${inv.squad_name}
+            </div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:10px">
+              ${HF_UTILS.timeAgo(inv.created_at)}
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-primary btn-sm" onclick="HF_PLAYER.respondInvite('${inv.id}','${inv.player_id}',true,'${inv.squad_name}','${inv.coach_id}')">
+                <i class="ti ti-circle-check"></i> Accept
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="HF_PLAYER.respondInvite('${inv.id}','${inv.player_id}',false,'${inv.squad_name}','${inv.coach_id}')">
+                <i class="ti ti-x"></i> Decline
+              </button>
+            </div>
+          </div>`,
+          )
+          .join("")}
+      </div>`
+        : ""
+    }
+
     <div class="card">
       <div class="card-title"><div class="card-dot"></div>Messages</div>
-      <div style="text-align:center;padding:32px;color:var(--text2)">
-        <i class="ti ti-message" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No messages yet</div>
-        <div style="font-size:13px">When coaches or scouts contact you, messages will appear here.</div>
-      </div>
-    </div>`);
+      ${
+        !msgs || msgs.length === 0
+          ? `
+        <div style="text-align:center;padding:32px;color:var(--text2)">
+          <i class="ti ti-message" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No messages yet</div>
+          <div style="font-size:13px">Messages will appear here.</div>
+        </div>`
+          : HF_UTILS.messageListHTML(msgs, "player")
+      }
+    </div>
+
+    ${
+      archived?.length > 0
+        ? `
+      <div class="card">
+        <div class="card-title" style="cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+          <div class="card-dot"></div>Archived
+          <span style="margin-left:auto;font-size:11px;color:var(--text3)">
+            ${archived.length} · click to expand
+          </span>
+        </div>
+        <div style="display:none">
+          ${archived
+            .map(
+              (m) => `
+            <div class="msg-item">
+              <div class="avatar avatar-md" style="background:#0f0f0d;display:flex;align-items:center;justify-content:center;">
+                <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
+              </div>
+              <div style="flex:1;opacity:0.6">
+                <div class="msg-name">${m.subject || "Message"}</div>
+                <div class="msg-preview">${m.body}</div>
+                <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
+              </div>
+            </div>`,
+            )
+            .join("")}
+        </div>
+      </div>`
+        : ""
+    }`);
   };
 
   // ── FAITH ────────────────────────────────────────────────────
@@ -698,57 +783,54 @@ const HF_PLAYER = (() => {
 
   const editProfile = () => {
     const session = HF_DB.getSession();
-    profile(session, true);
     const p = session.profile || {};
-
-    document.querySelector(".card").nextElementSibling.innerHTML = `
-    <div class="card-title" style="justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-        <div class="card-dot"></div>Edit player details
+    setMain(`
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Edit profile</div>
+      <div class="form-row">
+        <div class="fg"><label class="required">Position</label>
+          <select id="ep-pos">
+            <option value="">Select position</option>
+            <option ${p.pos === "GK" ? "selected" : ""}>GK</option>
+            <option ${p.pos === "CB" ? "selected" : ""}>CB</option>
+            <option ${p.pos === "LB" ? "selected" : ""}>LB</option>
+            <option ${p.pos === "RB" ? "selected" : ""}>RB</option>
+            <option ${p.pos === "DM" ? "selected" : ""}>DM</option>
+            <option ${p.pos === "CM" ? "selected" : ""}>CM</option>
+            <option ${p.pos === "CAM" ? "selected" : ""}>CAM</option>
+            <option ${p.pos === "LW" ? "selected" : ""}>LW</option>
+            <option ${p.pos === "RW" ? "selected" : ""}>RW</option>
+            <option ${p.pos === "ST" ? "selected" : ""}>ST</option>
+          </select>
+        </div>
+        <div class="fg"><label>Age tier</label>
+          <select id="ep-tier">
+            <option ${p.tier === "U10" ? "selected" : ""}>U10</option>
+            <option ${p.tier === "U12" ? "selected" : ""}>U12</option>
+            <option ${p.tier === "U14" ? "selected" : ""}>U14</option>
+            <option ${p.tier === "U16" ? "selected" : ""}>U16</option>
+            <option ${p.tier === "U18" ? "selected" : ""}>U18</option>
+            <option ${p.tier === "U21" ? "selected" : ""}>U21</option>
+            <option ${p.tier === "Professional" ? "selected" : ""}>Professional</option>
+          </select>
+        </div>
       </div>
-    </div>
-    <div class="form-row">
-      <div class="fg"><label class="required">Position</label>
-        <select id="ep-pos">
-          <option value="">Select position</option>
-          <option ${p.pos === "GK" ? "selected" : ""}>GK</option>
-          <option ${p.pos === "CB" ? "selected" : ""}>CB</option>
-          <option ${p.pos === "LB" ? "selected" : ""}>LB</option>
-          <option ${p.pos === "RB" ? "selected" : ""}>RB</option>
-          <option ${p.pos === "DM" ? "selected" : ""}>DM</option>
-          <option ${p.pos === "CM" ? "selected" : ""}>CM</option>
-          <option ${p.pos === "CAM" ? "selected" : ""}>CAM</option>
-          <option ${p.pos === "LW" ? "selected" : ""}>LW</option>
-          <option ${p.pos === "RW" ? "selected" : ""}>RW</option>
-          <option ${p.pos === "ST" ? "selected" : ""}>ST</option>
-        </select>
+      <div class="fg"><label class="required">Hometown / region</label>
+        <input type="text" id="ep-hometown" value="${p.hometown || ""}" placeholder="e.g. Kumasi, Ashanti">
       </div>
-      <div class="fg"><label>Age tier</label>
-        <select id="ep-tier">
-          <option ${p.tier === "U10" ? "selected" : ""}>U10</option>
-          <option ${p.tier === "U12" ? "selected" : ""}>U12</option>
-          <option ${p.tier === "U14" ? "selected" : ""}>U14</option>
-          <option ${p.tier === "U16" ? "selected" : ""}>U16</option>
-          <option ${p.tier === "U18" ? "selected" : ""}>U18</option>
-          <option ${p.tier === "U21" ? "selected" : ""}>U21</option>
-          <option ${p.tier === "Professional" ? "selected" : ""}>Professional</option>
-        </select>
+      <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--border);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
+        <i class="ti ti-info-circle" style="margin-right:6px"></i>
+        Your club is assigned by your coach once you join a verified squad.
       </div>
-    </div>
-    <div class="fg"><label class="required">Current club / academy</label>
-      <input type="text" id="ep-club" value="${p.club || ""}" placeholder="e.g. Kumasi Wolves FC">
-    </div>
-    <div class="fg"><label class="required">Hometown / region</label>
-      <input type="text" id="ep-hometown" value="${p.hometown || ""}" placeholder="e.g. Kumasi, Ashanti">
-    </div>
-    <div style="display:flex;gap:8px;margin-top:4px;">
-      <button class="btn btn-primary" onclick="HF_PLAYER.saveProfile()">
-        <i class="ti ti-circle-check"></i> Save changes
-      </button>
-      <button class="btn btn-outline" onclick="HF_ROUTER.navTo('profile')">
-        Cancel
-      </button>
-    </div>`;
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button class="btn btn-primary" onclick="HF_PLAYER.saveProfile()">
+          <i class="ti ti-circle-check"></i> Save changes
+        </button>
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('profile')">
+          Cancel
+        </button>
+      </div>
+    </div>`);
   };
 
   const saveProfile = async () => {
@@ -757,15 +839,10 @@ const HF_PLAYER = (() => {
 
     const pos = document.getElementById("ep-pos")?.value;
     const tier = document.getElementById("ep-tier")?.value;
-    const club = document.getElementById("ep-club")?.value.trim();
     const hometown = document.getElementById("ep-hometown")?.value.trim();
 
     if (!pos) {
       HF_UTILS.toast("Please select your position.", "error");
-      return;
-    }
-    if (!club) {
-      HF_UTILS.toast("Please enter your club.", "error");
       return;
     }
     if (!hometown) {
@@ -773,7 +850,7 @@ const HF_PLAYER = (() => {
       return;
     }
 
-    const updatedProfile = { ...p, pos, tier, club, hometown };
+    const updatedProfile = { ...p, pos, tier, hometown };
     const result = await HF_DB.updateUserProfile(
       session.userId,
       updatedProfile,
@@ -791,7 +868,75 @@ const HF_PLAYER = (() => {
     HF_ROUTER.navTo("profile");
   };
 
-  return { render, updateTrainingDay, logCheckin, editProfile, saveProfile };
+  const respondInvite = async (
+    inviteId,
+    playerId,
+    accept,
+    squadName,
+    coachId,
+  ) => {
+    const result = await HF_DB.respondToInvite(
+      inviteId,
+      playerId,
+      accept,
+      squadName,
+      coachId,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    if (accept) {
+      const session = HF_DB.getSession();
+      session.profile = {
+        ...session.profile,
+        club: squadName,
+        status: "signed",
+      };
+      HF_DB.saveSession(session);
+      HF_UTILS.toast(`Welcome to ${squadName}!`, "success");
+    } else {
+      HF_UTILS.toast("Invite declined.", "success");
+    }
+
+    messages(HF_DB.getSession());
+  };
+
+  const readMessage = async (messageId, el) => {
+    await HF_DB.markMessageRead(messageId);
+    const badge = el.querySelector(".msg-unread");
+    if (badge) badge.remove();
+
+    const session = HF_DB.getSession();
+    const { data: msgs } = await HF_DB.getMessages(session.userId);
+    const unreadCount = msgs?.filter((m) => !m.read).length || 0;
+    HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
+  };
+
+  const archiveMessage = async (messageId, el) => {
+    await HF_DB.archiveMessage(messageId);
+    const msgItem = document.getElementById(`msg-${messageId}`);
+    if (msgItem) msgItem.remove();
+
+    const session = HF_DB.getSession();
+    const { data: msgs } = await HF_DB.getMessages(session.userId);
+    const unreadCount = msgs?.filter((m) => !m.read).length || 0;
+    HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
+
+    HF_UTILS.toast("Message archived.", "success");
+  };
+
+  return {
+    render,
+    updateTrainingDay,
+    logCheckin,
+    editProfile,
+    saveProfile,
+    respondInvite,
+    readMessage,
+    archiveMessage,
+  };
 })();
 
 window.HF_PLAYER = HF_PLAYER;

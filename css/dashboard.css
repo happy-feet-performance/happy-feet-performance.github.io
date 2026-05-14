@@ -384,6 +384,26 @@
   font-style: italic;
 }
 
+/* ── VERIFICATION ALERT OVERLAY ── */
+.verification-alert-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-xl);
+}
+.verification-alert-card {
+  background: var(--bg);
+  border-top: 3px solid var(--gold);
+  padding: var(--sp-2xl);
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+}
+
 /* ── TRAINING VIEWS ── */
 .devotion-grid {
   display: grid;

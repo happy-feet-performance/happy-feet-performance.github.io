@@ -3,7 +3,7 @@
   <!-- Source: https://tenor.com/view/football-soccer-ball-goal-golazo-gif-21897044 -->
   <img src="https://github.com/user-attachments/assets/d03a49d5-8eb5-440b-bc9d-75f4eabffde4" height=80>
   <h1>HappyFeet Performance Hub</h1>
-  <p>Built by Augie and Paula</p>
+  <p>Built by Augustine Boadi and Paula Sefia</p>
   <h1 />
 </div>
     
@@ -72,16 +72,16 @@ Dark mode is fully supported and persists across sessions.
 
 Tables:
 
-| Table | Purpose |
-|---|---|
-| `users` | All registered players, coaches, and scouts |
-| `tracker` | Player session and rating data |
-| `health` | Daily wellness check-ins and injury flags |
-| `training` | Training plans and session schedules |
-| `scout` | Prospect pipelines, placements, club networks |
+| Table                 | Purpose                                              |
+| --------------------- | ---------------------------------------------------- |
+| `users`               | All registered players, coaches, and scouts          |
+| `tracker`             | Player session and rating data                       |
+| `health`              | Daily wellness check-ins and injury flags            |
+| `training`            | Training plans and session schedules                 |
+| `scout`               | Prospect pipelines, placements, club networks        |
 | `squad_verifications` | Coach squad registration and admin approval workflow |
-| `messages` | In-app notifications, admin to coach, system alerts |
-| `admins` | Admin users with hashed credentials |
+| `messages`            | In-app notifications, admin to coach, system alerts  |
+| `admins`              | Admin users with hashed credentials                  |
 
 ### Authentication
 
@@ -125,4 +125,4 @@ The production domain `happyfeet.org` will be pointed to Netlify via DNS once ac
 
 ---
 
-*HappyFeet Performance Hub is changing the narrative of African football.*
+_HappyFeet Performance Hub is changing the narrative of African football._

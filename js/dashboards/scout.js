@@ -432,9 +432,15 @@ const HF_SCOUT = (() => {
   };
 
   const findmyteam = (s) => {
-    document.getElementById("main-content").innerHTML =
-      '<div id="fmt-container"></div>';
-    HF_FINDTEAM.render("fmt-container", s);
+    setMain(`
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Find my team</div>
+      <div style="text-align:center;padding:32px;color:var(--text2)">
+        <i class="ti ti-map-search" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Coming soon</div>
+        <div style="font-size:13px">Team listings and player discovery coming in the next update.</div>
+      </div>
+    </div>`);
   };
 
   return { render };

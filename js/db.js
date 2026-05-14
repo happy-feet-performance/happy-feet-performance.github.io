@@ -10,18 +10,20 @@ const HF_DB = (() => {
     HF_CONFIG.SUPABASE_ANON_KEY,
   );
 
-  // ─── Local session (still uses localStorage for speed) ─────
+  // ─── Local session ─────────────────────────────────────────
   const getSession = () => {
     try {
-      return JSON.parse(localStorage.getItem("hf_session") || "null");
+      return JSON.parse(sessionStorage.getItem("hf_session") || "null");
     } catch {
       return null;
     }
   };
+
   const saveSession = (session) => {
-    localStorage.setItem("hf_session", JSON.stringify(session));
+    sessionStorage.setItem("hf_session", JSON.stringify(session));
   };
-  const clearSession = () => localStorage.removeItem("hf_session");
+
+  const clearSession = () => sessionStorage.removeItem("hf_session");
 
   // ─── Users ─────────────────────────────────────────────────
   const createUser = async (data) => {
@@ -126,27 +128,18 @@ const HF_DB = (() => {
   };
   const findUser = async (contactRaw, password) => {
     const contact = contactRaw.toLowerCase().replace(/\s/g, "");
-
     const { data: users } = await _client
       .from("users")
-      .select("*")
+      .select("*, squad_status, banned, ban_reason, kicked, kicked_until")
       .eq("password", password);
 
     if (!users) return null;
-
-    return users.find((u) => {
+    const user = users.find((u) => {
       const stored = (u.contact || "").toLowerCase().replace(/\s/g, "");
       const local = (u.local_phone || "").replace(/\s/g, "");
       return stored === contact || local === contact;
-    })
-      ? _normaliseUser(
-          users.find((u) => {
-            const stored = (u.contact || "").toLowerCase().replace(/\s/g, "");
-            const local = (u.local_phone || "").replace(/\s/g, "");
-            return stored === contact || local === contact;
-          }),
-        )
-      : null;
+    });
+    return user ? _normaliseUser(user) : null;
   };
 
   const updateUserProfile = async (userId, profile) => {
@@ -173,6 +166,11 @@ const HF_DB = (() => {
     role: u.role,
     profile: u.profile || {},
     created: u.created_at,
+    squadStatus: u.squad_status || "unregistered",
+    banned: u.banned || false,
+    banReason: u.ban_reason || null,
+    kicked: u.kicked || false,
+    kickedUntil: u.kicked_until || null,
   });
 
   // ─── Generic data table helpers ────────────────────────────
@@ -362,16 +360,6 @@ const HF_DB = (() => {
     return { success: true };
   };
 
-  const getMessages = async (userId) => {
-    const { data, error } = await _client
-      .from("messages")
-      .select("*")
-      .eq("to_id", userId)
-      .order("created_at", { ascending: false });
-    if (error) return { data: [] };
-    return { data };
-  };
-
   const markMessageRead = async (messageId) => {
     await _client.from("messages").update({ read: true }).eq("id", messageId);
   };
@@ -409,9 +397,10 @@ const HF_DB = (() => {
   };
 
   const kickUser = async (userId) => {
+    const kickedUntil = new Date(Date.now() + 60 * 60 * 1000).toISOString();
     const { error } = await _client
       .from("users")
-      .update({ kicked: true })
+      .update({ kicked: true, kicked_until: kickedUntil })
       .eq("id", userId);
     if (error) return { error: error.message };
     return { success: true };
@@ -441,6 +430,301 @@ const HF_DB = (() => {
     return { success: true };
   };
 
+  const searchPlayers = async (query) => {
+    const { data, error } = await _client
+      .from("users")
+      .select("id, name, contact, profile")
+      .eq("role", "player")
+      .or(`name.ilike.%${query}%,contact.ilike.%${query}%`)
+      .limit(10);
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const sendSquadInvite = async (coachId, playerId, squadName) => {
+    // check if invite already exists
+    const { data: existing } = await _client
+      .from("squad_invites")
+      .select("id, status")
+      .eq("coach_id", coachId)
+      .eq("player_id", playerId)
+      .eq("status", "pending")
+      .maybeSingle();
+
+    if (existing)
+      return { error: "An invite has already been sent to this player." };
+
+    const { error } = await _client.from("squad_invites").insert({
+      coach_id: coachId,
+      player_id: playerId,
+      squad_name: squadName,
+      status: "pending",
+    });
+    if (error) return { error: error.message };
+
+    // send notification message to player
+    await _client.from("messages").insert({
+      from_id: coachId,
+      to_id: playerId,
+      subject: "Squad invite",
+      body: `You have been invited to join ${squadName}. Go to your messages to accept or decline.`,
+      read: false,
+    });
+
+    return { success: true };
+  };
+
+  const getSquadInvites = async (playerId) => {
+    const { data, error } = await _client
+      .from("squad_invites")
+      .select("*")
+      .eq("player_id", playerId)
+      .eq("status", "pending");
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const respondToInvite = async (
+    inviteId,
+    playerId,
+    accept,
+    squadName,
+    coachId,
+  ) => {
+    const status = accept ? "accepted" : "declined";
+
+    const { error } = await _client
+      .from("squad_invites")
+      .update({ status, responded_at: new Date().toISOString() })
+      .eq("id", inviteId);
+    if (error) return { error: error.message };
+
+    if (accept) {
+      const { data: player } = await _client
+        .from("users")
+        .select("profile")
+        .eq("id", playerId)
+        .single();
+
+      const updatedProfile = {
+        ...player.profile,
+        club: squadName,
+        status: "signed",
+      };
+
+      await _client
+        .from("users")
+        .update({ profile: updatedProfile })
+        .eq("id", playerId);
+
+      await _client.from("messages").insert({
+        from_id: playerId,
+        to_id: coachId,
+        subject: "Invite accepted",
+        body: `A player has accepted your invite to join ${squadName}.`,
+        read: false,
+      });
+    }
+
+    return { success: true };
+  };
+
+  const saveVerificationEdits = async (verificationId, coachId, data) => {
+    const { error } = await _client
+      .from("squad_verifications")
+      .update({
+        edited_team_name: data.teamName,
+        edited_league: data.league,
+        edited_founding_year: data.year || null,
+        edited_home_ground: data.ground || null,
+        admin_notes: data.notes || null,
+        status: "awaiting_coach_approval",
+      })
+      .eq("id", verificationId);
+
+    if (error) return { error: error.message };
+
+    // also update the coach's squad_status in users table
+    const { error: userError } = await _client
+      .from("users")
+      .update({ squad_status: "awaiting_coach_approval" })
+      .eq("id", coachId);
+
+    if (userError) return { error: userError.message };
+
+    // notify coach
+    await _client.from("messages").insert({
+      from_id: "admin",
+      to_id: coachId,
+      subject: "Squad registration update",
+      body: `An admin has reviewed your squad registration for "${data.originalName}" and made some changes. ${data.notes ? "Note: " + data.notes + "." : ""} Please check your messages and accept or decline the changes.`,
+      read: false,
+    });
+
+    return { success: true };
+  };
+
+  const getCoachVerification = async (coachId) => {
+    const { data, error } = await _client
+      .from("squad_verifications")
+      .select("*")
+      .eq("coach_id", coachId)
+      .order("submitted_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) return { data: null };
+    return { data };
+  };
+
+  const acceptVerificationEdits = async (verificationId) => {
+    const { data: ver } = await _client
+      .from("squad_verifications")
+      .select("*")
+      .eq("id", verificationId)
+      .single();
+
+    const { error } = await _client
+      .from("squad_verifications")
+      .update({
+        team_name: ver.edited_team_name || ver.team_name,
+        league: ver.edited_league || ver.league,
+        founding_year: ver.edited_founding_year || ver.founding_year,
+        home_ground: ver.edited_home_ground || ver.home_ground,
+        status: "verified",
+        reviewed_at: new Date().toISOString(),
+        edited_team_name: null,
+        edited_league: null,
+        edited_founding_year: null,
+        edited_home_ground: null,
+        admin_notes: null,
+      })
+      .eq("id", verificationId);
+
+    if (error) return { error: error.message };
+
+    // update coach squad_status to verified
+    const { error: userError } = await _client
+      .from("users")
+      .update({ squad_status: "verified" })
+      .eq("id", ver.coach_id);
+
+    if (userError) return { error: userError.message };
+
+    await _client.from("messages").insert({
+      from_id: "admin",
+      to_id: ver.coach_id,
+      subject: "Squad verified",
+      body: `Your squad "${ver.edited_team_name || ver.team_name}" has been verified on HappyFeet. You now have full access to all coaching features.`,
+      read: false,
+    });
+
+    return { success: true };
+  };
+  const declineVerificationEdits = async (verificationId) => {
+    const { data: ver } = await _client
+      .from("squad_verifications")
+      .select("*")
+      .eq("id", verificationId)
+      .single();
+
+    const { error } = await _client
+      .from("squad_verifications")
+      .update({
+        status: "rejected",
+        rejection_reason: "Coach declined admin changes.",
+        edited_team_name: null,
+        edited_league: null,
+        edited_founding_year: null,
+        edited_home_ground: null,
+        admin_notes: null,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq("id", verificationId);
+
+    if (error) return { error: error.message };
+
+    // update user squad_status to rejected
+    const { error: userError } = await _client
+      .from("users")
+      .update({ squad_status: "rejected" })
+      .eq("id", ver.coach_id);
+
+    if (userError) return { error: userError.message };
+
+    return { success: true };
+  };
+
+  const getLatestSquadStatus = async (userId) => {
+    const { data, error } = await _client
+      .from("users")
+      .select("squad_status")
+      .eq("id", userId)
+      .single();
+    if (error) return null;
+    return data?.squad_status || null;
+  };
+
+  const deleteAdminVerificationMessage = async (userId) => {
+    await _client
+      .from("messages")
+      .delete()
+      .eq("to_id", userId)
+      .eq("from_id", "admin")
+      .eq("subject", "Squad registration update");
+  };
+
+  const checkUserStatus = async (userId) => {
+    const { data, error } = await _client
+      .from("users")
+      .select("id, banned, ban_reason, kicked, kicked_until")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error || !data) return null;
+
+    if (
+      data.kicked &&
+      data.kicked_until &&
+      new Date(data.kicked_until) < new Date()
+    ) {
+      await _client
+        .from("users")
+        .update({ kicked: false, kicked_until: null })
+        .eq("id", userId);
+      data.kicked = false;
+    }
+
+    return data;
+  };
+
+  const archiveMessage = async (messageId) => {
+    await _client
+      .from("messages")
+      .update({ archived: true, read: true })
+      .eq("id", messageId);
+  };
+
+  const getMessages = async (userId) => {
+    const { data, error } = await _client
+      .from("messages")
+      .select("*")
+      .eq("to_id", userId)
+      .eq("archived", false)
+      .order("created_at", { ascending: false });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getArchivedMessages = async (userId) => {
+    const { data, error } = await _client
+      .from("messages")
+      .select("*")
+      .eq("to_id", userId)
+      .eq("archived", true)
+      .order("created_at", { ascending: false });
+    if (error) return { data: [] };
+    return { data };
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     createUser,
@@ -464,7 +748,14 @@ const HF_DB = (() => {
     getPendingVerifications,
     approveSquadVerification,
     rejectSquadVerification,
+    getCoachVerification,
+    acceptVerificationEdits,
+    declineVerificationEdits,
+    saveVerificationEdits,
+    deleteAdminVerificationMessage,
     getMessages,
+    archiveMessage,
+    getArchivedMessages,
     markMessageRead,
     getAllVerifications,
     getAllUsers,
@@ -472,6 +763,12 @@ const HF_DB = (() => {
     banUser,
     unbanUser,
     removeUser,
+    checkUserStatus,
+    searchPlayers,
+    sendSquadInvite,
+    getSquadInvites,
+    respondToInvite,
+    getLatestSquadStatus,
   };
 })();
 

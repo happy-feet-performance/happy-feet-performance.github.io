@@ -110,7 +110,7 @@ const HF_AUTH = (() => {
       player: `
         <div class="form-row">
           <div class="fg">
-            <label>Position</label>
+            <label class="required">Position</label>
             <select id="su-pos">
               <option value="">Select position</option>
               <option>GK</option><option>CB</option><option>LB</option><option>RB</option>
@@ -126,8 +126,10 @@ const HF_AUTH = (() => {
             </select>
           </div>
         </div>
-        <div class="fg"><label>Current club / academy</label><input type="text" id="su-club" placeholder="e.g. Kumasi Wolves FC"></div>
-        <div class="fg"><label>Hometown / region</label><input type="text" id="su-hometown" placeholder="e.g. Kumasi, Ashanti"></div>`,
+        <div class="fg">
+          <label class="required">Hometown / region</label>
+          <input type="text" id="su-hometown" placeholder="e.g. Kumasi, Ashanti">
+        </div>`,
 
       coach: `
         <div class="form-row">
@@ -140,7 +142,7 @@ const HF_AUTH = (() => {
           </div>
           <div class="fg">
             <label>Years experience</label>
-            <input type="number" id="su-exp" min="0" placeholder="e.g. 5">
+            <input type="number" id="su-exp" min="0" max="50" placeholder="e.g. 5">
           </div>
         </div>
         <div class="fg"><label>Current club / academy</label><input type="text" id="su-club" placeholder="e.g. Accra Academy FC"></div>
@@ -156,7 +158,7 @@ const HF_AUTH = (() => {
         <div class="fg"><label>Organisation / agency</label><input type="text" id="su-org" placeholder="e.g. Independent / Agency name"></div>
         <div class="form-row">
           <div class="fg"><label>Region you cover</label><input type="text" id="su-region" placeholder="e.g. Ghana, West Africa"></div>
-          <div class="fg"><label>Years experience</label><input type="number" id="su-exp" min="0" placeholder="e.g. 3"></div>
+          <div class="fg"><label>Years experience</label><input type="number" id="su-exp" min="0" max="50" placeholder="e.g. 3">
         </div>
         <div class="fg"><label>Target leagues / destinations</label><input type="text" id="su-dest" placeholder="e.g. Europe, USA, Gulf"></div>`,
     };
@@ -209,17 +211,14 @@ const HF_AUTH = (() => {
       profile = {
         pos: el("su-pos")?.value || "",
         tier: el("su-tier")?.value || "U21",
-        club: el("su-club")?.value.trim() || "",
         hometown: el("su-hometown")?.value.trim() || "",
+        status: "unattached",
+        club: null,
         ratings: { speed: 0, tech: 0, tact: 0, phys: 0 },
         faithStreak: 0,
       };
       if (!profile.pos) {
         showError("signup-err", "Please select your position.");
-        return;
-      }
-      if (!profile.club) {
-        showError("signup-err", "Please enter your current club or academy.");
         return;
       }
       if (!profile.hometown) {
@@ -238,8 +237,22 @@ const HF_AUTH = (() => {
         showError("signup-err", "Please select your coaching licence.");
         return;
       }
-      if (!profile.exp) {
+      if (profile.exp === "") {
         showError("signup-err", "Please enter your years of experience.");
+        return;
+      }
+      if (parseInt(profile.exp) < 0 || parseInt(profile.exp) > 50) {
+        showError(
+          "signup-err",
+          "Years of experience must be between 0 and 50.",
+        );
+        return;
+      }
+      if (parseInt(profile.exp) < 0 || parseInt(profile.exp) > 50) {
+        showError(
+          "signup-err",
+          "Years of experience must be between 0 and 50.",
+        );
         return;
       }
       if (!profile.club) {
@@ -318,7 +331,7 @@ const HF_AUTH = (() => {
         ? `<strong>Phone:</strong> ${displayContact}`
         : `<strong>Email:</strong> ${displayContact}`;
     const summaryRows = {
-      player: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Player<br><strong>Position:</strong> ${profile.pos || "-"}<br><strong>Tier:</strong> ${profile.tier}<br><strong>Club:</strong> ${profile.club || "-"}`,
+      player: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Player<br><strong>Position:</strong> ${profile.pos || "-"}<br><strong>Tier:</strong> ${profile.tier}<br><strong>Hometown:</strong> ${profile.hometown || "-"}`,
       coach: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Coach<br><strong>Licence:</strong> ${profile.licence}<br><strong>Club:</strong> ${profile.club || "-"}`,
       scout: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Scout<br><strong>Organisation:</strong> ${profile.org || "-"}<br><strong>Region:</strong> ${profile.region || "-"}`,
     };
@@ -397,7 +410,6 @@ const HF_AUTH = (() => {
 
     const hashedPassword = await HF_UTILS.hashPassword(pass);
     const user = await HF_DB.findUser(contact, hashedPassword);
-
     if (!user) {
       showError(
         "login-err",
@@ -407,6 +419,28 @@ const HF_AUTH = (() => {
       );
       return;
     }
+
+    if (user.banned) {
+      showError(
+        "login-err",
+        `Your account has been banned. ${user.banReason ? "Reason: " + user.banReason : "Please contact support."}`,
+      );
+      return;
+    }
+
+    if (
+      user.kicked &&
+      user.kickedUntil &&
+      new Date(user.kickedUntil) > new Date()
+    ) {
+      const until = new Date(user.kickedUntil).toLocaleTimeString();
+      showError(
+        "login-err",
+        `You have been kicked and cannot sign in until ${until}.`,
+      );
+      return;
+    }
+
     hideError("login-err");
     const session = _makeSession(user);
     HF_DB.saveSession(session);
@@ -427,6 +461,21 @@ const HF_AUTH = (() => {
 
   const logout = () => {
     HF_DB.clearSession();
+    [
+      "login-email",
+      "login-pass",
+      "login-phone",
+      "su-name",
+      "su-email",
+      "su-pass",
+      "su-phone",
+      "admin-email",
+      "admin-pass",
+    ].forEach((id) => {
+      const field = document.getElementById(id);
+      if (field) field.value = "";
+    });
+
     document.getElementById("app-shell").classList.remove("visible");
     document.getElementById("auth-screens").style.display = "flex";
     showScreen("screen-login");
@@ -565,6 +614,40 @@ const HF_AUTH = (() => {
     enterWithPendingSquad,
   };
 })();
+
+// Allow enter key to trigger main actions
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+
+  const activeScreen = document.querySelector(".auth-screen.active");
+  if (!activeScreen) return;
+
+  const screenId = activeScreen.id;
+
+  switch (screenId) {
+    case "screen-login":
+      HF_AUTH.handleLogin();
+      break;
+    case "screen-admin-login":
+      HF_AUTH.handleAdminLogin();
+      break;
+    case "screen-signup-role":
+      HF_AUTH.goStep2();
+      break;
+    case "screen-signup-info":
+      HF_AUTH.goStep3();
+      break;
+    case "screen-signup-confirm":
+      HF_AUTH.completeSignup();
+      break;
+    case "screen-squad-verify":
+      HF_AUTH.submitSquadVerification();
+      break;
+    case "screen-squad-pending":
+      HF_AUTH.enterWithPendingSquad();
+      break;
+  }
+});
 
 window.HF_AUTH = HF_AUTH;
 const { showScreen, selectRole } = HF_AUTH;
