@@ -98,82 +98,128 @@ const HF_COACH = (() => {
   // DASHBOARD
   const dashboard = (s) => {
     const p = s.profile || {};
-    const hasTeam = p.teamSize > 0;
+    const squadStatus = s.squadStatus || "unregistered";
+    const isVerified = squadStatus === "verified";
+    const isPending = squadStatus === "pending";
+    const isUnregistered = squadStatus === "unregistered";
+
+    const squadStatusBadge = isVerified
+      ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">Verified</span>`
+      : isPending
+        ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(196,154,10,.15);color:var(--gold);">Pending</span>`
+        : `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:var(--bg3);color:var(--text2);">Unregistered</span>`;
 
     setMain(`
-    <div class="welcome-banner">
+    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
       <div>
-        <div class="welcome-title">Coach ${s.name.split(" ").pop()}</div>
-        <div class="welcome-sub">${p.spec || "Head coach"} · ${p.club || "-"} · ${p.licence || "-"} licence</div>
+        <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">Coach ${s.name.split(" ").pop()}</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.spec || "Head coach"} · ${p.licence || "-"} licence</div>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+          ${badgeHTML("Coach", "gold")}
+          <span style="font-size:11px;color:rgba(255,255,255,.4)">${p.club || "-"}</span>
+          ${squadStatusBadge}
+        </div>
       </div>
-      <div style="text-align:right">
-        <div style="font-size:32px;font-weight:700;color:var(--gold)">${p.teamSize || 0}</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.5)">Squad size</div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold);">${isVerified ? p.teamSize || 0 : "-"}</div>
+        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,.4);">Squad size</div>
       </div>
     </div>
 
     ${HF_SCRIPTURE.stripHTML()}
 
+    ${
+      isUnregistered || isPending
+        ? `
+      <div style="padding:var(--sp-lg);background:rgba(196,154,10,.06);border-left:3px solid var(--gold);margin-bottom:var(--sp-lg);">
+        <div style="font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;">
+          ${isPending ? "Squad verification pending" : "Squad not registered"}
+        </div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">
+          ${
+            isPending
+              ? "Your squad is awaiting admin approval. Full features will unlock once verified."
+              : "Register and verify your squad to unlock full coaching features."
+          }
+        </div>
+        ${
+          isUnregistered
+            ? `
+          <button class="btn btn-primary btn-sm" onclick="HF_AUTH.showScreen('screen-squad-verify')">
+            <i class="ti ti-clipboard-check"></i> Register your squad
+          </button>`
+            : ""
+        }
+      </div>`
+        : ""
+    }
+
     <div class="metrics-grid">
       <div class="metric-card">
-        <div class="metric-val" style="color:var(--green)">${hasTeam ? "87%" : "-"}</div>
+        <div class="metric-val" style="color:${isVerified ? "var(--green)" : "var(--text3)"}">
+          ${isVerified ? "-" : "-"}
+        </div>
         <div class="metric-label">Squad readiness</div>
-        <div class="metric-sub" style="color:var(--text2)">${hasTeam ? "+4% this week" : "No squad yet"}</div>
+        <div class="metric-sub" style="color:var(--text2)">
+          ${isVerified ? "Log sessions to calculate" : "Verify squad to unlock"}
+        </div>
       </div>
       <div class="metric-card">
-        <div class="metric-val" style="color:var(--red)">0</div>
+        <div class="metric-val" style="color:${isVerified ? "var(--gold)" : "var(--text3)"}">
+          ${isVerified ? "0" : "-"}
+        </div>
         <div class="metric-label">Risk alerts</div>
-        <div class="metric-sub" style="color:var(--text2)">All clear</div>
+        <div class="metric-sub" style="color:var(--text2)">${isVerified ? "All clear" : "Verify squad to unlock"}</div>
       </div>
       <div class="metric-card">
-        <div class="metric-val" style="color:var(--gold)">${p.teamSize || 0}</div>
+        <div class="metric-val" style="color:${isVerified ? "var(--gold)" : "var(--text3)"}">
+          ${isVerified ? p.teamSize || 0 : "-"}
+        </div>
         <div class="metric-label">Active players</div>
-        <div class="metric-sub" style="color:var(--text2)">${hasTeam ? "In your squad" : "Add players to get started"}</div>
+        <div class="metric-sub" style="color:var(--text2)">${isVerified ? "In your squad" : "Verify squad to unlock"}</div>
       </div>
       <div class="metric-card">
-        <div class="metric-val" style="color:var(--red)">0</div>
+        <div class="metric-val" style="color:var(--gold)">0</div>
         <div class="metric-label">Messages</div>
         <div class="metric-sub" style="color:var(--text2)">All caught up</div>
       </div>
     </div>
 
     <div class="quick-actions">
-      <button class="quick-action" onclick="HF_ROUTER.navTo('squad')">
+      <button class="quick-action" onclick="${isVerified ? "HF_ROUTER.navTo('squad')" : "HF_UTILS.toast('Verify your squad first.','error')"}">
         <div class="quick-action-icon"><i class="ti ti-users"></i></div>
         <div class="quick-action-label">View squad</div>
-        <div class="quick-action-sub">${p.teamSize || 0} players</div>
+        <div class="quick-action-sub">${isVerified ? (p.teamSize || 0) + " players" : "Squad not verified"}</div>
       </button>
-      <button class="quick-action" onclick="HF_ROUTER.navTo('training')">
+      <button class="quick-action" onclick="${isVerified ? "HF_ROUTER.navTo('training')" : "HF_UTILS.toast('Verify your squad first.','error')"}">
         <div class="quick-action-icon"><i class="ti ti-clipboard-list"></i></div>
         <div class="quick-action-label">Today's session</div>
-        <div class="quick-action-sub">${hasTeam ? "Technical: high" : "Plan a session"}</div>
+        <div class="quick-action-sub">${isVerified ? "Plan a session" : "Squad not verified"}</div>
       </button>
-      <button class="quick-action" onclick="HF_ROUTER.navTo('health')">
+      <button class="quick-action" onclick="${isVerified ? "HF_ROUTER.navTo('health')" : "HF_UTILS.toast('Verify your squad first.','error')"}">
         <div class="quick-action-icon"><i class="ti ti-stethoscope"></i></div>
         <div class="quick-action-label">Health flags</div>
-        <div class="quick-action-sub">${hasTeam ? "0 alerts" : "No players yet"}</div>
+        <div class="quick-action-sub">${isVerified ? "0 alerts" : "Squad not verified"}</div>
       </button>
     </div>
 
     <div class="card">
       <div class="card-title"><div class="card-dot"></div>AI agent activity</div>
       ${
-        !hasTeam
+        !isVerified
           ? `
         <div style="text-align:center;padding:32px;color:var(--text2)">
-          <i class="ti ti-users" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No squad activity yet</div>
-          <div style="font-size:13px">Add players to your squad to start tracking performance and health data.</div>
-          <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="HF_ROUTER.navTo('squad')">
-            <i class="ti ti-plus"></i> Add your first player
-          </button>
+          <i class="ti ti-lock" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Locked until squad is verified</div>
+          <div style="font-size:13px">AI agent activity will appear here once your squad is registered and verified.</div>
         </div>`
           : `
         ${activityHTML('<i class="ti ti-robot"></i>', "rgba(201,150,26,.1)", "Performance Agent", "Fatigue detected: Kwame Asante. Sprint load reduced 30% tomorrow.", "2 min ago")}
         ${activityHTML('<i class="ti ti-stethoscope"></i>', "rgba(200,16,46,.08)", "Health Agent", "Emmanuel Ofori: hamstring flag. Physio check 7am. Modified plan activated.", "18 min ago")}
         ${activityHTML('<i class="ti ti-search"></i>', "rgba(26,122,46,.08)", "Scout Agent", "3 new prospects identified in Kumasi region. Profiles ready.", "1 hr ago")}`
       }
-    </div>`);
+    </div>
+  `);
   };
 
   // PROFILE
@@ -440,50 +486,39 @@ const HF_COACH = (() => {
   };
 
   // MESSAGES
-  const messages = (s) => {
-    const threads = [
-      {
-        name: "Kwame Asante",
-        msg: "Coach, my hamstring felt tight today.",
-        time: "1h",
-        color: "#1a7a2e",
-        unread: 1,
-      },
-      {
-        name: "Ama Boateng",
-        msg: "Can we review the crossing drill tomorrow?",
-        time: "3h",
-        color: "#C9961A",
-        unread: 1,
-      },
-      {
-        name: "Kofi Mensah",
-        msg: "Ready for match day, coach!",
-        time: "5h",
-        color: "#185FA5",
-        unread: 0,
-      },
-    ];
+  const messages = async (s) => {
+    const { data: msgs } = await HF_DB.getMessages(s.userId);
+
     setMain(`
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Messages from players</div>
-        ${threads
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Messages</div>
+      ${
+        !msgs || msgs.length === 0
+          ? `
+        <div style="text-align:center;padding:32px;color:var(--text2)">
+          <i class="ti ti-message" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No messages yet</div>
+          <div style="font-size:13px">Messages from HappyFeet and your players will appear here.</div>
+        </div>`
+          : `
+        ${msgs
           .map(
-            (t) => `
-          <div class="msg-item" onclick="HF_UTILS.toast('Full messaging coming soon!','success')">
-            <div class="avatar avatar-md" style="background:${t.color}">${HF_UTILS.initials(t.name)}</div>
+            (m) => `
+          <div class="msg-item" onclick="HF_COACH.readMessage('${m.id}', this)">
+            <div class="avatar avatar-md" style="background:#0f0f0d">
+              <i class="ti ti-shield" style="font-size:16px;color:var(--gold)"></i>
+            </div>
             <div style="flex:1">
-              <div class="msg-name">${t.name}</div>
-              <div class="msg-preview">${t.msg}</div>
+              <div class="msg-name">${m.subject || "Message"}</div>
+              <div class="msg-preview">${m.body}</div>
+              <div class="msg-time">${new Date(m.created_at).toLocaleDateString()}</div>
             </div>
-            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-              <div class="msg-time">${t.time}</div>
-              ${t.unread ? `<div class="msg-unread">${t.unread}</div>` : ""}
-            </div>
+            ${!m.read ? `<div class="msg-unread">1</div>` : ""}
           </div>`,
           )
-          .join("")}
-      </div>`);
+          .join("")}`
+      }
+    </div>`);
   };
 
   // FAITH
@@ -541,7 +576,13 @@ const HF_COACH = (() => {
     HF_FINDTEAM.render("fmt-container", s);
   };
 
-  return { render };
+  const readMessage = async (messageId, el) => {
+    await HF_DB.markMessageRead(messageId);
+    const badge = el.querySelector(".msg-unread");
+    if (badge) badge.remove();
+  };
+
+  return { render, readMessage };
 })();
 
 window.HF_COACH = HF_COACH;

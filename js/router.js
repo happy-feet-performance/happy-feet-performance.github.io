@@ -31,7 +31,7 @@ const HF_ROUTER = (() => {
       { view: "achievements", icon: "ti-trophy", label: "Achievements" },
       { view: "highlights", icon: "ti-video", label: "Highlights" },
       { section: "Community" },
-      { view: 'messages', icon: 'ti-message', label: 'Messages' },
+      { view: "messages", icon: "ti-message", label: "Messages" },
       {
         view: "faith",
         icon: "ti-cross",
@@ -41,30 +41,45 @@ const HF_ROUTER = (() => {
       { section: "Discover" },
       { view: "findmyteam", icon: "ti-map-search", label: "Find my team" },
     ],
-    coach: [
-      { section: "Management" },
-      { view: "dashboard", icon: "ti-home", label: "Dashboard" },
-      { view: "profile", icon: "ti-user", label: "My profile" },
-      { view: "squad", icon: "ti-users", label: "Squad" },
-      { view: "training", icon: "ti-clipboard-list", label: "Session builder" },
-      { view: "tracking", icon: "ti-chart-line", label: "Player tracking" },
-      { section: "Tools" },
-      {
-        view: "health",
-        icon: "ti-heart-rate-monitor",
-        label: "Health & wellness",
-      },
-      { view: "recruitment", icon: "ti-search", label: "Recruitment" },
-      { view: 'messages', icon: 'ti-message', label: 'Messages' },
-      {
-        view: "faith",
-        icon: "ti-cross",
-        label: "Team devotion",
-        faithNav: true,
-      },
-      { section: "Discover" },
-      { view: "findmyteam", icon: "ti-map-search", label: "Find my team" },
-    ],
+    coach: (squadStatus) => {
+      const verified = squadStatus === "verified";
+      const nav = [
+        { section: "Management" },
+        { view: "dashboard", icon: "ti-home", label: "Dashboard" },
+        { view: "profile", icon: "ti-user", label: "My profile" },
+      ];
+      if (verified) {
+        nav.push(
+          { view: "squad", icon: "ti-users", label: "Squad" },
+          {
+            view: "training",
+            icon: "ti-clipboard-list",
+            label: "Session builder",
+          },
+          { view: "tracking", icon: "ti-chart-line", label: "Player tracking" },
+          { section: "Tools" },
+          {
+            view: "health",
+            icon: "ti-heart-rate-monitor",
+            label: "Health & wellness",
+          },
+          { view: "recruitment", icon: "ti-search", label: "Recruitment" },
+        );
+      }
+      nav.push(
+        { section: verified ? "Tools" : "Community" },
+        { view: "messages", icon: "ti-message", label: "Messages" },
+        {
+          view: "faith",
+          icon: "ti-cross",
+          label: "Team devotion",
+          faithNav: true,
+        },
+        { section: "Discover" },
+        { view: "findmyteam", icon: "ti-map-search", label: "Find my team" },
+      );
+      return nav;
+    },
     scout: [
       { section: "Scouting" },
       { view: "dashboard", icon: "ti-home", label: "Dashboard" },
@@ -85,6 +100,18 @@ const HF_ROUTER = (() => {
       { view: "messages", icon: "ti-message", label: "Messages" },
       { section: "Discover" },
       { view: "findmyteam", icon: "ti-map-search", label: "Find my team" },
+    ],
+    admin: [
+      { section: "Management" },
+      { view: "dashboard", icon: "ti-home", label: "Dashboard" },
+      {
+        view: "verifications",
+        icon: "ti-clipboard-check",
+        label: "Verifications",
+      },
+      { view: "users", icon: "ti-users", label: "Users" },
+      { section: "Communication" },
+      { view: "messages", icon: "ti-message", label: "Messages" },
     ],
   };
 
@@ -118,7 +145,14 @@ const HF_ROUTER = (() => {
 
   const _buildSidenav = (session) => {
     const nav = el("sidenav");
-    const items = NAVS[session.role] || [];
+    const squadStatus = session.squadStatus || "unregistered";
+
+    let items;
+    if (session.role === "coach") {
+      items = NAVS.coach(squadStatus);
+    } else {
+      items = NAVS[session.role] || [];
+    }
 
     const navHTML = items
       .map((item) => {
@@ -137,15 +171,15 @@ const HF_ROUTER = (() => {
       .join("");
 
     nav.innerHTML = `
-      <div class="sidenav-scroll">${navHTML}</div>
-      <div class="sidenav-footer" onclick="HF_ROUTER.navTo('profile')" style="cursor:pointer;">
-        <div class="avatar avatar-sm" style="background:${ROLE_COLORS[session.role] || "#C49A0A"}">${initials(session.name)}</div>
-        <div>
-          <div class="sidenav-footer-name">${session.name}</div>
-          <div class="sidenav-footer-role">${session.displayContact || session.contact}</div>
-        </div>
-      </div>`;
-    };
+    <div class="sidenav-scroll">${navHTML}</div>
+    <div class="sidenav-footer" onclick="HF_ROUTER.navTo('profile')" style="cursor:pointer;">
+      <div class="avatar avatar-sm" style="background:${ROLE_COLORS[session.role] || "#C49A0A"}">${initials(session.name)}</div>
+      <div>
+        <div class="sidenav-footer-name">${session.name}</div>
+        <div class="sidenav-footer-role">${session.displayContact || session.contact}</div>
+      </div>
+    </div>`;
+  };
 
   // ─── Navigate to a view ─────────────────────────────────────
   const navTo = (view, el_) => {
@@ -177,6 +211,7 @@ const HF_ROUTER = (() => {
       player: window.HF_PLAYER,
       coach: window.HF_COACH,
       scout: window.HF_SCOUT,
+      admin: window.HF_ADMIN,
     };
     const handler = handlers[session.role];
     if (!handler) {

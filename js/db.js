@@ -252,10 +252,200 @@ const HF_DB = (() => {
   const saveScout = async (userId, data) =>
     await _saveData("scout", userId, data);
 
+  const submitSquadVerification = async (data) => {
+    const { error } = await _client.from("squad_verifications").insert({
+      coach_id: data.coachId,
+      team_name: data.teamName,
+      league: data.league,
+      founding_year: data.foundingYear || null,
+      home_ground: data.homeGround || null,
+      status: "pending",
+    });
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const updateSquadStatus = async (userId, status) => {
+    const { error } = await _client
+      .from("users")
+      .update({ squad_status: status })
+      .eq("id", userId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const checkTeamExists = async (teamName) => {
+    const { data } = await _client
+      .from("squad_verifications")
+      .select("id, status")
+      .ilike("team_name", teamName)
+      .maybeSingle();
+    return data || null;
+  };
+
+  const getPendingVerifications = async () => {
+    const { data, error } = await _client
+      .from("squad_verifications")
+      .select("*")
+      .eq("status", "pending")
+      .order("submitted_at", { ascending: true });
+    if (error) return { error: error.message };
+    return { data };
+  };
+
+  const approveSquadVerification = async (
+    verificationId,
+    coachId,
+    teamName,
+  ) => {
+    // update verification status
+    const { error: verError } = await _client
+      .from("squad_verifications")
+      .update({ status: "verified", reviewed_at: new Date().toISOString() })
+      .eq("id", verificationId);
+    if (verError) return { error: verError.message };
+
+    // update coach squad status
+    const { error: userError } = await _client
+      .from("users")
+      .update({ squad_status: "verified" })
+      .eq("id", coachId);
+    if (userError) return { error: userError.message };
+
+    // send notification message to coach
+    const { error: msgError } = await _client.from("messages").insert({
+      from_id: "admin",
+      to_id: coachId,
+      subject: "Squad verified",
+      body: `Congratulations! Your squad "${teamName}" has been verified on HappyFeet. You now have full access to all coaching features.`,
+      read: false,
+    });
+    if (msgError) return { error: msgError.message };
+
+    return { success: true };
+  };
+
+  const rejectSquadVerification = async (
+    verificationId,
+    coachId,
+    teamName,
+    reason,
+  ) => {
+    // update verification status
+    const { error: verError } = await _client
+      .from("squad_verifications")
+      .update({
+        status: "rejected",
+        reviewed_at: new Date().toISOString(),
+        rejection_reason: reason,
+      })
+      .eq("id", verificationId);
+    if (verError) return { error: verError.message };
+
+    // update coach squad status
+    const { error: userError } = await _client
+      .from("users")
+      .update({ squad_status: "rejected" })
+      .eq("id", coachId);
+    if (userError) return { error: userError.message };
+
+    // send rejection message to coach
+    const { error: msgError } = await _client.from("messages").insert({
+      from_id: "admin",
+      to_id: coachId,
+      subject: "Squad verification update",
+      body: `Unfortunately your squad "${teamName}" could not be verified at this time. Reason: ${reason}. Please contact support if you have any questions.`,
+      read: false,
+    });
+    if (msgError) return { error: msgError.message };
+
+    return { success: true };
+  };
+
+  const getMessages = async (userId) => {
+    const { data, error } = await _client
+      .from("messages")
+      .select("*")
+      .eq("to_id", userId)
+      .order("created_at", { ascending: false });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const markMessageRead = async (messageId) => {
+    await _client.from("messages").update({ read: true }).eq("id", messageId);
+  };
+
+  const findAdmin = async (email, password) => {
+    const hashedPassword = await HF_UTILS.hashPassword(password);
+    const { data, error } = await _client
+      .from("admins")
+      .select("*")
+      .eq("email", email)
+      .eq("password", hashedPassword)
+      .maybeSingle();
+    if (error) return { error: error.message };
+    return { data };
+  };
+
+  const getAllVerifications = async () => {
+    const { data, error } = await _client
+      .from("squad_verifications")
+      .select("*")
+      .order("submitted_at", { ascending: false });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getAllUsers = async () => {
+    const { data, error } = await _client
+      .from("users")
+      .select(
+        "id, name, contact, role, banned, ban_reason, squad_status, created_at",
+      )
+      .order("created_at", { ascending: false });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const kickUser = async (userId) => {
+    const { error } = await _client
+      .from("users")
+      .update({ kicked: true })
+      .eq("id", userId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const banUser = async (userId, reason) => {
+    const { error } = await _client
+      .from("users")
+      .update({ banned: true, ban_reason: reason })
+      .eq("id", userId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const unbanUser = async (userId) => {
+    const { error } = await _client
+      .from("users")
+      .update({ banned: false, ban_reason: null })
+      .eq("id", userId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const removeUser = async (userId) => {
+    const { error } = await _client.from("users").delete().eq("id", userId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     createUser,
     findUser,
+    findAdmin,
     updateUserProfile,
     getSession,
     saveSession,
@@ -268,6 +458,20 @@ const HF_DB = (() => {
     saveTraining,
     getScout,
     saveScout,
+    submitSquadVerification,
+    updateSquadStatus,
+    checkTeamExists,
+    getPendingVerifications,
+    approveSquadVerification,
+    rejectSquadVerification,
+    getMessages,
+    markMessageRead,
+    getAllVerifications,
+    getAllUsers,
+    kickUser,
+    banUser,
+    unbanUser,
+    removeUser,
   };
 })();
 

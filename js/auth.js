@@ -78,6 +78,15 @@ const HF_AUTH = (() => {
       toast("Please choose your role to continue.", "error");
       return;
     }
+
+    document.querySelectorAll(".step-row").forEach((row) => {
+      if (state.role === "coach") {
+        if (!row.querySelector(".step:nth-child(4)")) {
+          row.innerHTML += '<div class="step"></div>';
+        }
+      }
+    });
+
     const titles = {
       player: "Player registration",
       coach: "Coach registration",
@@ -160,13 +169,11 @@ const HF_AUTH = (() => {
     const pass = el("su-pass")?.value;
     hideError("signup-err");
 
-    // 1. Name
     if (!name) {
       showError("signup-err", "Please enter your full name.");
       return;
     }
 
-    // 2. Contact
     let contact = "",
       contactType = "",
       localPhone = "",
@@ -192,13 +199,11 @@ const HF_AUTH = (() => {
       displayContact = `${code} ${num}`;
     }
 
-    // 3. Password
     if (!pass || pass.length < 6) {
       showError("signup-err", "Password must be at least 6 characters.");
       return;
     }
 
-    // 4. Role fields
     let profile = {};
     if (state.role === "player") {
       profile = {
@@ -229,6 +234,29 @@ const HF_AUTH = (() => {
         spec: el("su-spec")?.value || "All-round",
         teamSize: 0,
       };
+      if (!profile.licence) {
+        showError("signup-err", "Please select your coaching licence.");
+        return;
+      }
+      if (!profile.exp) {
+        showError("signup-err", "Please enter your years of experience.");
+        return;
+      }
+      if (!profile.club) {
+        showError("signup-err", "Please enter your current club or academy.");
+        return;
+      }
+
+      const existingTeam = await HF_DB.checkTeamExists(profile.club);
+      if (existingTeam) {
+        showError(
+          "signup-err",
+          existingTeam.status === "verified"
+            ? `"${profile.club}" is already registered on HappyFeet. If you are the coach, please contact support.`
+            : `A verification request for "${profile.club}" is already pending. If you are the coach, please contact support.`,
+        );
+        return;
+      }
       if (!profile.licence) {
         showError("signup-err", "Please select your coaching licence.");
         return;
@@ -313,9 +341,31 @@ const HF_AUTH = (() => {
       showScreen("screen-signup-info");
       return;
     }
+
     const session = _makeSession(result.user);
     HF_DB.saveSession(session);
-    HF_ROUTER.launch(session);
+    state.newUserId = result.user.id;
+
+    if (state.signup.role === "coach") {
+      // prefill squad verify form with coach's existing data
+      const clubInput = el("sq-team");
+      const regionInput = el("sq-region");
+      if (clubInput) {
+        clubInput.value = state.signup.profile.club || "";
+        clubInput.readOnly = true;
+        clubInput.style.opacity = "0.6";
+        clubInput.style.cursor = "not-allowed";
+      }
+      if (regionInput) {
+        regionInput.value = state.signup.profile.region || "";
+        regionInput.readOnly = true;
+        regionInput.style.opacity = "0.6";
+        regionInput.style.cursor = "not-allowed";
+      }
+      showScreen("screen-squad-verify");
+    } else {
+      HF_ROUTER.launch(session);
+    }
   };
 
   // ─── Login ─────────────────────────────────────────────────
@@ -372,6 +422,7 @@ const HF_AUTH = (() => {
     contactType: user.contactType,
     displayContact: user.displayContact || user.contact,
     profile: user.profile,
+    squadStatus: user.squadStatus || "unregistered",
   });
 
   const logout = () => {
@@ -409,6 +460,94 @@ const HF_AUTH = (() => {
     label.style.color = level.color;
   };
 
+  const submitSquadVerification = async () => {
+    const teamName = el("sq-team")?.value.trim();
+    const league = el("sq-league")?.value.trim();
+    const year = el("sq-year")?.value.trim();
+    const ground = el("sq-ground")?.value.trim();
+    hideError("squad-err");
+
+    if (!teamName) {
+      showError("squad-err", "Please enter your team name.");
+      return;
+    }
+    if (!league) {
+      showError("squad-err", "Please enter your league or division.");
+      return;
+    }
+
+    if (
+      year &&
+      (parseInt(year) < 1800 || parseInt(year) > new Date().getFullYear())
+    ) {
+      showError(
+        "squad-err",
+        `Founding year must be between 1600 and ${new Date().getFullYear()}.`,
+      );
+      return;
+    }
+
+    const session = HF_DB.getSession();
+
+    const result = await HF_DB.submitSquadVerification({
+      coachId: session.userId,
+      teamName,
+      league,
+      foundingYear: year,
+      homeGround: ground,
+    });
+
+    if (result.error) {
+      showError("squad-err", result.error);
+      return;
+    }
+
+    await HF_DB.updateSquadStatus(session.userId, "pending");
+    session.squadStatus = "pending";
+    HF_DB.saveSession(session);
+
+    showScreen("screen-squad-pending");
+  };
+
+  const enterWithPendingSquad = () => {
+    const session = HF_DB.getSession();
+    HF_ROUTER.launch(session);
+  };
+
+  const handleAdminLogin = async () => {
+    const email = el("admin-email")?.value.trim().toLowerCase();
+    const pass = el("admin-pass")?.value;
+    hideError("admin-err");
+
+    if (!email) {
+      showError("admin-err", "Please enter your email.");
+      return;
+    }
+    if (!pass) {
+      showError("admin-err", "Please enter your password.");
+      return;
+    }
+
+    const { data, error } = await HF_DB.findAdmin(email, pass);
+    if (error || !data) {
+      showError("admin-err", "Invalid email or password.");
+      return;
+    }
+
+    const session = {
+      userId: data.id,
+      role: "admin",
+      name: data.name,
+      contact: data.email,
+      contactType: "email",
+      displayContact: data.email,
+      profile: {},
+    };
+
+    HF_DB.saveSession(session);
+    HF_ROUTER.launch(session);
+  };
+
   // ─── Expose to window (called from onclick) ─────────────────
   return {
     showScreen,
@@ -419,11 +558,13 @@ const HF_AUTH = (() => {
     goStep3,
     completeSignup,
     handleLogin,
+    handleAdminLogin,
     logout,
     checkPassword,
+    submitSquadVerification,
+    enterWithPendingSquad,
   };
 })();
 
 window.HF_AUTH = HF_AUTH;
-// Also expose individual methods as globals for onclick= handlers
 const { showScreen, selectRole } = HF_AUTH;

@@ -10,15 +10,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="HappyFeet" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <title>HappyFeet Performance Hub</title>
-
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Oswald:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
-
     <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/auth.css" />
     <link rel="stylesheet" href="css/dashboard.css" />
@@ -26,7 +25,6 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"
     />
-
     <script src="js/theme.js"></script>
   </head>
   <body>
@@ -34,7 +32,7 @@
       id="auth-screens"
       style="display: flex; flex-direction: column; min-height: 100vh"
     >
-      <!-- Theme toggle on auth screens -->
+      <!-- Theme toggle -->
       <div style="position: fixed; top: 16px; right: 16px; z-index: 999">
         <label class="theme-switch" title="Toggle dark mode">
           <input
@@ -45,6 +43,7 @@
           <span class="theme-slider"></span>
         </label>
       </div>
+
       <!-- LOGIN -->
       <div class="auth-screen active" id="screen-login">
         <div class="auth-card">
@@ -72,8 +71,8 @@
           <div class="error-box" id="login-err"></div>
           <div id="login-email-fields">
             <div class="fg">
-              <label>Email address</label
-              ><input
+              <label>Email address</label>
+              <input
                 type="email"
                 id="login-email"
                 placeholder="you@example.com"
@@ -101,8 +100,8 @@
             </div>
           </div>
           <div class="fg">
-            <label>Password</label
-            ><input
+            <label>Password</label>
+            <input
               type="password"
               id="login-pass"
               placeholder="Your password"
@@ -119,6 +118,21 @@
             <a onclick="HF_AUTH.showScreen('screen-signup-role')"
               >Create account</a
             >
+          </div>
+          <div style="text-align: center; margin-top: var(--sp-lg)">
+            <a
+              onclick="HF_AUTH.showScreen('screen-admin-login')"
+              style="
+                font-size: 10px;
+                font-family: var(--font-head);
+                letter-spacing: 0.1em;
+                text-transform: uppercase;
+                color: var(--text3);
+                cursor: pointer;
+              "
+            >
+              Admin access
+            </a>
           </div>
         </div>
       </div>
@@ -194,8 +208,8 @@
           <div class="auth-sub" id="signup-step2-sub">Fill in your details</div>
           <div class="error-box" id="signup-err"></div>
           <div class="fg">
-            <label>Full name</label
-            ><input type="text" id="su-name" placeholder="Your full name" />
+            <label>Full name</label>
+            <input type="text" id="su-name" placeholder="Your full name" />
           </div>
           <div class="fg" style="margin-bottom: 6px">
             <label>Sign in with</label>
@@ -214,12 +228,8 @@
           </div>
           <div id="su-email-fields">
             <div class="fg">
-              <label>Email address</label
-              ><input
-                type="email"
-                id="su-email"
-                placeholder="you@example.com"
-              />
+              <label>Email address</label>
+              <input type="email" id="su-email" placeholder="you@example.com" />
             </div>
           </div>
           <div id="su-phone-fields" style="display: none">
@@ -240,8 +250,8 @@
                 <input type="tel" id="su-phone" placeholder="024 123 4567" />
               </div>
               <div class="whatsapp-note">
-                <span class="wa-icon"><i class="ti ti-message"></i></span>Your
-                WhatsApp number works perfectly for sign-in.
+                <span class="wa-icon"><i class="ti ti-message"></i></span>
+                Your WhatsApp number works perfectly for sign-in.
               </div>
             </div>
           </div>
@@ -322,9 +332,174 @@
           </button>
         </div>
       </div>
+
+      <!-- SQUAD VERIFICATION — coaches only -->
+      <div class="auth-screen" id="screen-squad-verify">
+        <div class="auth-card">
+          <div class="auth-logo">
+            <div class="auth-logo-hex">HF</div>
+            <div class="auth-logo-name"><span>Happy</span>Feet</div>
+          </div>
+          <div class="step-row">
+            <div class="step done"></div>
+            <div class="step done"></div>
+            <div class="step done"></div>
+            <div class="step active"></div>
+          </div>
+          <div class="auth-title">Register your squad</div>
+          <div class="auth-sub">
+            Tell us about your team so we can verify it
+          </div>
+          <div class="error-box" id="squad-err"></div>
+          <div class="fg">
+            <label
+              >Team name
+              <span
+                style="
+                  font-size: 10px;
+                  color: var(--text3);
+                  font-weight: 400;
+                  text-transform: none;
+                  letter-spacing: 0;
+                "
+                >(from your profile)</span
+              ></label
+            >
+            <input
+              type="text"
+              id="sq-team"
+              placeholder="e.g. Kumasi Academy FC"
+            />
+          </div>
+          <div class="fg">
+            <label class="required">League / division</label>
+            <input
+              type="text"
+              id="sq-league"
+              placeholder="e.g. Ghana Premier League"
+            />
+          </div>
+          <div class="form-row">
+            <div class="fg">
+              <label>Founding year</label>
+              <input
+                type="number"
+                id="sq-year"
+                placeholder="e.g. 2005"
+                min="1600"
+              />
+            </div>
+            <div class="fg">
+              <label>Home ground</label>
+              <input
+                type="text"
+                id="sq-ground"
+                placeholder="e.g. Baba Yara Stadium"
+              />
+            </div>
+          </div>
+          <button
+            class="btn btn-primary btn-full"
+            onclick="HF_AUTH.submitSquadVerification()"
+          >
+            Submit for verification →
+          </button>
+          <div class="auth-link">
+            <a onclick="HF_AUTH.showScreen('screen-signup-confirm')">← Back</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- SQUAD VERIFICATION PENDING -->
+      <div class="auth-screen" id="screen-squad-pending">
+        <div class="auth-card" style="text-align: center">
+          <div class="auth-logo">
+            <div class="auth-logo-hex">HF</div>
+            <div class="auth-logo-name"><span>Happy</span>Feet</div>
+          </div>
+          <i
+            class="ti ti-clock"
+            style="
+              font-size: 48px;
+              color: var(--gold);
+              margin-bottom: 16px;
+              display: block;
+            "
+          ></i>
+          <div class="auth-title">Verification pending</div>
+          <div class="auth-sub" style="margin-bottom: var(--sp-xl)">
+            Your squad registration has been submitted. Our team will review and
+            verify your squad within 24-48 hours. You'll have limited access
+            until then.
+          </div>
+          <div
+            style="
+              padding: 12px;
+              background: var(--bg2);
+              border-left: 3px solid var(--gold);
+              text-align: left;
+              margin-bottom: var(--sp-xl);
+              font-size: 13px;
+              color: var(--text2);
+            "
+          >
+            <strong style="color: var(--text)">While you wait you can:</strong
+            ><br /><br />
+            · View your profile<br />
+            · Browse Find my team<br />
+            · Access Faith & devotion<br />
+            · Send and receive messages
+          </div>
+          <button
+            class="btn btn-primary btn-full"
+            onclick="HF_AUTH.enterWithPendingSquad()"
+          >
+            Enter HappyFeet →
+          </button>
+        </div>
+      </div>
+
+      <!-- ADMIN LOGIN -->
+      <div class="auth-screen" id="screen-admin-login">
+        <div class="auth-card">
+          <div class="auth-logo">
+            <div class="auth-logo-hex">HF</div>
+            <div class="auth-logo-name"><span>Happy</span>Feet</div>
+            <div class="auth-logo-tag">Admin portal</div>
+          </div>
+          <div class="auth-title">Admin sign in</div>
+          <div class="auth-sub">Restricted access</div>
+          <div class="error-box" id="admin-err"></div>
+          <div class="fg">
+            <label class="required">Email</label>
+            <input
+              type="email"
+              id="admin-email"
+              placeholder="Your admin email"
+            />
+          </div>
+          <div class="fg">
+            <label class="required">Password</label>
+            <input
+              type="password"
+              id="admin-pass"
+              placeholder="Your password"
+            />
+          </div>
+          <button
+            class="btn btn-primary btn-full"
+            onclick="HF_AUTH.handleAdminLogin()"
+          >
+            Sign in →
+          </button>
+          <div class="auth-link">
+            <a onclick="HF_AUTH.showScreen('screen-login')">← Back to login</a>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- ═══════ APP SHELL ═══════ -->
+    <!-- APP SHELL -->
     <div id="app-shell">
       <div class="topbar">
         <button class="hamburger" onclick="HF_ROUTER.toggleMobileNav()">
@@ -397,14 +572,14 @@
     </div>
 
     <script src="js/config.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/scripture.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/scripture.js"></script>
     <script src="js/db.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/router.js"></script>
     <script src="js/dashboards/player.js"></script>
     <script src="js/dashboards/coach.js"></script>
     <script src="js/dashboards/scout.js"></script>
+    <script src="js/dashboards/admin.js"></script>
   </body>
 </html>
