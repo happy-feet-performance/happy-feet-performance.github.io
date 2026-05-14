@@ -66,9 +66,10 @@ const HF_DB = (() => {
       user_id: userId,
       data: {
         sessions: [],
-        ratings: { speed: 60, tech: 60, tact: 55, phys: 60 },
-        overallRating: 0,
+        ratings: { speed: 0, tech: 0, tact: 0, phys: 0 },
+        overallRating: null,
         sessionsThisMonth: 0,
+        dailyStreak: 0,
       },
     });
 

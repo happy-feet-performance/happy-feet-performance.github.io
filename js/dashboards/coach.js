@@ -98,47 +98,82 @@ const HF_COACH = (() => {
   // DASHBOARD
   const dashboard = (s) => {
     const p = s.profile || {};
+    const hasTeam = p.teamSize > 0;
+
     setMain(`
-      <div class="welcome-banner">
-        <div>
-          <div class="welcome-title">Coach ${s.name.split(" ").pop()}</div>
-          <div class="welcome-sub">${p.spec || "Head coach"} · ${p.club || "-"} · ${p.licence || "-"} licence</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:32px;font-weight:700;color:var(--gold)">${p.teamSize || 22}</div>
-          <div style="font-size:11px;color:rgba(255,255,255,.5)">Squad size</div>
-        </div>
+    <div class="welcome-banner">
+      <div>
+        <div class="welcome-title">Coach ${s.name.split(" ").pop()}</div>
+        <div class="welcome-sub">${p.spec || "Head coach"} · ${p.club || "-"} · ${p.licence || "-"} licence</div>
       </div>
-      ${HF_SCRIPTURE.stripHTML()}
-      <div class="metrics-grid">
-        <div class="metric-card"><div class="metric-val" style="color:var(--green)">87%</div><div class="metric-label">Squad readiness</div><div class="metric-sub" style="color:var(--green)">+4% this week</div></div>
-        <div class="metric-card"><div class="metric-val" style="color:var(--red)">2</div><div class="metric-label">Risk alerts</div><div class="metric-sub">Review today</div></div>
-        <div class="metric-card"><div class="metric-val" style="color:var(--gold)">${p.teamSize || 22}</div><div class="metric-label">Active players</div><div class="metric-sub">2 monitoring</div></div>
-        <div class="metric-card"><div class="metric-val" style="color:var(--red)">5</div><div class="metric-label">Messages</div><div class="metric-sub" style="color:var(--text2)">Unread</div></div>
+      <div style="text-align:right">
+        <div style="font-size:32px;font-weight:700;color:var(--gold)">${p.teamSize || 0}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5)">Squad size</div>
       </div>
-      <div class="quick-actions">
-        <button class="quick-action" onclick="HF_ROUTER.navTo('squad')">
-          <div class="quick-action-icon"><i class="ti ti-users"></i></div>
-          <div class="quick-action-label">View squad</div>
-          <div class="quick-action-sub">${p.teamSize || 22} players</div>
-        </button>
-        <button class="quick-action" onclick="HF_ROUTER.navTo('training')">
-          <div class="quick-action-icon"><i class="ti ti-clipboard-list"></i></div>
-          <div class="quick-action-label">Today's session</div>
-          <div class="quick-action-sub">Technical: high</div>
-        </button>
-        <button class="quick-action" onclick="HF_ROUTER.navTo('health')">
-          <div class="quick-action-icon"><i class="ti ti-stethoscope"></i></div>
-          <div class="quick-action-label">Health flags</div>
-          <div class="quick-action-sub">2 alerts pending</div>
-        </button>
+    </div>
+
+    ${HF_SCRIPTURE.stripHTML()}
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--green)">${hasTeam ? "87%" : "-"}</div>
+        <div class="metric-label">Squad readiness</div>
+        <div class="metric-sub" style="color:var(--text2)">${hasTeam ? "+4% this week" : "No squad yet"}</div>
       </div>
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>AI agent activity</div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--red)">0</div>
+        <div class="metric-label">Risk alerts</div>
+        <div class="metric-sub" style="color:var(--text2)">All clear</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--gold)">${p.teamSize || 0}</div>
+        <div class="metric-label">Active players</div>
+        <div class="metric-sub" style="color:var(--text2)">${hasTeam ? "In your squad" : "Add players to get started"}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--red)">0</div>
+        <div class="metric-label">Messages</div>
+        <div class="metric-sub" style="color:var(--text2)">All caught up</div>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <button class="quick-action" onclick="HF_ROUTER.navTo('squad')">
+        <div class="quick-action-icon"><i class="ti ti-users"></i></div>
+        <div class="quick-action-label">View squad</div>
+        <div class="quick-action-sub">${p.teamSize || 0} players</div>
+      </button>
+      <button class="quick-action" onclick="HF_ROUTER.navTo('training')">
+        <div class="quick-action-icon"><i class="ti ti-clipboard-list"></i></div>
+        <div class="quick-action-label">Today's session</div>
+        <div class="quick-action-sub">${hasTeam ? "Technical: high" : "Plan a session"}</div>
+      </button>
+      <button class="quick-action" onclick="HF_ROUTER.navTo('health')">
+        <div class="quick-action-icon"><i class="ti ti-stethoscope"></i></div>
+        <div class="quick-action-label">Health flags</div>
+        <div class="quick-action-sub">${hasTeam ? "0 alerts" : "No players yet"}</div>
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>AI agent activity</div>
+      ${
+        !hasTeam
+          ? `
+        <div style="text-align:center;padding:32px;color:var(--text2)">
+          <i class="ti ti-users" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No squad activity yet</div>
+          <div style="font-size:13px">Add players to your squad to start tracking performance and health data.</div>
+          <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="HF_ROUTER.navTo('squad')">
+            <i class="ti ti-plus"></i> Add your first player
+          </button>
+        </div>`
+          : `
         ${activityHTML('<i class="ti ti-robot"></i>', "rgba(201,150,26,.1)", "Performance Agent", "Fatigue detected: Kwame Asante. Sprint load reduced 30% tomorrow.", "2 min ago")}
         ${activityHTML('<i class="ti ti-stethoscope"></i>', "rgba(200,16,46,.08)", "Health Agent", "Emmanuel Ofori: hamstring flag. Physio check 7am. Modified plan activated.", "18 min ago")}
-        ${activityHTML('<i class="ti ti-search"></i>', "rgba(26,122,46,.08)", "Scout Agent", "3 new prospects identified in Kumasi region. Profiles ready.", "1 hr ago")}
-      </div>`);
+        ${activityHTML('<i class="ti ti-search"></i>', "rgba(26,122,46,.08)", "Scout Agent", "3 new prospects identified in Kumasi region. Profiles ready.", "1 hr ago")}`
+      }
+    </div>`);
   };
 
   // PROFILE
@@ -149,17 +184,17 @@ const HF_COACH = (() => {
         ${avatarHTML(s.name, "xl", "#C9961A")}
         <div>
           <div class="profile-name">${s.name}</div>
-          <div class="profile-meta">${p.spec || "Head coach"} · ${p.club || "—"}</div>
+          <div class="profile-meta">${p.spec || "Head coach"} · ${p.club || "-"}</div>
           <div style="margin-top:8px">${badgeHTML("Coach", "gold")}</div>
         </div>
       </div>
       <div class="card">
         <div class="card-title"><div class="card-dot"></div>Coaching details</div>
         <div class="info-grid">
-          <div class="info-cell"><div class="info-label">Licence</div><div class="info-val">${p.licence || "—"}</div></div>
-          <div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp || "—"} years</div></div>
-          <div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club || "—"}</div></div>
-          <div class="info-cell"><div class="info-label">Specialisation</div><div class="info-val">${p.spec || "—"}</div></div>
+          <div class="info-cell"><div class="info-label">Licence</div><div class="info-val">${p.licence || "-"}</div></div>
+          <div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp || "-"} years</div></div>
+          <div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club || "-"}</div></div>
+          <div class="info-cell"><div class="info-label">Specialisation</div><div class="info-val">${p.spec || "-"}</div></div>
           <div class="info-cell"><div class="info-label">Squad size</div><div class="info-val">${p.teamSize || 22} players</div></div>
           <div class="info-cell"><div class="info-label">${s.contactType === "phone" ? "Phone" : "Email"}</div><div class="info-val">${s.displayContact || s.contact}</div></div>
         </div>
@@ -169,13 +204,27 @@ const HF_COACH = (() => {
   // SQUAD
   const squad = (s) => {
     const p = s.profile || {};
+    const hasPlayers = SQUAD.length > 0;
     setMain(`
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Squad roster: ${p.club || "Your club"}</div>
-        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-          <button class="btn btn-primary btn-sm" onclick="HF_UTILS.toast('Add player: Connect to Players Module.','success')">+ Add player</button>
-          <button class="btn btn-outline btn-sm" onclick="HF_UTILS.toast('Filter by position.','success')">Filter</button>
-        </div>
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Squad roster - ${p.club || "Your club"}</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="HF_UTILS.toast('Add player - connect to Players module.','success')">
+          <i class="ti ti-plus"></i> Add player
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="HF_UTILS.toast('Filter by position.','success')">
+          <i class="ti ti-filter"></i> Filter
+        </button>
+      </div>
+      ${
+        !hasPlayers
+          ? `
+        <div style="text-align:center;padding:32px;color:var(--text2)">
+          <i class="ti ti-users" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No players yet</div>
+          <div style="font-size:13px">Add players to your squad to start tracking their performance.</div>
+        </div>`
+          : `
         <table class="table">
           <thead><tr><th>Player</th><th>Pos</th><th>Age</th><th>Gender</th><th>Rating</th><th>Status</th></tr></thead>
           <tbody>
@@ -186,7 +235,7 @@ const HF_COACH = (() => {
                 <td>${pl.pos}</td>
                 <td>${pl.age}</td>
                 <td>
-                  <span style="font-size:10px;padding:1px 7px;border-radius:8px;font-weight:600;
+                  <span style="font-size:10px;padding:1px 7px;border-radius:0;font-weight:600;
                     background:${pl.gender === "female" ? "rgba(212,83,126,.1)" : "rgba(24,95,165,.1)"};
                     color:${pl.gender === "female" ? "#993556" : "#185FA5"}">
                     ${pl.gender === "female" ? "Female" : "Male"}
@@ -197,8 +246,9 @@ const HF_COACH = (() => {
               </tr>`,
             ).join("")}
           </tbody>
-        </table>
-      </div>`);
+        </table>`
+      }
+    </div>`);
   };
 
   // TRAINING

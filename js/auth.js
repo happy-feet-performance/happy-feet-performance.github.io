@@ -206,7 +206,7 @@ const HF_AUTH = (() => {
         tier: el("su-tier")?.value || "U21",
         club: el("su-club")?.value.trim() || "",
         hometown: el("su-hometown")?.value.trim() || "",
-        ratings: { speed: 60, tech: 60, tact: 55, phys: 60 },
+        ratings: { speed: 0, tech: 0, tact: 0, phys: 0 },
         faithStreak: 0,
       };
       if (!profile.pos) {
@@ -363,61 +363,6 @@ const HF_AUTH = (() => {
     HF_ROUTER.launch(session);
   };
 
-  // ─── Demo login ────────────────────────────────────────────
-  const demoLogin = (role) => {
-    const demos = {
-      player: {
-        userId: "demo-player",
-        role: "player",
-        name: "Kwame Asante",
-        contact: "kwame@happyfeet.com",
-        contactType: "email",
-        displayContact: "kwame@happyfeet.com",
-        profile: {
-          pos: "CAM",
-          tier: "U21",
-          club: "Accra Lions FC",
-          hometown: "Accra, Greater Accra",
-          ratings: { speed: 82, tech: 88, tact: 71, phys: 68 },
-          faithStreak: 5,
-        },
-      },
-      coach: {
-        userId: "demo-coach",
-        role: "coach",
-        name: "Coach E. Darko",
-        contact: "coach@happyfeet.com",
-        contactType: "email",
-        displayContact: "coach@happyfeet.com",
-        profile: {
-          licence: "CAF B",
-          exp: "8",
-          club: "Kumasi Academy FC",
-          spec: "All-round",
-          teamSize: 22,
-        },
-      },
-      scout: {
-        userId: "demo-scout",
-        role: "scout",
-        name: "Abena Mensah",
-        contact: "+233244000123",
-        contactType: "phone",
-        displayContact: "+233 244 000 123",
-        profile: {
-          org: "HappyFeet Scouting",
-          region: "Ghana, West Africa",
-          exp: "5",
-          dest: "Europe, USA",
-          prospectsTracked: 24,
-        },
-      },
-    };
-    const session = demos[role];
-    HF_DB.saveSession(session);
-    HF_ROUTER.launch(session);
-  };
-
   // ─── Session helper ────────────────────────────────────────
   const _makeSession = (user) => ({
     userId: user.id,
@@ -474,7 +419,6 @@ const HF_AUTH = (() => {
     goStep3,
     completeSignup,
     handleLogin,
-    demoLogin,
     logout,
     checkPassword,
   };

@@ -152,8 +152,8 @@ const HF_SCOUT = (() => {
         <div class="metric-card"><div class="metric-val" style="color:var(--gold)">${PROSPECTS.length}</div><div class="metric-label">Tracked</div></div>
         <div class="metric-card"><div class="metric-val" style="color:var(--red)">${PROSPECTS.filter((p) => p.pot === "Elite").length}</div><div class="metric-label">Elite prospects</div></div>
         <div class="metric-card"><div class="metric-val" style="color:var(--green)">${PROSPECTS.filter((p) => p.status === "shared").length}</div><div class="metric-label">Report shared</div></div>
-        <div class="metric-card"><div class="metric-val" style="color:var(--purple)">0</div><div class="metric-label">Placed</div></div>
-      </div>
+        <div class="metric-card"><div class="metric-val" style="color:var(--purple)">0</div><div class="metric-label">Placed</div><div class="metric-sub" style="color:var(--text2)">No placements yet</div></div>
+        </div>
       <div class="quick-actions">
         <button class="quick-action" onclick="HF_ROUTER.navTo('discover')">
           <div class="quick-action-icon"><i class="ti ti-search"></i></div>
@@ -187,17 +187,17 @@ const HF_SCOUT = (() => {
         ${avatarHTML(s.name, "xl", "#185FA5")}
         <div>
           <div class="profile-name">${s.name}</div>
-          <div class="profile-meta">${p.org || "—"} · ${p.region || "—"}</div>
+          <div class="profile-meta">${p.org || "-"} · ${p.region || "-"}</div>
           <div style="margin-top:8px">${badgeHTML("Scout", "blue")}</div>
         </div>
       </div>
       <div class="card">
         <div class="card-title"><div class="card-dot"></div>Scout details</div>
         <div class="info-grid">
-          <div class="info-cell"><div class="info-label">Organisation</div><div class="info-val">${p.org || "—"}</div></div>
-          <div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp || "—"} years</div></div>
-          <div class="info-cell"><div class="info-label">Region covered</div><div class="info-val">${p.region || "—"}</div></div>
-          <div class="info-cell"><div class="info-label">Target destinations</div><div class="info-val">${p.dest || "—"}</div></div>
+          <div class="info-cell"><div class="info-label">Organisation</div><div class="info-val">${p.org || "-"}</div></div>
+          <div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp || "-"} years</div></div>
+          <div class="info-cell"><div class="info-label">Region covered</div><div class="info-val">${p.region || "-"}</div></div>
+          <div class="info-cell"><div class="info-label">Target destinations</div><div class="info-val">${p.dest || "-"}</div></div>
           <div class="info-cell"><div class="info-label">Prospects tracked</div><div class="info-val">${p.prospectsTracked || PROSPECTS.length}</div></div>
           <div class="info-cell"><div class="info-label">${s.contactType === "phone" ? "Phone" : "Email"}</div><div class="info-val">${s.displayContact || s.contact}</div></div>
         </div>

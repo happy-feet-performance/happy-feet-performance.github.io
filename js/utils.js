@@ -14,7 +14,7 @@ const HF_UTILS = (() => {
       .slice(0, 2) || "??";
 
   const age = (dob) => {
-    if (!dob) return "—";
+    if (!dob) return "-";
     const b = new Date(dob),
       n = new Date();
     let a = n.getFullYear() - b.getFullYear();

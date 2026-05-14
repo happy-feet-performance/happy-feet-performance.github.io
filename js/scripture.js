@@ -1,5 +1,5 @@
 /* ============================================================
-   HappyFeet — scripture.js
+   HappyFeet: scripture.js
    Daily rotating scripture from a pool of 30
    Changes each day, consistent across all roles
    ============================================================ */
