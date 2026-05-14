@@ -27,7 +27,6 @@ const HF_DB = (() => {
   const createUser = async (data) => {
     const normalised = data.contact.toLowerCase().replace(/\s/g, "");
 
-    // Check if user already exists
     const { data: existing } = await _client
       .from("users")
       .select("id")
@@ -59,9 +58,71 @@ const HF_DB = (() => {
       .single();
 
     if (error) return { error: error.message };
+
+    // ── Insert default data rows for new user ──────────────────
+    const userId = user.id;
+
+    await _client.from("tracker").insert({
+      user_id: userId,
+      data: {
+        sessions: [],
+        ratings: { speed: 60, tech: 60, tact: 55, phys: 60 },
+        overallRating: 0,
+        sessionsThisMonth: 0,
+      },
+    });
+
+    await _client.from("health").insert({
+      user_id: userId,
+      data: {
+        checkins: {},
+        injuries: [],
+        lastCheckin: null,
+      },
+    });
+
+    await _client.from("training").insert({
+      user_id: userId,
+      data: {
+        sessions: [],
+        schedule: {},
+        currentPlan: null,
+      },
+    });
+
+    await _client.from("scout").insert({
+      user_id: userId,
+      data: {
+        prospects: [],
+        placements: [],
+        clubs: [
+          {
+            name: "WAFA SC Academy",
+            country: "Ghana",
+            tier: "National",
+            needs: "CM, ST, CB",
+            color: "#C9961A",
+          },
+          {
+            name: "FC Nordsjælland",
+            country: "Denmark",
+            tier: "European",
+            needs: "All positions U17-U21",
+            color: "#185FA5",
+          },
+          {
+            name: "Philadelphia Union II",
+            country: "USA",
+            tier: "MLS Next Pro",
+            needs: "CB, ST",
+            color: "#c8102e",
+          },
+        ],
+      },
+    });
+
     return { user: _normaliseUser(user) };
   };
-
   const findUser = async (contactRaw, password) => {
     const contact = contactRaw.toLowerCase().replace(/\s/g, "");
 

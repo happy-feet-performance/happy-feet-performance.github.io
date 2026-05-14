@@ -267,13 +267,14 @@ const HF_AUTH = (() => {
       }
     }
 
+    const hashedPassword = await HF_UTILS.hashPassword(pass);
     state.signup = {
       name,
       contact,
       localPhone,
       contactType,
       displayContact,
-      password: pass,
+      password: hashedPassword,
       role: state.role,
       profile,
     };
@@ -344,7 +345,9 @@ const HF_AUTH = (() => {
       return;
     }
 
-    const user = await HF_DB.findUser(contact, pass);
+    const hashedPassword = await HF_UTILS.hashPassword(pass);
+    const user = await HF_DB.findUser(contact, hashedPassword);
+
     if (!user) {
       showError(
         "login-err",

@@ -120,21 +120,6 @@
               >Create account</a
             >
           </div>
-          <div class="divider">or try a demo</div>
-          <div class="demo-row">
-            <button
-              class="demo-btn player"
-              onclick="HF_AUTH.demoLogin('player')"
-            >
-              <i class="ti ti-ball-football"></i> Player
-            </button>
-            <button class="demo-btn coach" onclick="HF_AUTH.demoLogin('coach')">
-              <i class="ti ti-clipboard-list"></i> Coach
-            </button>
-            <button class="demo-btn scout" onclick="HF_AUTH.demoLogin('scout')">
-              <i class="ti ti-search"></i> Scout
-            </button>
-          </div>
         </div>
       </div>
 
@@ -345,7 +330,11 @@
         <button class="hamburger" onclick="HF_ROUTER.toggleMobileNav()">
           ☰
         </button>
-        <div class="topbar-brand">
+        <div
+          class="topbar-brand"
+          onclick="HF_ROUTER.navTo('dashboard')"
+          style="cursor: pointer"
+        >
           <div
             class="topbar-hex"
             style="
@@ -362,7 +351,10 @@
           class="topbar-right"
           style="display: flex; align-items: center; gap: 16px"
         >
-          <div style="text-align: right; line-height: 1.3">
+          <div
+            style="text-align: right; line-height: 1.3; cursor: pointer"
+            onclick="HF_ROUTER.navTo('profile')"
+          >
             <div
               style="
                 font-size: 10px;

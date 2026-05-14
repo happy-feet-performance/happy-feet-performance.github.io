@@ -149,15 +149,15 @@ const HF_ROUTER = (() => {
       .join("");
 
     nav.innerHTML = `
-    <div class="sidenav-scroll">${navHTML}</div>
-    <div class="sidenav-footer">
-      <div class="avatar avatar-sm" style="background:${ROLE_COLORS[session.role] || "#C49A0A"}">${initials(session.name)}</div>
-      <div>
-        <div class="sidenav-footer-name">${session.name}</div>
-        <div class="sidenav-footer-role">${session.displayContact || session.contact}</div>
-      </div>
-    </div>`;
-  };
+      <div class="sidenav-scroll">${navHTML}</div>
+      <div class="sidenav-footer" onclick="HF_ROUTER.navTo('profile')" style="cursor:pointer;">
+        <div class="avatar avatar-sm" style="background:${ROLE_COLORS[session.role] || "#C49A0A"}">${initials(session.name)}</div>
+        <div>
+          <div class="sidenav-footer-name">${session.name}</div>
+          <div class="sidenav-footer-role">${session.contactType === "phone" ? "Phone" : "Email"} · ${session.displayContact || session.contact}</div>
+        </div>
+      </div>`;
+    };
 
   // ─── Navigate to a view ─────────────────────────────────────
   const navTo = (view, el_) => {
