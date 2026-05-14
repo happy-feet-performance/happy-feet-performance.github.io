@@ -125,4 +125,4 @@ The production domain `happyfeet.org` will be pointed to Netlify via DNS once ac
 
 ---
 
-*HappyFeet Performance Hub — Changing the narrative of African football.*
+*HappyFeet Performance Hub is changing the narrative of African football.*
