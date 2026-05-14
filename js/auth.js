@@ -478,7 +478,7 @@ const HF_AUTH = (() => {
 
     if (
       year &&
-      (parseInt(year) < 1800 || parseInt(year) > new Date().getFullYear())
+      (parseInt(year) < 1600 || parseInt(year) > new Date().getFullYear())
     ) {
       showError(
         "squad-err",
