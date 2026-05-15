@@ -249,7 +249,7 @@ const HF_ROUTER = (() => {
       <div class="avatar avatar-sm" style="background:${ROLE_COLORS[session.role] || "#C49A0A"}">${initials(session.name)}</div>
       <div>
         <div class="sidenav-footer-name">${session.name}</div>
-        <div class="sidenav-footer-role">${session.contactType === "phone" ? "Phone" : "Email"} · ${session.displayContact || session.contact}</div>
+        <div class="sidenav-footer-role">${session.displayContact || session.contact}</div>
       </div>
     </div>`;
   };

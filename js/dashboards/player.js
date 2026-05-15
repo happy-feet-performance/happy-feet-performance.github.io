@@ -330,11 +330,11 @@ const HF_PLAYER = (() => {
       "match prep": "Match Prep",
     };
 
-    const today = new Date().getDay(); // 0 = Sunday
+    const key = `hf_training_plan_${s.userId}`;
     const saved = await HF_DB.getTraining(s.userId);
     const plan =
-      saved?.weeklyPlan ||
-      JSON.parse(localStorage.getItem("hf_training_plan") || "{}");
+      saved?.weeklyPlan || JSON.parse(localStorage.getItem(key) || "{}");
+    const today = new Date().getDay();
 
     const dayCards = days
       .map((day, i) => {
@@ -742,9 +742,10 @@ const HF_PLAYER = (() => {
 
   const updateTrainingDay = async (dayIndex, type) => {
     const session = HF_DB.getSession();
-    const saved = JSON.parse(localStorage.getItem("hf_training_plan") || "{}");
+    const key = `hf_training_plan_${session.userId}`;
+    const saved = JSON.parse(localStorage.getItem(key) || "{}");
     saved[dayIndex] = type;
-    localStorage.setItem("hf_training_plan", JSON.stringify(saved));
+    localStorage.setItem(key, JSON.stringify(saved));
 
     const existing = await HF_DB.getTraining(session.userId);
     await HF_DB.saveTraining(session.userId, {

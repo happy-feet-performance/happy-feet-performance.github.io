@@ -21,6 +21,8 @@ const HF_COACH = (() => {
     if (mc) mc.innerHTML = html;
   };
 
+  const SQUAD = [];
+
   const statusBadge = (st) => {
     const map = { fit: "green", monitor: "gold", alert: "red" };
     const lbl = { fit: "Fit", monitor: "Monitor", alert: "Alert" };
@@ -198,7 +200,7 @@ const HF_COACH = (() => {
       }
     </div>
   `);
-  if (newUser) setTimeout(() => HF_PLAYER._launchConfetti(), 300);
+    if (newUser) setTimeout(() => HF_UTILS.launchConfetti(), 300);
   };
 
   // PROFILE
@@ -328,6 +330,21 @@ const HF_COACH = (() => {
 
   // TRACKING
   const tracking = (s) => {
+    if (SQUAD.length === 0) {
+      setMain(`
+      <div class="card">
+        <div style="text-align:center;padding:32px;color:var(--text2)">
+          <i class="ti ti-chart-line" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No players to track</div>
+          <div style="font-size:13px">Invite players to your squad to start tracking their performance.</div>
+          <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="HF_ROUTER.navTo('squad')">
+            <i class="ti ti-users"></i> Go to squad
+          </button>
+        </div>
+      </div>`);
+      return;
+    }
+
     setMain(`
       <div class="card">
         <div class="card-title"><div class="card-dot"></div>Log a player session rating</div>
