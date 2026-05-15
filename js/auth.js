@@ -457,6 +457,7 @@ const HF_AUTH = (() => {
     displayContact: user.displayContact || user.contact,
     profile: user.profile,
     squadStatus: user.squadStatus || "unregistered",
+    created: user.created,
   });
 
   const logout = () => {

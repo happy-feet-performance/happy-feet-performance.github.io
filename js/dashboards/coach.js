@@ -53,6 +53,7 @@ const HF_COACH = (() => {
     const isUnregistered = squadStatus === "unregistered";
     const isRejected = squadStatus === "rejected";
     const isAwaitingCoach = squadStatus === "awaiting_coach_approval";
+    const newUser = HF_UTILS.isNewUser(s);
 
     const squadStatusBadge = isVerified
       ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">Verified</span>`
@@ -67,7 +68,7 @@ const HF_COACH = (() => {
     setMain(`
     <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
       <div>
-        <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">Coach ${s.name.split(" ").pop()}</div>
+        <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${newUser ? "Welcome" : "Welcome back"}, Coach ${s.name.split(" ").pop()}!</div>
         <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.spec || "Head coach"} · ${p.licence || "-"} licence</div>
         <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
           ${badgeHTML("Coach", "gold")}
@@ -197,6 +198,7 @@ const HF_COACH = (() => {
       }
     </div>
   `);
+  if (newUser) setTimeout(() => HF_PLAYER._launchConfetti(), 300);
   };
 
   // PROFILE

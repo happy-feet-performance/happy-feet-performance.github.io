@@ -232,6 +232,33 @@ const HF_UTILS = (() => {
     }`;
   };
 
+  const isNewUser = (session) => {
+    if (!session?.created) return false;
+    const created = new Date(session.created);
+    const now = new Date();
+    return now - created < 5 * 60 * 1000;
+  };
+
+  const launchConfetti = () => {
+    const colors = ["#C49A0A", "#1a7a2e", "#ffffff", "#185FA5", "#0f0f0d"];
+    for (let i = 0; i < 120; i++) {
+      const piece = document.createElement("div");
+      piece.style.cssText = `
+      position:fixed;top:-10px;
+      left:${Math.random() * 100}vw;
+      width:${Math.random() * 8 + 4}px;
+      height:${Math.random() * 8 + 4}px;
+      background:${colors[Math.floor(Math.random() * colors.length)]};
+      z-index:9999;pointer-events:none;
+      animation:confettiFall ${Math.random() * 2 + 2}s ease-in forwards;
+      animation-delay:${Math.random() * 1.5}s;
+      transform:rotate(${Math.random() * 360}deg);
+    `;
+      document.body.appendChild(piece);
+      setTimeout(() => piece.remove(), 4000);
+    }
+  };
+
   return {
     initials,
     age,
@@ -258,6 +285,8 @@ const HF_UTILS = (() => {
     countryCodeSelect,
     hashPassword,
     messageListHTML,
+    isNewUser,
+    launchConfetti,
   };
 })();
 

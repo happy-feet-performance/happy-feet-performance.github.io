@@ -136,10 +136,11 @@ const HF_SCOUT = (() => {
   // DASHBOARD
   const dashboard = (s) => {
     const p = s.profile || {};
+    const newUser = HF_UTILS.isNewUser(s);
     setMain(`
       <div class="welcome-banner">
         <div>
-          <div class="welcome-title">Scout ${s.name.split(" ").pop()} <i class="ti ti-telescope"></i></div>
+          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${newUser ? "Welcome" : "Welcome back"}, Scout ${s.name.split(" ").pop()}!</div>
           <div class="welcome-sub">${p.org || "HappyFeet Scouting"} · ${p.region || "Ghana"}</div>
         </div>
         <div style="text-align:right">
@@ -177,6 +178,7 @@ const HF_SCOUT = (() => {
         ${activityHTML('<i class="ti ti-circle-check"></i>', "rgba(26,122,46,.08)", "Report shared", "Nana Amponsah profile sent to FC Nordsjælland.", "1 day ago")}
         ${activityHTML('<i class="ti ti-plus"></i>', "rgba(24,95,165,.08)", "New prospect added", "Adjoa Frempong (CM, 15, Accra): High potential.", "2 days ago")}
       </div>`);
+    if (newUser) setTimeout(() => HF_PLAYER._launchConfetti(), 300);
   };
 
   // PROFILE

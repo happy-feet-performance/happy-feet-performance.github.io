@@ -67,11 +67,12 @@ const HF_PLAYER = (() => {
     const sessionsThisMonth = tracker.sessionsThisMonth || 0;
     const faithStreak = p.faithStreak || 0;
     const messagesUnread = 0;
+    const newUser = HF_UTILS.isNewUser(s);
 
     setMain(`
     <div class="welcome-banner">
       <div>
-        <div class="welcome-title">Welcome back, ${s.name.split(" ")[0]}</div>
+        <div class="welcome-title" id="welcome-title">${newUser ? "Welcome" : "Welcome back"}, ${s.name.split(" ")[0]}!</div>
         <div class="welcome-sub">${p.pos || "Player"} · ${p.tier || "U21"} · ${p.status === "unattached" ? "Free Agent" : p.club || "unattached"}</div>
       </div>
       <div style="text-align:right">
@@ -135,6 +136,7 @@ const HF_PLAYER = (() => {
           : ""
       }
     </div>`);
+    if (newUser) setTimeout(() => HF_UTILS.launchConfetti(), 300);
   };
 
   // ── PROFILE ─────────────────────────────────────────────────
