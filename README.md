@@ -19,7 +19,7 @@ Players across Ghana and Africa develop with zero performance tracking, health m
 
 Augie grew up in Ghana and experienced the raw talent and total absence of structure in African football. He later played in the USA and saw what world-class data, coaching infrastructure, and player support looks like. His vision is to give African players the same tools he has been provided in America.
 
-Paula translated that mission into a platform built from the ground up to serve athletes from U10 academy level all the way through to professional careers.
+Paula translated that mission into an AI-powered athletic performance platform built for Ghana and Africa from U10 academy players to professional athletes.
 
 ---
 
@@ -117,11 +117,11 @@ The production domain `happyfeet.org` will be pointed to Netlify via DNS once ac
 ## Built with
 
 - Vanilla HTML, CSS, JavaScript
-- [Supabase](https://supabase.com) — PostgreSQL database + RLS
-- [Netlify](https://netlify.com) — static hosting + HTTP headers
-- [Tabler Icons](https://tabler.io/icons) — outline icon webfont
-- [Inter](https://fonts.google.com/specimen/Inter) + [Oswald](https://fonts.google.com/specimen/Oswald) — Google Fonts
-- [Anthropic API](https://anthropic.com) — AI features
+- [Supabase](https://supabase.com): PostgreSQL database + RLS
+- [Netlify](https://netlify.com): static hosting + HTTP headers
+- [Tabler Icons](https://tabler.io/icons): outline icon webfont
+- [Inter](https://fonts.google.com/specimen/Inter) + [Oswald](https://fonts.google.com/specimen/Oswald): Google Fonts
+- [Anthropic API](https://anthropic.com): AI features
 
 ---
 

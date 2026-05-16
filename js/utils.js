@@ -190,24 +190,40 @@ const HF_UTILS = (() => {
     const unread = msgs.filter((m) => !m.read);
     const read = msgs.filter((m) => m.read);
 
+    const getSenderLabel = (m) => {
+      if (m.senderName) return m.senderName;
+      if (!m.from_id || m.from_id === "admin" || m.from_id === "system")
+        return "HappyFeet Admin";
+      return "HappyFeet";
+    };
+
+    const getSenderColor = (fromId) => {
+      if (!fromId || fromId === "admin" || fromId === "system")
+        return "var(--gold)";
+      return "var(--blue)";
+    };
+
     const msgRow = (m) => `
-    <div class="msg-item" id="msg-${m.id}" onclick="HF_${role.toUpperCase()}.readMessage('${m.id}', this)">
-      <div class="avatar avatar-md" style="background:#0f0f0d;display:flex;align-items:center;justify-content:center;">
-        <i class="ti ti-shield" style="font-size:16px;color:var(--gold)"></i>
-      </div>
-      <div style="flex:1">
-        <div class="msg-name">${m.subject || "Message"}</div>
-        <div class="msg-preview">${m.body}</div>
-        <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-        ${!m.read ? `<div class="msg-unread">1</div>` : ""}
-        <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;" 
-          onclick="event.stopPropagation();HF_${role.toUpperCase()}.archiveMessage('${m.id}', this)">
-          <i class="ti ti-archive"></i>
-        </button>
-      </div>
-    </div>`;
+      <div class="msg-item" id="msg-${m.id}" onclick="HF_${role.toUpperCase()}.readMessage('${m.id}', document.getElementById('msg-${m.id}'))">
+        <div class="avatar avatar-md" style="background:#0f0f0d;display:flex;align-items:center;justify-content:center;">
+          <i class="ti ti-shield" style="font-size:16px;color:${m.from_id === "admin" || m.from_id === "system" ? "var(--gold)" : "var(--blue)"}"></i>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+            From: ${getSenderLabel(m)}
+          </div>
+          <div class="msg-name">${m.subject || "Message"}</div>
+          <div class="msg-preview">${m.body}</div>
+          <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          ${!m.read ? `<div class="msg-unread" id="badge-${m.id}">1</div>` : ""}
+          <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
+            onclick="event.stopPropagation();HF_${role.toUpperCase()}.archiveMessage('${m.id}', this)">
+            <i class="ti ti-archive"></i>
+          </button>
+        </div>
+      </div>`;
 
     return `
     ${

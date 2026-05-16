@@ -7,7 +7,13 @@ const HF_ADMIN = (() => {
   };
 
   const render = async (view, session) => {
-    const views = { dashboard, verifications, users, messages };
+    const views = {
+      dashboard,
+      "squad-verifications": squadVerifications,
+      "agency-verifications": agencyVerifications,
+      users,
+      messages,
+    };
     const fn = views[view] || dashboard;
     fn(session);
   };
@@ -15,13 +21,24 @@ const HF_ADMIN = (() => {
   // ── DASHBOARD ──────────────────────────────────────────────
   const dashboard = async (s) => {
     const { data: pending } = await HF_DB.getPendingVerifications();
+    const { data: agencyPending } = await HF_DB.getPendingAgencyVerifications();
     const { data: allVerifications } = await HF_DB.getAllVerifications();
+    const { data: allAgencyVerifications } =
+      await HF_DB.getAllAgencyVerifications();
     const { data: allUsers } = await HF_DB.getAllUsers();
 
-    const pendingCount = pending?.length || 0;
+    const pendingCount = (pending?.length || 0) + (agencyPending?.length || 0);
     const verifiedCount =
-      allVerifications?.filter((v) => v.status === "verified").length || 0;
+      (allVerifications?.filter((v) => v.status === "verified").length || 0) +
+      (allAgencyVerifications?.filter((v) => v.status === "verified").length ||
+        0);
     const totalUsers = allUsers?.length || 0;
+    const rejectedCount =
+      (allVerifications?.filter((v) => v.status === "rejected").length || 0) +
+      (allAgencyVerifications?.filter((v) => v.status === "rejected").length ||
+        0);
+
+    HF_ROUTER.refreshSidenavBadge("verifications", pendingCount, "var(--gold)");
 
     setMain(`
       <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
@@ -38,19 +55,19 @@ const HF_ADMIN = (() => {
             <div class="metric-sub" style="color:var(--text2)">Awaiting review</div>
         </div>
         <div class="metric-card">
-            <div class="metric-val" style="color:var(--green)">${verifiedCount}</div>
-            <div class="metric-label">Verified squads</div>
-            <div class="metric-sub" style="color:var(--text2)">Total approved</div>
-        </div>
-        <div class="metric-card">
             <div class="metric-val" style="color:var(--blue)">${totalUsers}</div>
             <div class="metric-label">Total users</div>
             <div class="metric-sub" style="color:var(--text2)">All roles</div>
         </div>
         <div class="metric-card">
-            <div class="metric-val" style="color:var(--red)">${allVerifications?.filter((v) => v.status === "rejected").length || 0}</div>
-            <div class="metric-label">Rejected</div>
-            <div class="metric-sub" style="color:var(--text2)">Total rejected</div>
+            <div class="metric-val" style="color:var(--green)">${allAgencyVerifications?.filter((v) => v.status === "verified").length || 0}</div>
+            <div class="metric-label">Verified agencies</div>
+            <div class="metric-sub" style="color:var(--text2)">Total approved</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-val" style="color:var(--green)">${allVerifications?.filter((v) => v.status === "verified").length || 0}</div>
+            <div class="metric-label">Verified squads</div>
+            <div class="metric-sub" style="color:var(--text2)">Total approved</div>
         </div>
         </div>
 
@@ -59,19 +76,152 @@ const HF_ADMIN = (() => {
         ${
           pendingCount === 0
             ? `
-          <div style="text-align:center;padding:32px;color:var(--text2)">
+            <div style="text-align:center;padding:32px;color:var(--text2)">
             <i class="ti ti-circle-check" style="font-size:32px;margin-bottom:10px;display:block;color:var(--green)"></i>
             <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">All caught up</div>
             <div style="font-size:13px">No pending verifications at this time.</div>
-          </div>`
+            </div>`
             : `
-          ${pending.map((v) => _verificationRow(v)).join("")}`
+            ${
+              pending?.length > 0
+                ? `
+            <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
+                Squads
+            </div>
+            ${pending.map((v) => _verificationRow(v)).join("")}`
+                : ""
+            }
+            ${
+              agencyPending?.length > 0
+                ? `
+            <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);margin:12px 0 8px;">
+                Agencies
+            </div>
+            ${agencyPending.map((v) => _agencyVerificationRow(v)).join("")}`
+                : ""
+            }`
         }
-      </div>`);
+        </div>`);
+  };
+
+  // ── SQUAD ACTIONS ──────────────────────────────────────────
+  const approveSquad = async (verificationId, coachId, teamName) => {
+    const result = await HF_DB.approveSquadVerification(
+      verificationId,
+      coachId,
+      teamName,
+    );
+    if (result.error) {
+      toast(result.error, "error");
+      return;
+    }
+    const { data: pending } = await HF_DB.getPendingVerifications();
+    const { data: agencyPending } = await HF_DB.getPendingAgencyVerifications();
+    HF_ROUTER.refreshSidenavBadge(
+      "squad-verifications",
+      pending?.length || 0,
+      "var(--gold)",
+    );
+    toast(`${teamName} has been verified!`, "success");
+    squadVerifications(HF_DB.getSession());
+  };
+
+  const rejectSquad = async (verificationId, coachId, teamName) => {
+    const reason = prompt("Enter rejection reason:");
+    if (!reason) return;
+    const result = await HF_DB.rejectSquadVerification(
+      verificationId,
+      coachId,
+      teamName,
+      reason,
+    );
+    if (result.error) {
+      toast(result.error, "error");
+      return;
+    }
+    const { data: pending } = await HF_DB.getPendingVerifications();
+    HF_ROUTER.refreshSidenavBadge(
+      "squad-verifications",
+      pending?.length || 0,
+      "var(--gold)",
+    );
+    toast(`${teamName} has been rejected.`, "success");
+    squadVerifications(HF_DB.getSession());
+  };
+
+  const approveAgency = async (verificationId, scoutId, agencyName) => {
+    const result = await HF_DB.approveAgencyVerification(
+      verificationId,
+      scoutId,
+      agencyName,
+    );
+    if (result.error) {
+      toast(result.error, "error");
+      return;
+    }
+    const { data: agencyPending } = await HF_DB.getPendingAgencyVerifications();
+    HF_ROUTER.refreshSidenavBadge(
+      "agency-verifications",
+      agencyPending?.length || 0,
+      "var(--gold)",
+    );
+    toast(`${agencyName} has been verified!`, "success");
+    agencyVerifications(HF_DB.getSession());
+  };
+
+  const rejectAgency = async (verificationId, scoutId, agencyName) => {
+    const reason = prompt(`Rejection reason for ${agencyName}:`);
+    if (!reason) return;
+    const result = await HF_DB.rejectAgencyVerification(
+      verificationId,
+      scoutId,
+      agencyName,
+      reason,
+    );
+    if (result.error) {
+      toast(result.error, "error");
+      return;
+    }
+    const { data: agencyPending } = await HF_DB.getPendingAgencyVerifications();
+    HF_ROUTER.refreshSidenavBadge(
+      "agency-verifications",
+      agencyPending?.length || 0,
+      "var(--gold)",
+    );
+    toast(`${agencyName} has been rejected.`, "success");
+    agencyVerifications(HF_DB.getSession());
   };
 
   // ── VERIFICATIONS ──────────────────────────────────────────
-  const verifications = async (s) => {
+  const _agencyVerificationRow = (v) => `
+  <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--blue);margin-bottom:var(--sp-sm);">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+      <div>
+        <div style="font-size:14px;font-weight:600;color:var(--text)">${v.agency_name}</div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">
+          Regions: ${Array.isArray(v.regions_covered) ? v.regions_covered.join(", ") : v.region || "-"}
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px">
+          Targets: ${Array.isArray(v.target_leagues) ? v.target_leagues.join(", ") : "-"}
+        </div>
+        ${v.website ? `<div style="font-size:11px;color:var(--blue);margin-top:2px">${v.website}</div>` : ""}
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">
+          Submitted ${HF_UTILS.timeAgo(v.submitted_at)}
+        </div>
+      </div>
+      ${badgeHTML("Pending", "blue")}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.approveAgency('${v.id}','${v.scout_id}','${v.agency_name}')">
+        <i class="ti ti-circle-check"></i> Approve
+      </button>
+      <button class="btn btn-danger btn-sm" onclick="HF_ADMIN.rejectAgency('${v.id}','${v.scout_id}','${v.agency_name}')">
+        <i class="ti ti-x"></i> Reject
+      </button>
+    </div>
+  </div>`;
+
+  const squadVerifications = async (s) => {
     const { data: allVerifications } = await HF_DB.getAllVerifications();
     const pending =
       allVerifications?.filter((v) => v.status === "pending") || [];
@@ -80,71 +230,159 @@ const HF_ADMIN = (() => {
     const rejected =
       allVerifications?.filter((v) => v.status === "rejected") || [];
 
+    const section = (title, count, color, content, startOpen = false) => `
+    <div class="card">
+      <div class="card-title" style="cursor:pointer;justify-content:space-between;"
+        onclick="const c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none';this.querySelector('i').className='ti '+(c.style.display==='none'?'ti-chevron-down':'ti-chevron-up');">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>${title}
+          <span style="color:${color};margin-left:4px">${count}</span>
+        </div>
+        <i class="ti ${startOpen ? "ti-chevron-up" : "ti-chevron-down"}" style="font-size:14px;color:var(--text3)"></i>
+      </div>
+      <div style="display:${startOpen ? "block" : "none"}">
+        ${count === 0 ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">Nothing here yet.</div>` : content}
+      </div>
+    </div>`;
+
     setMain(`
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Pending <span style="color:var(--gold);margin-left:6px">${pending.length}</span></div>
-        ${
-          pending.length === 0
-            ? `
-          <div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No pending verifications.</div>`
-            : pending.map((v) => _verificationRow(v)).join("")
-        }
-      </div>
+    <div style="font-family:var(--font-head);font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-lg);">
+      Squad Verifications
+    </div>
 
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Verified <span style="color:var(--green);margin-left:6px">${verified.length}</span></div>
-        ${
-          verified.length === 0
-            ? `
-          <div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No verified squads yet.</div>`
-            : verified
-                .map(
-                  (v) => `
-            <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--green);margin-bottom:var(--sp-sm);">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <div>
-                  <div style="font-size:14px;font-weight:600;color:var(--text)">${v.team_name}</div>
-                  <div style="font-size:12px;color:var(--text2);margin-top:2px">${v.league} · ${v.home_ground || "-"} · Founded ${v.founding_year || "-"}</div>
-                  <div style="font-size:11px;color:var(--text3);margin-top:2px">
-                    Submitted ${new Date(v.submitted_at).toLocaleDateString()} · 
-                    Verified ${v.reviewed_at ? new Date(v.reviewed_at).toLocaleDateString() : "-"}
-                  </div>
-                </div>
-                ${badgeHTML("Verified", "green")}
-              </div>
-            </div>`,
-                )
-                .join("")
-        }
-      </div>
+    ${section(
+      "Pending",
+      pending.length,
+      "var(--gold)",
+      pending.map((v) => _verificationRow(v)).join(""),
+      true,
+    )}
 
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Rejected <span style="color:var(--red);margin-left:6px">${rejected.length}</span></div>
-        ${
-          rejected.length === 0
-            ? `
-          <div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No rejected verifications.</div>`
-            : rejected
-                .map(
-                  (v) => `
-            <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--red);margin-bottom:var(--sp-sm);">
-              <div style="display:flex;justify-content:space-between;align-items:center;">
-                <div>
-                  <div style="font-size:14px;font-weight:600;color:var(--text)">${v.team_name}</div>
-                  <div style="font-size:12px;color:var(--text2);margin-top:2px">${v.league} · ${v.home_ground || "-"}</div>
-                  <div style="font-size:11px;color:var(--red);margin-top:2px">Reason: ${v.rejection_reason || "-"}</div>
-                  <div style="font-size:11px;color:var(--text3);margin-top:2px">
-                    Submitted ${new Date(v.submitted_at).toLocaleDateString()} · 
-                    Rejected ${v.reviewed_at ? new Date(v.reviewed_at).toLocaleDateString() : "-"}
-                  </div>
-                </div>
-                ${badgeHTML("Rejected", "red")}
+    ${section(
+      "Verified",
+      verified.length,
+      "var(--green)",
+      verified
+        .map(
+          (v) => `
+        <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--green);margin-bottom:var(--sp-sm);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--text)">${v.team_name}</div>
+              <div style="font-size:12px;color:var(--text2)">${v.league} · Verified ${v.reviewed_at ? HF_UTILS.timeAgo(v.reviewed_at) : "-"}</div>
+            </div>
+            ${badgeHTML("Verified", "green")}
+          </div>
+        </div>`,
+        )
+        .join(""),
+    )}
+
+    ${section(
+      "Rejected",
+      rejected.length,
+      "var(--red)",
+      rejected
+        .map(
+          (v) => `
+        <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--red);margin-bottom:var(--sp-sm);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--text)">${v.team_name}</div>
+              <div style="font-size:11px;color:var(--red)">Reason: ${v.rejection_reason || "-"}</div>
+              <div style="font-size:11px;color:var(--text3)">${HF_UTILS.timeAgo(v.submitted_at)}</div>
+            </div>
+            ${badgeHTML("Rejected", "red")}
+          </div>
+        </div>`,
+        )
+        .join(""),
+    )}
+  `);
+  };
+
+  const agencyVerifications = async (s) => {
+    const { data: allAgencyVerifications } =
+      await HF_DB.getAllAgencyVerifications();
+    const pending =
+      allAgencyVerifications?.filter((v) => v.status === "pending") || [];
+    const verified =
+      allAgencyVerifications?.filter((v) => v.status === "verified") || [];
+    const rejected =
+      allAgencyVerifications?.filter((v) => v.status === "rejected") || [];
+
+    const section = (title, count, color, content, startOpen = false) => `
+    <div class="card">
+      <div class="card-title" style="cursor:pointer;justify-content:space-between;"
+        onclick="const c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none';this.querySelector('i').className='ti '+(c.style.display==='none'?'ti-chevron-down':'ti-chevron-up');">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>${title}
+          <span style="color:${color};margin-left:4px">${count}</span>
+        </div>
+        <i class="ti ${startOpen ? "ti-chevron-up" : "ti-chevron-down"}" style="font-size:14px;color:var(--text3)"></i>
+      </div>
+      <div style="display:${startOpen ? "block" : "none"}">
+        ${count === 0 ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">Nothing here yet.</div>` : content}
+      </div>
+    </div>`;
+
+    setMain(`
+    <div style="font-family:var(--font-head);font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-lg);">
+      Agency Verifications
+    </div>
+
+    ${section(
+      "Pending",
+      pending.length,
+      "var(--gold)",
+      pending.map((v) => _agencyVerificationRow(v)).join(""),
+      true,
+    )}
+
+    ${section(
+      "Verified",
+      verified.length,
+      "var(--green)",
+      verified
+        .map(
+          (v) => `
+        <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--green);margin-bottom:var(--sp-sm);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--text)">${v.agency_name}</div>
+              <div style="font-size:12px;color:var(--text2)">
+                Regions: ${Array.isArray(v.regions_covered) ? v.regions_covered.join(", ") : v.region || "-"}
               </div>
-            </div>`,
-                )
-                .join("")
-        }
-      </div>`);
+              <div style="font-size:11px;color:var(--text2)">Verified ${v.reviewed_at ? HF_UTILS.timeAgo(v.reviewed_at) : "-"}</div>
+            </div>
+            ${badgeHTML("Verified", "green")}
+          </div>
+        </div>`,
+        )
+        .join(""),
+    )}
+
+    ${section(
+      "Rejected",
+      rejected.length,
+      "var(--red)",
+      rejected
+        .map(
+          (v) => `
+        <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--red);margin-bottom:var(--sp-sm);">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:14px;font-weight:600;color:var(--text)">${v.agency_name}</div>
+              <div style="font-size:11px;color:var(--red)">Reason: ${v.rejection_reason || "-"}</div>
+              <div style="font-size:11px;color:var(--text3)">${HF_UTILS.timeAgo(v.submitted_at)}</div>
+            </div>
+            ${badgeHTML("Rejected", "red")}
+          </div>
+        </div>`,
+        )
+        .join(""),
+    )}
+  `);
   };
 
   // ── USERS ──────────────────────────────────────────────────
@@ -226,6 +464,21 @@ const HF_ADMIN = (() => {
     const { data: msgs } = await HF_DB.getMessages(s.userId);
     const { data: archived } = await HF_DB.getArchivedMessages(s.userId);
 
+    // enrich messages with sender names
+    const enriched = await Promise.all(
+      (msgs || []).map(async (m) => ({
+        ...m,
+        senderName: await HF_DB.getUserNameById(m.from_id),
+      })),
+    );
+
+    const enrichedArchived = await Promise.all(
+      (archived || []).map(async (m) => ({
+        ...m,
+        senderName: await HF_DB.getUserNameById(m.from_id),
+      })),
+    );
+
     setMain(`
     <div class="card">
       <div class="card-title"><div class="card-dot"></div>Messages</div>
@@ -252,19 +505,22 @@ const HF_ADMIN = (() => {
           </span>
         </div>
         <div style="display:none">
-          ${archived
+          ${enrichedArchived
             .map(
               (m) => `
-            <div class="msg-item">
-              <div class="avatar avatar-md" style="background:#0f0f0d;display:flex;align-items:center;justify-content:center;">
-                <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
-              </div>
-              <div style="flex:1;opacity:0.6">
-                <div class="msg-name">${m.subject || "Message"}</div>
-                <div class="msg-preview">${m.body}</div>
-                <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
-              </div>
-            </div>`,
+                <div class="msg-item">
+                    <div class="avatar avatar-md" style="background:#0f0f0d;display:flex;align-items:center;justify-content:center;">
+                    <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
+                    </div>
+                    <div style="flex:1;opacity:0.6">
+                    <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+                        From: ${m.senderName || "HappyFeet Admin"}
+                    </div>
+                    <div class="msg-name">${m.subject || "Message"}</div>
+                    <div class="msg-preview">${m.body}</div>
+                    <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
+                    </div>
+                </div>`,
             )
             .join("")}
         </div>
@@ -383,54 +639,6 @@ const HF_ADMIN = (() => {
     users(HF_DB.getSession());
   };
 
-  // ── SQUAD ACTIONS ──────────────────────────────────────────
-  const approveSquad = async (verificationId, coachId, teamName) => {
-    const result = await HF_DB.approveSquadVerification(
-      verificationId,
-      coachId,
-      teamName,
-    );
-    if (result.error) {
-      toast(result.error, "error");
-      return;
-    }
-
-    const { data: pending } = await HF_DB.getPendingVerifications();
-    HF_ROUTER.refreshSidenavBadge(
-      "verifications",
-      pending?.length || 0,
-      "var(--gold)",
-    );
-
-    toast(`${teamName} has been verified!`, "success");
-    dashboard(HF_DB.getSession());
-  };
-
-  const rejectSquad = async (verificationId, coachId, teamName) => {
-    const reason = prompt("Enter rejection reason:");
-    if (!reason) return;
-    const result = await HF_DB.rejectSquadVerification(
-      verificationId,
-      coachId,
-      teamName,
-      reason,
-    );
-    if (result.error) {
-      toast(result.error, "error");
-      return;
-    }
-
-    const { data: pending } = await HF_DB.getPendingVerifications();
-    HF_ROUTER.refreshSidenavBadge(
-      "verifications",
-      pending?.length || 0,
-      "var(--gold)",
-    );
-
-    toast(`${teamName} has been rejected.`, "success");
-    dashboard(HF_DB.getSession());
-  };
-
   const toggleEditForm = (verificationId) => {
     const form = document.getElementById(`edit-form-${verificationId}`);
     if (form)
@@ -503,7 +711,7 @@ const HF_ADMIN = (() => {
         ${count} pending verification${count > 1 ? "s" : ""}
       </div>
       <div style="font-size:14px;color:var(--text2);margin-bottom:var(--sp-xl);line-height:1.6;">
-        ${count} coach${count > 1 ? "es have" : " has"} recently submitted squad registration${count > 1 ? "s" : ""} awaiting your review.
+        ${count} squad or agency registration${count > 1 ? "s are" : " is"} awaiting your review.
       </div>
       <div style="display:flex;gap:8px;justify-content:center;">
         <button class="btn btn-primary" onclick="document.getElementById('admin-verification-alert').remove();HF_ROUTER.navTo('verifications');">
@@ -519,21 +727,30 @@ const HF_ADMIN = (() => {
 
   const archiveMessage = async (messageId) => {
     await HF_DB.archiveMessage(messageId);
-    const msgItem = document.getElementById(`msg-${messageId}`);
-    if (msgItem) msgItem.remove();
     HF_UTILS.toast("Message archived.", "success");
+    messages(HF_DB.getSession());
   };
 
   const readMessage = async (messageId, el) => {
-    await HF_DB.markMessageRead(messageId);
-    const badge = el.querySelector(".msg-unread");
+    const badge = document.getElementById(`badge-${messageId}`);
     if (badge) badge.remove();
+
+    await HF_DB.markMessageRead(messageId);
+
+    const session = HF_DB.getSession();
+    const { data: msgs } = await HF_DB.getMessages(session.userId);
+    const unreadCount = msgs?.filter((m) => !m.read).length || 0;
+    HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
+
+    messages(session);
   };
 
   return {
     render,
     approveSquad,
     rejectSquad,
+    approveAgency,
+    rejectAgency,
     kickUser,
     banUser,
     unbanUser,

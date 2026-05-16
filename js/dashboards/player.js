@@ -492,7 +492,7 @@ const HF_PLAYER = (() => {
           : overall < 80
             ? `
         <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--gold);font-size:13px;color:var(--text2)">
-          <strong style="color:var(--text)">Reach 80+ overall rating</strong> — You're at ${overall}%. Keep pushing!
+          <strong style="color:var(--text)">Reach 80+ overall rating</strong>: You're at ${overall}%. Keep pushing!
         </div>`
             : `
         <div style="padding:12px;background:rgba(26,122,46,.05);border-left:2px solid var(--green);font-size:13px;color:var(--text2)">
@@ -605,6 +605,21 @@ const HF_PLAYER = (() => {
     const { data: archived } = await HF_DB.getArchivedMessages(s.userId);
     const { data: invites } = await HF_DB.getSquadInvites(s.userId);
 
+    // enrich messages with sender names
+    const enriched = await Promise.all(
+      (msgs || []).map(async (m) => ({
+        ...m,
+        senderName: await HF_DB.getUserNameById(m.from_id),
+      })),
+    );
+
+    const enrichedArchived = await Promise.all(
+      (archived || []).map(async (m) => ({
+        ...m,
+        senderName: await HF_DB.getUserNameById(m.from_id),
+      })),
+    );
+
     setMain(`
     ${
       invites?.length > 0
@@ -661,19 +676,22 @@ const HF_PLAYER = (() => {
           </span>
         </div>
         <div style="display:none">
-          ${archived
+          ${enrichedArchived
             .map(
               (m) => `
-            <div class="msg-item">
-              <div class="avatar avatar-md" style="background:#0f0f0d;display:flex;align-items:center;justify-content:center;">
-                <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
-              </div>
-              <div style="flex:1;opacity:0.6">
-                <div class="msg-name">${m.subject || "Message"}</div>
-                <div class="msg-preview">${m.body}</div>
-                <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
-              </div>
-            </div>`,
+              <div class="msg-item">
+                <div class="avatar avatar-md" style="background:#0f0f0d;display:flex;align-items:center;justify-content:center;">
+                  <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
+                </div>
+                <div style="flex:1;opacity:0.6">
+                  <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+                    From: ${m.senderName || "HappyFeet Admin"}
+                  </div>
+                  <div class="msg-name">${m.subject || "Message"}</div>
+                  <div class="msg-preview">${m.body}</div>
+                  <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
+                </div>
+              </div>`,
             )
             .join("")}
         </div>
@@ -898,6 +916,10 @@ const HF_PLAYER = (() => {
         status: "signed",
       };
       HF_DB.saveSession(session);
+
+      // update coach team size
+      await HF_DB.incrementTeamSize(coachId);
+
       HF_UTILS.toast(`Welcome to ${squadName}!`, "success");
     } else {
       HF_UTILS.toast("Invite declined.", "success");
@@ -907,20 +929,21 @@ const HF_PLAYER = (() => {
   };
 
   const readMessage = async (messageId, el) => {
-    await HF_DB.markMessageRead(messageId);
-    const badge = el.querySelector(".msg-unread");
+    const badge = document.getElementById(`badge-${messageId}`);
     if (badge) badge.remove();
+
+    await HF_DB.markMessageRead(messageId);
 
     const session = HF_DB.getSession();
     const { data: msgs } = await HF_DB.getMessages(session.userId);
     const unreadCount = msgs?.filter((m) => !m.read).length || 0;
     HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
+
+    messages(session);
   };
 
-  const archiveMessage = async (messageId, el) => {
+  const archiveMessage = async (messageId) => {
     await HF_DB.archiveMessage(messageId);
-    const msgItem = document.getElementById(`msg-${messageId}`);
-    if (msgItem) msgItem.remove();
 
     const session = HF_DB.getSession();
     const { data: msgs } = await HF_DB.getMessages(session.userId);
@@ -928,6 +951,7 @@ const HF_PLAYER = (() => {
     HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
 
     HF_UTILS.toast("Message archived.", "success");
+    messages(session);
   };
 
   return {

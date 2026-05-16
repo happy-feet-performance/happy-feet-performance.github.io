@@ -130,7 +130,9 @@ const HF_DB = (() => {
     const contact = contactRaw.toLowerCase().replace(/\s/g, "");
     const { data: users } = await _client
       .from("users")
-      .select("*, squad_status, banned, ban_reason, kicked, kicked_until")
+      .select(
+        "*, squad_status, agency_status, banned, ban_reason, kicked, kicked_until",
+      )
       .eq("password", password);
 
     if (!users) return null;
@@ -167,6 +169,7 @@ const HF_DB = (() => {
     profile: u.profile || {},
     created: u.created_at,
     squadStatus: u.squad_status || "unregistered",
+    agencyStatus: u.agency_status || "unregistered",
     banned: u.banned || false,
     banReason: u.ban_reason || null,
     kicked: u.kicked || false,
@@ -260,6 +263,12 @@ const HF_DB = (() => {
       status: "pending",
     });
     if (error) return { error: error.message };
+
+    await _notifyAdmins(
+      "New squad verification submitted",
+      `A coach has submitted "${data.teamName}" for squad verification.`,
+    );
+
     return { success: true };
   };
 
@@ -320,6 +329,11 @@ const HF_DB = (() => {
     });
     if (msgError) return { error: msgError.message };
 
+    await _notifyAdmins(
+      "Squad approved",
+      `Squad "${teamName}" has been verified. Coach has been notified.`,
+    );
+
     return { success: true };
   };
 
@@ -356,6 +370,11 @@ const HF_DB = (() => {
       read: false,
     });
     if (msgError) return { error: msgError.message };
+
+    await _notifyAdmins(
+      "Squad rejected",
+      `Squad "${teamName}" was rejected. Reason: ${reason}. Coach has been notified.`,
+    );
 
     return { success: true };
   };
@@ -552,7 +571,6 @@ const HF_DB = (() => {
 
     if (userError) return { error: userError.message };
 
-    // notify coach
     await _client.from("messages").insert({
       from_id: "admin",
       to_id: coachId,
@@ -560,6 +578,12 @@ const HF_DB = (() => {
       body: `An admin has reviewed your squad registration for "${data.originalName}" and made some changes. ${data.notes ? "Note: " + data.notes + "." : ""} Please check your messages and accept or decline the changes.`,
       read: false,
     });
+
+    // notify all admins
+    await _notifyAdmins(
+      "Squad verification edited",
+      `Admin edited the squad registration for "${data.originalName}". Awaiting coach approval.`,
+    );
 
     return { success: true };
   };
@@ -618,6 +642,11 @@ const HF_DB = (() => {
       read: false,
     });
 
+    await _notifyAdmins(
+      "Coach accepted edits",
+      `The coach has accepted your changes to "${ver.edited_team_name || ver.team_name}". The verification is back to verified.`,
+    );
+
     return { success: true };
   };
   const declineVerificationEdits = async (verificationId) => {
@@ -650,6 +679,11 @@ const HF_DB = (() => {
       .eq("id", ver.coach_id);
 
     if (userError) return { error: userError.message };
+
+    await _notifyAdmins(
+      "Coach declined edits",
+      `The coach declined your changes to "${ver.team_name}". Reason: Coach declined admin changes.`,
+    );
 
     return { success: true };
   };
@@ -725,11 +759,408 @@ const HF_DB = (() => {
     return { data };
   };
 
+  const submitAgencyVerification = async (data) => {
+    const { error } = await _client.from("agency_verifications").insert({
+      scout_id: data.scoutId,
+      agency_name: data.agencyName,
+      region: data.regionsCovered[0],
+      regions_covered: data.regionsCovered,
+      target_leagues: data.targetLeagues,
+      website: data.website || null,
+      status: "pending",
+    });
+    if (error) return { error: error.message };
+
+    await _notifyAdmins(
+      "New agency verification submitted",
+      `A scout has submitted "${data.agencyName}" for agency verification.`,
+    );
+
+    return { success: true };
+  };
+
+  const updateAgencyStatus = async (userId, status) => {
+    const { error } = await _client
+      .from("users")
+      .update({ agency_status: status })
+      .eq("id", userId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const getPendingAgencyVerifications = async () => {
+    const { data, error } = await _client
+      .from("agency_verifications")
+      .select("*")
+      .eq("status", "pending")
+      .order("submitted_at", { ascending: true });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const approveAgencyVerification = async (
+    verificationId,
+    scoutId,
+    agencyName,
+  ) => {
+    const { error: verError } = await _client
+      .from("agency_verifications")
+      .update({ status: "verified", reviewed_at: new Date().toISOString() })
+      .eq("id", verificationId);
+    if (verError) return { error: verError.message };
+
+    const { error: userError } = await _client
+      .from("users")
+      .update({ agency_status: "verified" })
+      .eq("id", scoutId);
+    if (userError) return { error: userError.message };
+
+    await _client.from("messages").insert({
+      from_id: "admin",
+      to_id: scoutId,
+      subject: "Agency verified",
+      body: `Congratulations! Your agency "${agencyName}" has been verified on HappyFeet. You now have full access to all scouting features.`,
+      read: false,
+    });
+
+    await _notifyAdmins(
+      "Agency approved",
+      `Agency "${agencyName}" has been verified. Scout has been notified.`,
+    );
+
+    return { success: true };
+  };
+
+  const rejectAgencyVerification = async (
+    verificationId,
+    scoutId,
+    agencyName,
+    reason,
+  ) => {
+    const { error: verError } = await _client
+      .from("agency_verifications")
+      .update({
+        status: "rejected",
+        reviewed_at: new Date().toISOString(),
+        rejection_reason: reason,
+      })
+      .eq("id", verificationId);
+    if (verError) {
+      return { error: verError.message };
+    }
+
+    const { error: userError } = await _client
+      .from("users")
+      .update({ agency_status: "rejected" })
+      .eq("id", scoutId);
+    if (userError) return { error: userError.message };
+
+    await _client.from("messages").insert({
+      from_id: "admin",
+      to_id: scoutId,
+      subject: "Agency verification update",
+      body: `Unfortunately your agency "${agencyName}" could not be verified. Reason: ${reason}. Please resubmit with updated information.`,
+      read: false,
+    });
+
+    await _notifyAdmins(
+      "Agency rejected",
+      `Agency "${agencyName}" was rejected. Reason: ${reason}. Scout has been notified.`,
+    );
+
+    return { success: true };
+  };
+
+  const getAdminIds = async () => {
+    const { data, error } = await _client
+      .from("users")
+      .select("id")
+      .eq("role", "admin");
+    if (error) return [];
+    return data?.map((u) => u.id) || [];
+  };
+
+  const _notifyAdmins = async (subject, body) => {
+    const adminIds = await getAdminIds();
+    for (const adminId of adminIds) {
+      await _client.from("messages").insert({
+        from_id: "system",
+        to_id: adminId,
+        subject,
+        body,
+        read: false,
+      });
+    }
+  };
+
+  const getLatestAgencyStatus = async (userId) => {
+    const { data, error } = await _client
+      .from("users")
+      .select("agency_status")
+      .eq("id", userId)
+      .single();
+    if (error) return null;
+    return data?.agency_status || null;
+  };
+
+  const getAllAgencyVerifications = async () => {
+    const { data, error } = await _client
+      .from("agency_verifications")
+      .select("*")
+      .order("submitted_at", { ascending: false });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const subscribeToMessages = (userId, onMessage) => {
+    return _client
+      .channel(`realtime-messages-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+          filter: `to_id=eq.${userId}`,
+        },
+        (payload) => {
+          onMessage(payload.new);
+        },
+      )
+      .subscribe((status) => {
+      });
+  };
+
+  const subscribeToUserStatus = (userId, onStatusChange) => {
+    return _client
+      .channel(`realtime-user-status-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "users",
+          filter: `id=eq.${userId}`,
+        },
+        (payload) => {
+          onStatusChange(payload.new);
+        },
+      )
+      .subscribe((status) => {
+        console.log("user status subscription status:", status);
+      });
+  };
+
+  const subscribeToPendingVerifications = (onNewVerification) => {
+    return _client
+      .channel("realtime-squad-verifications")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "squad_verifications",
+        },
+        (payload) => {
+          onNewVerification(payload);
+        },
+      )
+      .subscribe((status) => {
+        console.log("squad verifications subscription status:", status);
+      });
+  };
+
+  const subscribeToAgencyVerifications = (onNewVerification) => {
+    return _client
+      .channel("realtime-agency-verifications")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "agency_verifications",
+        },
+        (payload) => {
+          onNewVerification(payload);
+        },
+      )
+      .subscribe((status) => {
+        console.log("agency verifications subscription status:", status);
+      });
+  };
+
+  const getScoutProspects = async (scoutId) => {
+    const { data, error } = await _client
+      .from("scout_prospects")
+      .select(
+        "*, player:users!scout_prospects_player_id_fkey(id, name, profile)",
+      )
+      .eq("scout_id", scoutId)
+      .order("created_at", { ascending: false });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const saveProspect = async (scoutId, playerId) => {
+    const { data: existing } = await _client
+      .from("scout_prospects")
+      .select("id")
+      .eq("scout_id", scoutId)
+      .eq("player_id", playerId)
+      .maybeSingle();
+    if (existing) return { error: "Player already saved as prospect." };
+
+    const { error } = await _client
+      .from("scout_prospects")
+      .insert({ scout_id: scoutId, player_id: playerId, status: "watching" });
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const unsaveProspect = async (scoutId, playerId) => {
+    const { error } = await _client
+      .from("scout_prospects")
+      .delete()
+      .eq("scout_id", scoutId)
+      .eq("player_id", playerId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const updateProspectStatus = async (scoutId, playerId, updates) => {
+    const { error } = await _client
+      .from("scout_prospects")
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq("scout_id", scoutId)
+      .eq("player_id", playerId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const getVerifiedClubs = async () => {
+    const { data, error } = await _client
+      .from("squad_verifications")
+      .select("team_name, league, coach_id")
+      .eq("status", "verified");
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getScoutClubs = async (scoutId) => {
+    const { data, error } = await _client
+      .from("scout_clubs")
+      .select("*")
+      .eq("scout_id", scoutId);
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const addScoutClub = async (scoutId, coachId, clubName, league) => {
+    const { data: existing } = await _client
+      .from("scout_clubs")
+      .select("id")
+      .eq("scout_id", scoutId)
+      .eq("club_name", clubName)
+      .maybeSingle();
+    if (existing) return { error: "Club already in your network." };
+
+    const { error } = await _client.from("scout_clubs").insert({
+      scout_id: scoutId,
+      coach_id: coachId,
+      club_name: clubName,
+      league,
+    });
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const getAllPlayers = async () => {
+    const { data, error } = await _client
+      .from("users")
+      .select("id, name, profile")
+      .eq("role", "player")
+      .order("created_at", { ascending: false });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getUserById = async (userId) => {
+    const { data, error } = await _client
+      .from("users")
+      .select("id, name, profile")
+      .eq("id", userId)
+      .single();
+    if (error) return { data: null };
+    return { data };
+  };
+
+  const _sendMessage = async (fromId, toId, subject, body) => {
+    const { error } = await _client.from("messages").insert({
+      from_id: fromId,
+      to_id: toId,
+      subject,
+      body,
+      read: false,
+    });
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const getUserNameById = async (userId) => {
+    if (!userId || userId === "admin" || userId === "system")
+      return "HappyFeet Admin";
+    const { data, error } = await _client
+      .from("users")
+      .select("name, role")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error || !data) return "HappyFeet";
+    return data.role === "admin" ? `Admin: ${data.name}` : data.name;
+  };
+
+  const getSquadPlayers = async (coachId) => {
+    const { data, error } = await _client
+      .from("squad_invites")
+      .select("*, player:users!squad_invites_player_id_fkey(id, name, profile)")
+      .eq("coach_id", coachId)
+      .eq("status", "accepted");
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const incrementTeamSize = async (coachId) => {
+    const { data: coach } = await _client
+      .from("users")
+      .select("profile")
+      .eq("id", coachId)
+      .single();
+
+    if (!coach) return;
+
+    const updatedProfile = {
+      ...coach.profile,
+      teamSize: (coach.profile?.teamSize || 0) + 1,
+    };
+
+    await _client
+      .from("users")
+      .update({ profile: updatedProfile })
+      .eq("id", coachId);
+  };
+
+  const getCoachInvites = async (coachId) => {
+    const { data, error } = await _client
+      .from("squad_invites")
+      .select("player_id, status")
+      .eq("coach_id", coachId);
+    if (error) return { data: [] };
+    return { data };
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     createUser,
     findUser,
-    findAdmin,
     updateUserProfile,
     getSession,
     saveSession,
@@ -742,10 +1173,12 @@ const HF_DB = (() => {
     saveTraining,
     getScout,
     saveScout,
+    getAdminIds,
     submitSquadVerification,
     updateSquadStatus,
     checkTeamExists,
     getPendingVerifications,
+    getAllAgencyVerifications,
     approveSquadVerification,
     rejectSquadVerification,
     getCoachVerification,
@@ -754,6 +1187,8 @@ const HF_DB = (() => {
     saveVerificationEdits,
     deleteAdminVerificationMessage,
     getMessages,
+    getUserNameById,
+    getCoachInvites,
     archiveMessage,
     getArchivedMessages,
     markMessageRead,
@@ -767,8 +1202,30 @@ const HF_DB = (() => {
     searchPlayers,
     sendSquadInvite,
     getSquadInvites,
+    getSquadPlayers,
     respondToInvite,
+    incrementTeamSize,
     getLatestSquadStatus,
+    submitAgencyVerification,
+    updateAgencyStatus,
+    getPendingAgencyVerifications,
+    approveAgencyVerification,
+    rejectAgencyVerification,
+    getLatestAgencyStatus,
+    subscribeToMessages,
+    subscribeToUserStatus,
+    subscribeToPendingVerifications,
+    subscribeToAgencyVerifications,
+    getScoutProspects,
+    saveProspect,
+    unsaveProspect,
+    updateProspectStatus,
+    getVerifiedClubs,
+    getScoutClubs,
+    addScoutClub,
+    getAllPlayers,
+    getUserById,
+    _sendMessage,
   };
 })();
 

@@ -21,7 +21,112 @@ const HF_COACH = (() => {
     if (mc) mc.innerHTML = html;
   };
 
-  const SQUAD = [];
+  const squad = async (s) => {
+    const squadStatus = s.squadStatus || "unregistered";
+    const isVerified = squadStatus === "verified";
+    const p = s.profile || {};
+
+    if (!isVerified) {
+      setMain(`
+      <div class="card">
+        <div style="text-align:center;padding:32px;color:var(--text2)">
+          <i class="ti ti-lock" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Squad locked</div>
+          <div style="font-size:13px">Verify your squad first to start adding players.</div>
+          <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="HF_AUTH.showScreen('screen-squad-verify')">
+            <i class="ti ti-clipboard-check"></i> Register your squad
+          </button>
+        </div>
+      </div>`);
+      return;
+    }
+
+    const { data: squadPlayers } = await HF_DB.getSquadPlayers(s.userId);
+    const hasPlayers = squadPlayers?.length > 0;
+
+    setMain(`
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Squad roster — ${p.club || "Your club"}
+          <span style="font-family:var(--font-head);font-size:10px;color:var(--text3);margin-left:4px">${squadPlayers?.length || 0} players</span>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="HF_COACH.showInvitePanel()">
+          <i class="ti ti-plus"></i> Invite player
+        </button>
+      </div>
+
+      <div id="invite-panel" style="display:none;margin-bottom:var(--sp-lg);padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);">
+        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;">
+          Invite a player
+        </div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="player-search-input" placeholder="Search by name or email..."
+            style="flex:1;padding:8px 12px;background:var(--bg);border:0.5px solid var(--border);color:var(--text);font-size:13px;font-family:var(--font);outline:none;"
+            oninput="HF_COACH.searchPlayers(this.value)">
+          <button class="btn btn-outline btn-sm" onclick="HF_COACH.showInvitePanel()">
+            <i class="ti ti-x"></i>
+          </button>
+        </div>
+        <div id="player-search-results" style="margin-top:8px;"></div>
+      </div>
+
+      ${
+        !hasPlayers
+          ? `
+        <div style="text-align:center;padding:32px;color:var(--text2)">
+          <i class="ti ti-users" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No players yet</div>
+          <div style="font-size:13px">Invite players to your squad using the button above.</div>
+        </div>`
+          : `
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Position</th>
+              <th>Tier</th>
+              <th>Status</th>
+              <th>Rating</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${squadPlayers
+              .map((sp) => {
+                const p = sp.player?.profile || {};
+                const name = sp.player?.name || "Unknown";
+                const overall = p.ratings
+                  ? Math.round(
+                      (p.ratings.speed +
+                        p.ratings.tech +
+                        p.ratings.tact +
+                        p.ratings.phys) /
+                        4,
+                    )
+                  : null;
+                return `
+                <tr style="cursor:pointer;" onclick="HF_ROUTER.navTo('tracking')">
+                  <td style="font-weight:600">${name}</td>
+                  <td>${p.pos || "-"}</td>
+                  <td>${p.tier || "-"}</td>
+                  <td>
+                    <span style="font-size:10px;padding:1px 7px;font-weight:600;
+                      background:${p.status === "signed" ? "rgba(26,122,46,.1)" : "rgba(196,154,10,.1)"};
+                      color:${p.status === "signed" ? "var(--green)" : "var(--gold)"}">
+                      ${p.status === "signed" ? "Signed" : "Unattached"}
+                    </span>
+                  </td>
+                  <td style="font-weight:700;color:${overall ? "var(--gold)" : "var(--text3)"}">
+                    ${overall !== null ? overall + "%" : "-"}
+                  </td>
+                </tr>`;
+              })
+              .join("")}
+          </tbody>
+        </table>`
+      }
+    </div>`);
+  };
 
   const statusBadge = (st) => {
     const map = { fit: "green", monitor: "gold", alert: "red" };
@@ -229,7 +334,7 @@ const HF_COACH = (() => {
   };
 
   // SQUAD
-  const squad = async (s) => {
+  const verifiedSquad = async (s) => {
     const p = s.profile || {};
     const squadStatus = s.squadStatus || "unregistered";
     const isVerified = squadStatus === "verified";
@@ -253,7 +358,7 @@ const HF_COACH = (() => {
     <div class="card">
       <div class="card-title" style="justify-content:space-between;">
         <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-          <div class="card-dot"></div>Squad roster — ${p.club || "Your club"}
+          <div class="card-dot"></div>Squad roster: ${p.club || "Your club"}
         </div>
         <button class="btn btn-primary btn-sm" onclick="HF_COACH.showInvitePanel()">
           <i class="ti ti-plus"></i> Invite player
@@ -330,7 +435,7 @@ const HF_COACH = (() => {
 
   // TRACKING
   const tracking = (s) => {
-    if (SQUAD.length === 0) {
+    if (verifiedSquad.length === 0) {
       setMain(`
       <div class="card">
         <div style="text-align:center;padding:32px;color:var(--text2)">
@@ -351,7 +456,7 @@ const HF_COACH = (() => {
         <div class="form-row">
           <div class="fg"><label>Player</label>
             <select id="tr-player">
-              ${SQUAD.map((p) => `<option>${p.name}</option>`).join("")}
+              ${verifiedSquad.map((p) => `<option>${p.name}</option>`).join("")}
             </select>
           </div>
           <div class="fg"><label>Session type</label>
@@ -410,7 +515,7 @@ const HF_COACH = (() => {
       <div class="card">
         <div class="card-title"><div class="card-dot"></div>Log a health check-in</div>
         <div class="fg"><label>Player name</label>
-          <select>${SQUAD.map((p) => `<option>${p.name}</option>`).join("")}</select>
+          <select>${verifiedSquad.map((p) => `<option>${p.name}</option>`).join("")}</select>
         </div>
         <div class="fg"><label>Availability</label>
           <select>
@@ -494,6 +599,21 @@ const HF_COACH = (() => {
     const { data: archived } = await HF_DB.getArchivedMessages(s.userId);
     const isAwaitingReview = s.squadStatus === "awaiting_coach_approval";
 
+    // enrich messages with sender names
+    const enriched = await Promise.all(
+      (msgs || []).map(async (m) => ({
+        ...m,
+        senderName: await HF_DB.getUserNameById(m.from_id),
+      })),
+    );
+
+    const enrichedArchived = await Promise.all(
+      (archived || []).map(async (m) => ({
+        ...m,
+        senderName: await HF_DB.getUserNameById(m.from_id),
+      })),
+    );
+
     setMain(`
     ${
       isAwaitingReview
@@ -537,19 +657,22 @@ const HF_COACH = (() => {
           </span>
         </div>
         <div style="display:none">
-          ${archived
+          ${enrichedArchived
             .map(
               (m) => `
-            <div class="msg-item">
-              <div class="avatar avatar-md" style="background:#0f0f0d;display:flex;align-items:center;justify-content:center;">
-                <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
-              </div>
-              <div style="flex:1;opacity:0.6">
-                <div class="msg-name">${m.subject || "Message"}</div>
-                <div class="msg-preview">${m.body}</div>
-                <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
-              </div>
-            </div>`,
+              <div class="msg-item">
+                <div class="avatar avatar-md" style="background:#0f0f0d;display:flex;align-items:center;justify-content:center;">
+                  <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
+                </div>
+                <div style="flex:1;opacity:0.6">
+                  <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+                    From: ${m.senderName || "HappyFeet Admin"}
+                  </div>
+                  <div class="msg-name">${m.subject || "Message"}</div>
+                  <div class="msg-preview">${m.body}</div>
+                  <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
+                </div>
+              </div>`,
             )
             .join("")}
         </div>
@@ -620,14 +743,17 @@ const HF_COACH = (() => {
   };
 
   const readMessage = async (messageId, el) => {
-    await HF_DB.markMessageRead(messageId);
-    const badge = el.querySelector(".msg-unread");
+    const badge = document.getElementById(`badge-${messageId}`);
     if (badge) badge.remove();
+
+    await HF_DB.markMessageRead(messageId);
 
     const session = HF_DB.getSession();
     const { data: msgs } = await HF_DB.getMessages(session.userId);
     const unreadCount = msgs?.filter((m) => !m.read).length || 0;
     HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
+
+    messages(session);
   };
 
   const showInvitePanel = () => {
@@ -644,15 +770,27 @@ const HF_COACH = (() => {
       return;
     }
 
-    const { data } = await HF_DB.searchPlayers(query);
     const session = HF_DB.getSession();
+    const { data } = await HF_DB.searchPlayers(query);
 
-    if (!data || data.length === 0) {
-      results.innerHTML = `<div style="font-size:13px;color:var(--text2);padding:8px">No players found.</div>`;
+    // get pending and accepted invites to filter out
+    const { data: existingInvites } = await HF_DB.getCoachInvites(
+      session.userId,
+    );
+    const excludedIds = new Set(
+      existingInvites
+        ?.filter((i) => i.status === "pending" || i.status === "accepted")
+        .map((i) => i.player_id) || [],
+    );
+
+    const filtered = data?.filter((p) => !excludedIds.has(p.id)) || [];
+
+    if (filtered.length === 0) {
+      results.innerHTML = `<div style="font-size:13px;color:var(--text2);padding:8px">No available players found.</div>`;
       return;
     }
 
-    results.innerHTML = data
+    results.innerHTML = filtered
       .map(
         (p) => `
     <div style="display:flex;align-items:center;gap:var(--sp-md);padding:10px;background:var(--bg);border:0.5px solid var(--border);margin-bottom:4px;">
@@ -661,10 +799,10 @@ const HF_COACH = (() => {
         <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
         <div style="font-size:11px;color:var(--text2)">${p.profile?.pos || "-"} · ${p.profile?.tier || "-"} · ${p.profile?.hometown || "-"}</div>
         <div style="font-size:11px;color:${p.profile?.status === "unattached" ? "var(--green)" : "var(--text3)"}">
-          ${p.profile?.status === "unattached" ? "Unattached — available" : "Already in a squad"}
+          ${p.profile?.status === "unattached" || !p.profile?.club ? "Unattached" : p.profile?.club}
         </div>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="HF_COACH.invitePlayer('${p.id}', '${p.name}')">
+      <button class="btn btn-primary btn-sm" onclick="HF_COACH.invitePlayer('${p.id}', '${p.name.replace(/'/g, "\\'")}')">
         <i class="ti ti-send"></i> Invite
       </button>
     </div>`,
@@ -903,10 +1041,8 @@ const HF_COACH = (() => {
     HF_ROUTER.navTo("dashboard");
   };
 
-  const archiveMessage = async (messageId, el) => {
+  const archiveMessage = async (messageId) => {
     await HF_DB.archiveMessage(messageId);
-    const msgItem = document.getElementById(`msg-${messageId}`);
-    if (msgItem) msgItem.remove();
 
     const session = HF_DB.getSession();
     const { data: msgs } = await HF_DB.getMessages(session.userId);
@@ -914,6 +1050,7 @@ const HF_COACH = (() => {
     HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
 
     HF_UTILS.toast("Message archived.", "success");
+    messages(session);
   };
 
   return {

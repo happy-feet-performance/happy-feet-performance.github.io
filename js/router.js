@@ -8,11 +8,6 @@
  * Wrong role = redirected to their own dashboard.
  * No role = sent to login.
  *
- * To add a new role:
- *  1. Add demo in auth.js
- *  2. Add sidenav config below
- *  3. Create /js/dashboards/newrole.js
- *  4. Import it in index.html
  */
 
 const HF_ROUTER = (() => {
@@ -41,30 +36,37 @@ const HF_ROUTER = (() => {
       { section: "Discover" },
       { view: "findmyteam", icon: "ti-map-search", label: "Find my team" },
     ],
-    coach: (squadStatus) => {
+    coach: (squadStatus, teamSize = 0) => {
       const verified = squadStatus === "verified";
+      const hasPlayers = teamSize > 0;
       const nav = [
         { section: "Management" },
         { view: "dashboard", icon: "ti-home", label: "Dashboard" },
         { view: "profile", icon: "ti-user", label: "My profile" },
       ];
       if (verified) {
-        nav.push(
-          { view: "squad", icon: "ti-users", label: "Squad" },
-          {
-            view: "training",
-            icon: "ti-clipboard-list",
-            label: "Session builder",
-          },
-          { view: "tracking", icon: "ti-chart-line", label: "Player tracking" },
-          { section: "Tools" },
-          {
-            view: "health",
-            icon: "ti-heart-rate-monitor",
-            label: "Health & wellness",
-          },
-          { view: "recruitment", icon: "ti-search", label: "Recruitment" },
-        );
+        nav.push({ view: "squad", icon: "ti-users", label: "Squad" });
+        if (hasPlayers) {
+          nav.push(
+            {
+              view: "training",
+              icon: "ti-clipboard-list",
+              label: "Session builder",
+            },
+            {
+              view: "tracking",
+              icon: "ti-chart-line",
+              label: "Player tracking",
+            },
+            { section: "Tools" },
+            {
+              view: "health",
+              icon: "ti-heart-rate-monitor",
+              label: "Health & wellness",
+            },
+            { view: "recruitment", icon: "ti-search", label: "Recruitment" },
+          );
+        }
       }
       nav.push(
         { section: verified ? "Tools" : "Community" },
@@ -80,34 +82,44 @@ const HF_ROUTER = (() => {
       );
       return nav;
     },
-    scout: [
-      { section: "Scouting" },
-      { view: "dashboard", icon: "ti-home", label: "Dashboard" },
-      { view: "profile", icon: "ti-user", label: "My profile" },
-      { view: "discover", icon: "ti-search", label: "Discover talent" },
-      {
-        view: "prospects",
-        icon: "ti-star",
-        label: "Saved prospects",
-        badge: "4",
-        badgeColor: "var(--gold)",
-      },
-      { view: "pipeline", icon: "ti-chart-line", label: "Pipeline" },
-      { section: "Reports" },
-      { view: "reports", icon: "ti-file-text", label: "Scout reports" },
-      { view: "clubs", icon: "ti-building", label: "Club network" },
-      { view: "placements", icon: "ti-circle-check", label: "Placements" },
-      { view: "messages", icon: "ti-message", label: "Messages" },
-      { section: "Discover" },
-      { view: "findmyteam", icon: "ti-map-search", label: "Find my team" },
-    ],
+    scout: (agencyStatus) => {
+      const verified = agencyStatus === "verified";
+      const nav = [
+        { section: "Scouting" },
+        { view: "dashboard", icon: "ti-home", label: "Dashboard" },
+        { view: "profile", icon: "ti-user", label: "My profile" },
+      ];
+      if (verified) {
+        nav.push(
+          { view: "discover", icon: "ti-search", label: "Discover talent" },
+          { view: "prospects", icon: "ti-star", label: "Saved prospects" },
+          { view: "pipeline", icon: "ti-chart-line", label: "Pipeline" },
+          { section: "Reports" },
+          { view: "reports", icon: "ti-file-text", label: "Scout reports" },
+          { view: "clubs", icon: "ti-building", label: "Club network" },
+          { view: "placements", icon: "ti-circle-check", label: "Placements" },
+        );
+      }
+      nav.push(
+        { section: verified ? "Reports" : "Community" },
+        { view: "messages", icon: "ti-message", label: "Messages" },
+        { section: "Discover" },
+        { view: "findmyteam", icon: "ti-map-search", label: "Find my team" },
+      );
+      return nav;
+    },
     admin: [
       { section: "Management" },
       { view: "dashboard", icon: "ti-home", label: "Dashboard" },
       {
-        view: "verifications",
-        icon: "ti-clipboard-check",
-        label: "Verifications",
+        view: "squad-verifications",
+        icon: "ti-shield-check",
+        label: "Squad verifications",
+      },
+      {
+        view: "agency-verifications",
+        icon: "ti-building",
+        label: "Agency verifications",
       },
       { view: "users", icon: "ti-users", label: "Users" },
       { section: "Communication" },
@@ -149,6 +161,9 @@ const HF_ROUTER = (() => {
   const ROLE_COLORS = { player: "#1a7a2e", coach: "#C9961A", scout: "#185FA5" };
 
   // ─── Launch app after login/signup ─────────────────────────
+
+  let _subscriptionsActive = false;
+
   const launch = async (session) => {
     document.getElementById("auth-screens").style.display = "none";
     const shell = el("app-shell");
@@ -173,16 +188,16 @@ const HF_ROUTER = (() => {
     let pendingVerifications = 0;
     if (session.role === "admin") {
       const { data: pending } = await HF_DB.getPendingVerifications();
-      pendingVerifications = pending?.length || 0;
+      const { data: agencyPending } =
+        await HF_DB.getPendingAgencyVerifications();
+      pendingVerifications =
+        (pending?.length || 0) + (agencyPending?.length || 0);
     }
 
-    // build sidenav with both counts
     _buildSidenav(session, unreadCount, pendingVerifications);
-
-    // route to dashboard
     _routeTo("dashboard", session);
 
-    // show overlays after sidenav is built
+    // show overlays
     if (
       session.role === "coach" &&
       session.squadStatus === "awaiting_coach_approval"
@@ -192,6 +207,180 @@ const HF_ROUTER = (() => {
     if (session.role === "admin" && pendingVerifications > 0) {
       setTimeout(() => HF_ADMIN.showPendingAlert(pendingVerifications), 800);
     }
+
+    // start real-time subscriptions after 1 second
+    setTimeout(() => {
+      if (_subscriptionsActive) return; // prevent duplicate subscriptions
+      _subscriptionsActive = true;
+
+      if (session.role !== "admin" && session.userId) {
+        HF_DB.subscribeToMessages(session.userId, (newMessage) => {
+          HF_DB.getMessages(session.userId).then(({ data: msgs }) => {
+            const unreadCount = msgs?.filter((m) => !m.read).length || 0;
+            HF_ROUTER.refreshSidenavBadge(
+              "messages",
+              unreadCount,
+              "var(--red)",
+            );
+
+            // always re-render messages view if currently on it
+            const activeNav = document.querySelector(".nav-item.active");
+            if (activeNav?.dataset.view === "messages") {
+              const s = HF_DB.getSession();
+              const handlers = {
+                player: window.HF_PLAYER,
+                coach: window.HF_COACH,
+                scout: window.HF_SCOUT,
+              };
+              handlers[s.role]?.messages?.(s);
+            }
+          });
+
+          HF_UTILS.toast(
+            `New message: ${newMessage.subject || "You have a new message"}`,
+            "success",
+          );
+        });
+      }
+
+      if (session.role === "admin") {
+        HF_DB.subscribeToMessages(session.userId, (newMessage) => {
+          HF_DB.getMessages(session.userId).then(({ data: msgs }) => {
+            const unreadCount = msgs?.filter((m) => !m.read).length || 0;
+            HF_ROUTER.refreshSidenavBadge(
+              "messages",
+              unreadCount,
+              "var(--red)",
+            );
+
+            const activeNav = document.querySelector(".nav-item.active");
+            if (activeNav?.dataset.view === "messages") {
+              window.HF_ADMIN?.messages?.(HF_DB.getSession());
+            }
+          });
+
+          HF_UTILS.toast(
+            `New message: ${newMessage.subject || "You have a new message"}`,
+            "success",
+          );
+        });
+
+        HF_DB.subscribeToPendingVerifications(async (payload) => {
+          const { data: pending } = await HF_DB.getPendingVerifications();
+          const { data: agencyPending } =
+            await HF_DB.getPendingAgencyVerifications();
+
+          HF_ROUTER.refreshSidenavBadge(
+            "squad-verifications",
+            pending?.length || 0,
+            "var(--gold)",
+          );
+          HF_ROUTER.refreshSidenavBadge(
+            "agency-verifications",
+            agencyPending?.length || 0,
+            "var(--gold)",
+          );
+
+          // show toast first
+          HF_UTILS.toast("New squad verification submitted.", "success");
+
+          // then re-render after a delay so toast has time to appear
+          setTimeout(() => {
+            const activeNav = document.querySelector(".nav-item.active");
+            const currentView = activeNav?.dataset.view;
+            if (
+              currentView === "dashboard" ||
+              currentView === "squad-verifications"
+            ) {
+              window.HF_ADMIN?.render?.(currentView, HF_DB.getSession());
+            }
+          }, 500);
+        });
+
+        HF_DB.subscribeToAgencyVerifications(async (payload) => {
+          const { data: agencyPending } =
+            await HF_DB.getPendingAgencyVerifications();
+
+          HF_ROUTER.refreshSidenavBadge(
+            "agency-verifications",
+            agencyPending?.length || 0,
+            "var(--gold)",
+          );
+
+          // show toast first
+          HF_UTILS.toast("New agency verification submitted.", "success");
+
+          // then re-render after a delay
+          setTimeout(() => {
+            const activeNav = document.querySelector(".nav-item.active");
+            const currentView = activeNav?.dataset.view;
+            if (
+              currentView === "dashboard" ||
+              currentView === "agency-verifications"
+            ) {
+              window.HF_ADMIN?.render?.(currentView, HF_DB.getSession());
+            }
+          }, 500);
+        });
+      }
+
+      if (session.role === "coach") {
+        HF_DB.subscribeToUserStatus(session.userId, (updatedUser) => {
+          const newStatus = updatedUser.squad_status;
+          if (newStatus && newStatus !== session.squadStatus) {
+            session.squadStatus = newStatus;
+            HF_DB.saveSession(session);
+            _buildSidenav(session);
+
+            if (newStatus === "verified") {
+              HF_UTILS.toast(
+                "Your squad has been verified! Full access unlocked.",
+                "success",
+              );
+            } else if (newStatus === "awaiting_coach_approval") {
+              _showVerificationAlert(session);
+            } else if (newStatus === "rejected") {
+              HF_UTILS.toast(
+                "Your squad verification was rejected. Check your messages.",
+                "error",
+              );
+            }
+
+            // re-render current view with updated session
+            const activeNav = document.querySelector(".nav-item.active");
+            const currentView = activeNav?.dataset.view || "dashboard";
+            _routeTo(currentView, session);
+          }
+        });
+      }
+
+      if (session.role === "scout") {
+        HF_DB.subscribeToUserStatus(session.userId, (updatedUser) => {
+          const newStatus = updatedUser.agency_status;
+          if (newStatus && newStatus !== session.agencyStatus) {
+            session.agencyStatus = newStatus;
+            HF_DB.saveSession(session);
+            _buildSidenav(session);
+
+            if (newStatus === "verified") {
+              HF_UTILS.toast(
+                "Your agency has been verified! Full access unlocked.",
+                "success",
+              );
+            } else if (newStatus === "rejected") {
+              HF_UTILS.toast(
+                "Your agency verification was rejected. Check your messages.",
+                "error",
+              );
+            }
+
+            const activeNav = document.querySelector(".nav-item.active");
+            const currentView = activeNav?.dataset.view || "dashboard";
+            _routeTo(currentView, session);
+          }
+        });
+      }
+    }, 1000);
   };
 
   // ─── Build sidenav ─────────────────────────────────────────
@@ -206,7 +395,9 @@ const HF_ROUTER = (() => {
 
     let items;
     if (session.role === "coach") {
-      items = NAVS.coach(squadStatus);
+      items = NAVS.coach(squadStatus, session.profile?.teamSize || 0);
+    } else if (session.role === "scout") {
+      items = NAVS.scout(session.agencyStatus || "unregistered");
     } else {
       items = NAVS[session.role] || [];
     }
@@ -282,7 +473,6 @@ const HF_ROUTER = (() => {
     if (session.role !== "admin") {
       HF_DB.checkUserStatus(session.userId).then((status) => {
         if (!status) {
-          // user was removed
           HF_DB.clearSession();
           document.getElementById("app-shell").classList.remove("visible");
           document.getElementById("auth-screens").style.display = "flex";
@@ -356,6 +546,16 @@ const HF_ROUTER = (() => {
       });
     }
 
+    if (session.role === "scout") {
+      HF_DB.getLatestAgencyStatus(session.userId).then((status) => {
+        if (status && status !== session.agencyStatus) {
+          session.agencyStatus = status;
+          HF_DB.saveSession(session);
+          _buildSidenav(session);
+        }
+      });
+    }
+
     document
       .querySelectorAll(".nav-item")
       .forEach((i) => i.classList.remove("active"));
@@ -416,7 +616,18 @@ const HF_ROUTER = (() => {
     }
   };
 
-  return { launch, navTo, toggleMobileNav, boot, refreshSidenavBadge };
+  const resetSubscriptions = () => {
+    _subscriptionsActive = false;
+  };
+
+  return {
+    launch,
+    navTo,
+    toggleMobileNav,
+    boot,
+    refreshSidenavBadge,
+    resetSubscriptions,
+  };
 })();
 
 window.HF_ROUTER = HF_ROUTER;

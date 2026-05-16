@@ -2,7 +2,7 @@
  * HappyFeet Performance Hub: auth.js
  * ─────────────────────────────────────
  * Handles: login (email OR phone), 3-step signup,
- * role selection, session management, demo logins.
+ * role selection, session management.
  * Depends on: db.js, utils.js, router.js
  */
 
@@ -360,7 +360,6 @@ const HF_AUTH = (() => {
     state.newUserId = result.user.id;
 
     if (state.signup.role === "coach") {
-      // prefill squad verify form with coach's existing data
       const clubInput = el("sq-team");
       const regionInput = el("sq-region");
       if (clubInput) {
@@ -369,13 +368,13 @@ const HF_AUTH = (() => {
         clubInput.style.opacity = "0.6";
         clubInput.style.cursor = "not-allowed";
       }
-      if (regionInput) {
-        regionInput.value = state.signup.profile.region || "";
-        regionInput.readOnly = true;
-        regionInput.style.opacity = "0.6";
-        regionInput.style.cursor = "not-allowed";
-      }
       showScreen("screen-squad-verify");
+    } else if (state.signup.role === "scout") {
+      const agencyInput = el("ag-name");
+      if (agencyInput) {
+        agencyInput.value = state.signup.profile.org || "";
+      }
+      showScreen("screen-agency-verify");
     } else {
       HF_ROUTER.launch(session);
     }
@@ -457,11 +456,13 @@ const HF_AUTH = (() => {
     displayContact: user.displayContact || user.contact,
     profile: user.profile,
     squadStatus: user.squadStatus || "unregistered",
+    agencyStatus: user.agencyStatus || "unregistered",
     created: user.created,
   });
 
   const logout = () => {
     HF_DB.clearSession();
+    HF_ROUTER.resetSubscriptions();
     [
       "login-email",
       "login-pass",
@@ -578,23 +579,128 @@ const HF_AUTH = (() => {
       return;
     }
 
-    const { data, error } = await HF_DB.findAdmin(email, pass);
-    if (error || !data) {
+    const hashedPassword = await HF_UTILS.hashPassword(pass);
+    const user = await HF_DB.findUser(email, hashedPassword);
+
+    if (!user || user.role !== "admin") {
       showError("admin-err", "Invalid email or password.");
       return;
     }
 
-    const session = {
-      userId: data.id,
-      role: "admin",
-      name: data.name,
-      contact: data.email,
-      contactType: "email",
-      displayContact: data.email,
-      profile: {},
-    };
-
+    const session = _makeSession(user);
     HF_DB.saveSession(session);
+    HF_ROUTER.launch(session);
+  };
+
+  const toggleTag = (btn, containerId) => {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    btn.classList.toggle("selected");
+
+    if (btn.classList.contains("selected")) {
+      btn.style.display = "none";
+
+      const tag = document.createElement("span");
+      tag.style.cssText = `font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:var(--gold);color:#0f0f0d;display:inline-flex;align-items:center;gap:4px;`;
+      tag.dataset.value = btn.dataset.value;
+      tag.innerHTML = `${btn.dataset.value} <span 
+      style="cursor:pointer;font-size:12px;font-weight:700;" 
+      onclick="
+        this.parentElement.remove();
+        const b = document.querySelector('[data-value=\\'${btn.dataset.value}\\']');
+        if(b){b.classList.remove('selected');b.style.display='';}
+      ">×</span>`;
+      container.appendChild(tag);
+    } else {
+      btn.style.display = "";
+      const existing = [...container.children].find(
+        (t) => t.dataset.value === btn.dataset.value,
+      );
+      if (existing) existing.remove();
+    }
+  };
+
+  const getSelectedTags = (containerId) => {
+    const container = document.getElementById(containerId);
+    if (!container) return [];
+    return [...container.children].map((t) => t.dataset.value).filter(Boolean);
+  };
+
+  const isValidWebsite = (url) => {
+    if (!url) return true;
+    const withProtocol =
+      url.startsWith("http://") || url.startsWith("https://")
+        ? url
+        : `https://${url}`;
+
+    try {
+      const parsed = new URL(withProtocol);
+      const hostname = parsed.hostname;
+      const validHostname =
+        /^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$/.test(
+          hostname,
+        );
+
+      return validHostname;
+    } catch {
+      return false;
+    }
+  };
+
+  const submitAgencyVerification = async () => {
+    const agencyName = document.getElementById("ag-name")?.value.trim();
+    const website = document.getElementById("ag-website")?.value.trim();
+    const regionsCovered = getSelectedTags("ag-regions-container");
+    const targetLeagues = getSelectedTags("ag-leagues-container");
+    hideError("agency-err");
+
+    if (!agencyName) {
+      showError("agency-err", "Please enter your agency name.");
+      return;
+    }
+    if (regionsCovered.length === 0) {
+      showError("agency-err", "Please select at least one region you cover.");
+      return;
+    }
+    if (targetLeagues.length === 0) {
+      showError(
+        "agency-err",
+        "Please select at least one target league or destination.",
+      );
+      return;
+    }
+    if (!isValidWebsite(website)) {
+      showError(
+        "agency-err",
+        "Please enter a valid website URL (e.g. https://youragency.com or youragency.com).",
+      );
+      return;
+    }
+
+    const session = HF_DB.getSession();
+    const result = await HF_DB.submitAgencyVerification({
+      scoutId: session.userId,
+      agencyName,
+      regionsCovered,
+      targetLeagues,
+      website,
+    });
+
+    if (result.error) {
+      showError("agency-err", result.error);
+      return;
+    }
+
+    await HF_DB.updateAgencyStatus(session.userId, "pending");
+    session.agencyStatus = "pending";
+    HF_DB.saveSession(session);
+
+    showScreen("screen-agency-pending");
+  };
+
+  const enterWithPendingAgency = () => {
+    const session = HF_DB.getSession();
     HF_ROUTER.launch(session);
   };
 
@@ -613,6 +719,10 @@ const HF_AUTH = (() => {
     checkPassword,
     submitSquadVerification,
     enterWithPendingSquad,
+    submitAgencyVerification,
+    enterWithPendingAgency,
+    toggleTag,
+    getSelectedTags,
   };
 })();
 

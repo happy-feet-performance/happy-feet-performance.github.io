@@ -95,7 +95,12 @@
                   <option value="+1">🇺🇸 +1</option>
                   <option value="+44">🇬🇧 +44</option>
                 </select>
-                <input type="tel" id="login-phone" placeholder="024 123 4567" autocomplete="off"/>
+                <input
+                  type="tel"
+                  id="login-phone"
+                  placeholder="024 123 4567"
+                  autocomplete="off"
+                />
               </div>
             </div>
           </div>
@@ -210,7 +215,12 @@
           <div class="error-box" id="signup-err"></div>
           <div class="fg">
             <label>Full name</label>
-            <input type="text" id="su-name" placeholder="Your full name" autocomplete="off"/>
+            <input
+              type="text"
+              id="su-name"
+              placeholder="Your full name"
+              autocomplete="off"
+            />
           </div>
           <div class="fg" style="margin-bottom: 6px">
             <label>Sign in with</label>
@@ -230,7 +240,12 @@
           <div id="su-email-fields">
             <div class="fg">
               <label>Email address</label>
-              <input type="email" id="su-email" placeholder="you@example.com" autocomplete="off"/>
+              <input
+                type="email"
+                id="su-email"
+                placeholder="you@example.com"
+                autocomplete="off"
+              />
             </div>
           </div>
           <div id="su-phone-fields" style="display: none">
@@ -248,7 +263,12 @@
                   <option value="+1">🇺🇸 +1</option>
                   <option value="+44">🇬🇧 +44</option>
                 </select>
-                <input type="tel" id="su-phone" placeholder="024 123 4567" autocomplete="off"/>
+                <input
+                  type="tel"
+                  id="su-phone"
+                  placeholder="024 123 4567"
+                  autocomplete="off"
+                />
               </div>
               <div class="whatsapp-note">
                 <span class="wa-icon"><i class="ti ti-message"></i></span>
@@ -335,7 +355,7 @@
         </div>
       </div>
 
-      <!-- SQUAD VERIFICATION — coaches only -->
+      <!-- SQUAD VERIFICATION: coaches only -->
       <div class="auth-screen" id="screen-squad-verify">
         <div class="auth-card">
           <div class="auth-logo">
@@ -455,6 +475,786 @@
           <button
             class="btn btn-primary btn-full"
             onclick="HF_AUTH.enterWithPendingSquad()"
+          >
+            Enter HappyFeet →
+          </button>
+        </div>
+      </div>
+
+      <!-- AGENCY VERIFICATION: scouts only -->
+      <div class="auth-screen" id="screen-agency-verify">
+        <div class="auth-card">
+          <div class="auth-logo">
+            <div class="auth-logo-hex">HF</div>
+            <div class="auth-logo-name"><span>Happy</span>Feet</div>
+          </div>
+          <div class="step-row">
+            <div class="step done"></div>
+            <div class="step done"></div>
+            <div class="step done"></div>
+            <div class="step active"></div>
+          </div>
+          <div class="auth-title">Register your agency</div>
+          <div class="auth-sub">
+            Tell us about your organisation so we can verify it
+          </div>
+          <div class="error-box" id="agency-err"></div>
+          <div class="fg">
+            <label
+              >Organisation / agency
+              <span
+                style="
+                  font-size: 10px;
+                  color: var(--text3);
+                  font-weight: 400;
+                  text-transform: none;
+                  letter-spacing: 0;
+                "
+                >(from your profile)</span
+              ></label
+            >
+            <input
+              type="text"
+              id="ag-name"
+              readonly
+              style="
+                opacity: 0.6;
+                cursor: not-allowed;
+                padding: 10px 14px;
+                background: var(--bg2);
+                border: 0.5px solid var(--border);
+                color: var(--text);
+                font-size: 14px;
+                width: 100%;
+                outline: none;
+                font-family: var(--font);
+              "
+            />
+          </div>
+          <!-- REGIONS -->
+          <div class="fg">
+            <label class="required">Regions you cover</label>
+            <div
+              id="ag-regions-container"
+              style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                padding: 10px;
+                background: var(--bg2);
+                border: 0.5px solid var(--border);
+                min-height: 44px;
+              "
+            ></div>
+            <div
+              style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap"
+            >
+              <button
+                type="button"
+                class="region-tag"
+                data-value="Ghana"
+                onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Ghana
+              </button>
+              <button
+                type="button"
+                class="region-tag"
+                data-value="Nigeria"
+                onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Nigeria
+              </button>
+              <button
+                type="button"
+                class="region-tag"
+                data-value="Senegal"
+                onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Senegal
+              </button>
+              <button
+                type="button"
+                class="region-tag"
+                data-value="Ivory Coast"
+                onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Ivory Coast
+              </button>
+              <button
+                type="button"
+                class="region-tag"
+                data-value="Cameroon"
+                onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Cameroon
+              </button>
+              <button
+                type="button"
+                class="region-tag"
+                data-value="Kenya"
+                onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Kenya
+              </button>
+              <button
+                type="button"
+                class="region-tag"
+                data-value="South Africa"
+                onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                South Africa
+              </button>
+              <button
+                type="button"
+                class="region-tag"
+                data-value="Egypt"
+                onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Egypt
+              </button>
+              <button
+                type="button"
+                class="region-tag"
+                data-value="Morocco"
+                onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Morocco
+              </button>
+              <button
+                type="button"
+                class="region-tag"
+                data-value="West Africa"
+                onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                West Africa
+              </button>
+              <button
+                type="button"
+                class="region-tag"
+                data-value="East Africa"
+                onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                East Africa
+              </button>
+              <button
+                type="button"
+                class="region-tag"
+                data-value="North Africa"
+                onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                North Africa
+              </button>
+              <button
+                type="button"
+                class="region-tag"
+                data-value="All Africa"
+                onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                All Africa
+              </button>
+            </div>
+          </div>
+
+          <!-- LEAGUES -->
+          <div class="fg">
+            <label class="required">Target leagues / destinations</label>
+            <div
+              id="ag-leagues-container"
+              style="
+                display: flex;
+                flex-wrap: wrap;
+                gap: 6px;
+                padding: 10px;
+                background: var(--bg2);
+                border: 0.5px solid var(--border);
+                min-height: 44px;
+              "
+            ></div>
+            <div
+              style="display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap"
+            >
+              <button
+                type="button"
+                class="league-tag"
+                data-value="Ghana Premier League"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Ghana Premier League
+              </button>
+              <button
+                type="button"
+                class="league-tag"
+                data-value="Nigeria Premier League"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Nigeria Premier League
+              </button>
+              <button
+                type="button"
+                class="league-tag"
+                data-value="CAF Champions League"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                CAF Champions League
+              </button>
+              <button
+                type="button"
+                class="league-tag"
+                data-value="MLS"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                MLS
+              </button>
+              <button
+                type="button"
+                class="league-tag"
+                data-value="USL"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                USL
+              </button>
+              <button
+                type="button"
+                class="league-tag"
+                data-value="Bundesliga"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Bundesliga
+              </button>
+              <button
+                type="button"
+                class="league-tag"
+                data-value="Premier League"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Premier League
+              </button>
+              <button
+                type="button"
+                class="league-tag"
+                data-value="La Liga"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                La Liga
+              </button>
+              <button
+                type="button"
+                class="league-tag"
+                data-value="Serie A"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Serie A
+              </button>
+              <button
+                type="button"
+                class="league-tag"
+                data-value="Ligue 1"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Ligue 1
+              </button>
+              <button
+                type="button"
+                class="league-tag"
+                data-value="Eredivisie"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Eredivisie
+              </button>
+              <button
+                type="button"
+                class="league-tag"
+                data-value="Saudi Pro League"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Saudi Pro League
+              </button>
+              <button
+                type="button"
+                class="league-tag"
+                data-value="UAE League"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                UAE League
+              </button>
+              <button
+                type="button"
+                class="league-tag"
+                data-value="Qatar Stars League"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Qatar Stars League
+              </button>
+              <button
+                type="button"
+                class="league-tag"
+                data-value="Europe"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Europe
+              </button>
+              <button
+                type="button"
+                class="league-tag"
+                data-value="USA"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                USA
+              </button>
+              <button
+                type="button"
+                class="league-tag"
+                data-value="Gulf"
+                onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
+                style="
+                  font-family: var(--font-head);
+                  font-size: 10px;
+                  font-weight: 700;
+                  letter-spacing: 0.06em;
+                  text-transform: uppercase;
+                  padding: 4px 10px;
+                  background: var(--bg3);
+                  border: 0.5px solid var(--border);
+                  color: var(--text2);
+                  cursor: pointer;
+                "
+              >
+                Gulf
+              </button>
+            </div>
+          </div>
+          <div class="fg">
+            <label
+              >Website
+              <span
+                style="
+                  font-size: 10px;
+                  color: var(--text3);
+                  font-weight: 400;
+                  text-transform: none;
+                  letter-spacing: 0;
+                "
+                >(optional)</span
+              ></label
+            >
+            <input
+              type="text"
+              id="ag-website"
+              placeholder="e.g. https://youragency.com"
+              style="
+                padding: 10px 14px;
+                background: var(--bg2);
+                border: 0.5px solid var(--border);
+                color: var(--text);
+                font-size: 14px;
+                width: 100%;
+                outline: none;
+                font-family: var(--font);
+              "
+            />
+          </div>
+          <button
+            class="btn btn-primary btn-full"
+            onclick="HF_AUTH.submitAgencyVerification()"
+          >
+            Submit for verification →
+          </button>
+          <div class="auth-link">
+            <a onclick="HF_AUTH.showScreen('screen-signup-confirm')">← Back</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- AGENCY VERIFICATION PENDING -->
+      <div class="auth-screen" id="screen-agency-pending">
+        <div class="auth-card" style="text-align: center">
+          <div class="auth-logo">
+            <div class="auth-logo-hex">HF</div>
+            <div class="auth-logo-name"><span>Happy</span>Feet</div>
+          </div>
+          <i
+            class="ti ti-clock"
+            style="
+              font-size: 48px;
+              color: var(--gold);
+              margin-bottom: 16px;
+              display: block;
+            "
+          ></i>
+          <div class="auth-title">Verification pending</div>
+          <div class="auth-sub" style="margin-bottom: var(--sp-xl)">
+            Your agency registration has been submitted. Our team will review
+            and verify your agency within 24-48 hours.
+          </div>
+          <div
+            style="
+              padding: 12px;
+              background: var(--bg2);
+              border-left: 3px solid var(--gold);
+              text-align: left;
+              margin-bottom: var(--sp-xl);
+              font-size: 13px;
+              color: var(--text2);
+            "
+          >
+            <strong style="color: var(--text)">While you wait you can:</strong
+            ><br /><br />
+            · View your profile<br />
+            · Browse Find my team<br />
+            · Access messages<br />
+          </div>
+          <button
+            class="btn btn-primary btn-full"
+            onclick="HF_AUTH.enterWithPendingAgency()"
           >
             Enter HappyFeet →
           </button>

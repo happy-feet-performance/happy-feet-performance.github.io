@@ -146,6 +146,14 @@
   line-height: 1.5;
 }
 
+/* ── MULTI-SELECT ── */
+.region-tag.selected,
+.league-tag.selected {
+  background: var(--gold);
+  color: #0f0f0d;
+  border-color: var(--gold);
+}
+
 /* ── CONFIRM BOX ── */
 .confirm-box {
   background: var(--bg2);
@@ -156,43 +164,6 @@
   font-size: var(--font-size-base);
   color: var(--text2);
   line-height: 2;
-}
-
-/* ── DEMO BUTTONS ── */
-.demo-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--sp-sm);
-}
-.demo-btn {
-  padding: 8px;
-  border-radius: 0;
-  font-family: var(--font-head);
-  font-size: var(--font-size-xs);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  border: 0.5px solid;
-  transition: var(--trans);
-}
-.demo-btn.player {
-  background: rgba(26, 122, 46, 0.08);
-  border-color: rgba(26, 122, 46, 0.3);
-  color: var(--green);
-}
-.demo-btn.coach {
-  background: rgba(196, 154, 10, 0.15);
-  border-color: rgba(196, 154, 10, 0.5);
-  color: #7a5c00;
-}
-.demo-btn.scout {
-  background: rgba(24, 95, 165, 0.08);
-  border-color: rgba(24, 95, 165, 0.3);
-  color: var(--blue);
-}
-.demo-btn:hover {
-  opacity: 0.82;
 }
 
 /* ── WHATSAPP NOTE ── */
