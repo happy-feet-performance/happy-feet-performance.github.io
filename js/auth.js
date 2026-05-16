@@ -155,12 +155,16 @@ const HF_AUTH = (() => {
         </div>`,
 
       scout: `
-        <div class="fg"><label>Organisation / agency</label><input type="text" id="su-org" placeholder="e.g. Independent / Agency name"></div>
-        <div class="form-row">
-          <div class="fg"><label>Region you cover</label><input type="text" id="su-region" placeholder="e.g. Ghana, West Africa"></div>
-          <div class="fg"><label>Years experience</label><input type="number" id="su-exp" min="0" max="50" placeholder="e.g. 3">
+        <div class="fg">
+          <label class="required">Organisation / agency</label>
+          <input type="text" id="su-org" placeholder="e.g. Independent / Agency name">
         </div>
-        <div class="fg"><label>Target leagues / destinations</label><input type="text" id="su-dest" placeholder="e.g. Europe, USA, Gulf"></div>`,
+        <div class="form-row">
+          <div class="fg">
+            <label class="required">Years experience</label>
+            <input type="number" id="su-exp" min="0" max="50" placeholder="e.g. 3">
+          </div>
+        </div>`,
     };
     rf.innerHTML = fields[role] || "";
   };
@@ -285,25 +289,22 @@ const HF_AUTH = (() => {
     } else {
       profile = {
         org: el("su-org")?.value.trim() || "",
-        region: el("su-region")?.value.trim() || "",
         exp: el("su-exp")?.value || "",
-        dest: el("su-dest")?.value.trim() || "",
         prospectsTracked: 0,
       };
       if (!profile.org) {
         showError("signup-err", "Please enter your organisation or agency.");
         return;
       }
-      if (!profile.region) {
-        showError("signup-err", "Please enter the region you cover.");
-        return;
-      }
       if (!profile.exp) {
         showError("signup-err", "Please enter your years of experience.");
         return;
       }
-      if (!profile.dest) {
-        showError("signup-err", "Please enter your target destinations.");
+      if (parseInt(profile.exp) < 0 || parseInt(profile.exp) > 50) {
+        showError(
+          "signup-err",
+          "Years of experience must be between 0 and 50.",
+        );
         return;
       }
     }
@@ -333,7 +334,7 @@ const HF_AUTH = (() => {
     const summaryRows = {
       player: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Player<br><strong>Position:</strong> ${profile.pos || "-"}<br><strong>Tier:</strong> ${profile.tier}<br><strong>Hometown:</strong> ${profile.hometown || "-"}`,
       coach: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Coach<br><strong>Licence:</strong> ${profile.licence}<br><strong>Club:</strong> ${profile.club || "-"}`,
-      scout: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Scout<br><strong>Organisation:</strong> ${profile.org || "-"}<br><strong>Region:</strong> ${profile.region || "-"}`,
+      scout: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Scout<br><strong>Organisation:</strong> ${profile.org || "-"}`,
     };
     el("confirm-icon").innerHTML = icons[state.role];
     el("confirm-title").textContent = `You're set, ${name.split(" ")[0]}!`;
@@ -357,6 +358,9 @@ const HF_AUTH = (() => {
 
     const session = _makeSession(result.user);
     HF_DB.saveSession(session);
+    if (state.signup.role === "player") {
+      await HF_DB.updateLoginStreak(session.userId);
+    }
     state.newUserId = result.user.id;
 
     if (state.signup.role === "coach") {
@@ -443,6 +447,9 @@ const HF_AUTH = (() => {
     hideError("login-err");
     const session = _makeSession(user);
     HF_DB.saveSession(session);
+    if (session.role === "player") {
+      await HF_DB.updateLoginStreak(session.userId);
+    }
     HF_ROUTER.launch(session);
   };
 
@@ -526,7 +533,6 @@ const HF_AUTH = (() => {
       showError("squad-err", "Please enter your league or division.");
       return;
     }
-
     if (
       year &&
       (parseInt(year) < 1600 || parseInt(year) > new Date().getFullYear())
@@ -538,7 +544,25 @@ const HF_AUTH = (() => {
       return;
     }
 
+    // check if team already exists
+    const existing = await HF_DB.checkTeamExists(teamName);
+    if (existing) {
+      showError(
+        "squad-err",
+        existing.status === "verified"
+          ? `"${teamName}" is already registered and verified. If you are the coach, please contact support.`
+          : `A verification request for "${teamName}" is already pending.`,
+      );
+      return;
+    }
+
     const session = HF_DB.getSession();
+
+    // update coach profile with potentially new team name
+    const updatedProfile = { ...session.profile, club: teamName };
+    await HF_DB.updateUserProfile(session.userId, updatedProfile);
+    session.profile = updatedProfile;
+    HF_DB.saveSession(session);
 
     const result = await HF_DB.submitSquadVerification({
       coachId: session.userId,
@@ -589,6 +613,7 @@ const HF_AUTH = (() => {
 
     const session = _makeSession(user);
     HF_DB.saveSession(session);
+    await HF_DB.updateLoginStreak(session.userId);
     HF_ROUTER.launch(session);
   };
 
@@ -660,21 +685,19 @@ const HF_AUTH = (() => {
       return;
     }
     if (regionsCovered.length === 0) {
-      showError("agency-err", "Please select at least one region you cover.");
+      showError("agency-err", "Please select at least one region.");
       return;
     }
     if (targetLeagues.length === 0) {
-      showError(
-        "agency-err",
-        "Please select at least one target league or destination.",
-      );
+      showError("agency-err", "Please select at least one target league.");
+      return;
+    }
+    if (!website) {
+      showError("agency-err", "Please enter your agency website.");
       return;
     }
     if (!isValidWebsite(website)) {
-      showError(
-        "agency-err",
-        "Please enter a valid website URL (e.g. https://youragency.com or youragency.com).",
-      );
+      showError("agency-err", "Please enter a valid website URL.");
       return;
     }
 

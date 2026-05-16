@@ -59,13 +59,14 @@ const HF_PLAYER = (() => {
     </div>`);
   };
   // ── DASHBOARD ───────────────────────────────────────────────
-  const dashboard = (s) => {
+  const dashboard = async (s) => {
     const p = s.profile || {};
     const r = p.ratings || {};
     const overall = calcRating(r);
-    const tracker = HF_DB.getSession()?.tracker || {};
-    const sessionsThisMonth = tracker.sessionsThisMonth || 0;
+    const tracker = await HF_DB.getTracker(s.userId);
+    const sessionsThisMonth = tracker?.sessionsThisMonth || 0;
     const faithStreak = p.faithStreak || 0;
+    const loginStreak = await HF_DB.getLoginStreak(s.userId);
     const messagesUnread = 0;
     const newUser = HF_UTILS.isNewUser(s);
 
@@ -90,12 +91,12 @@ const HF_PLAYER = (() => {
         <div class="metric-sub" style="color:var(--text2)">${overall !== null ? "Based on your stats" : "Not yet rated"}</div>
       </div>
       <div class="metric-card">
-        <div class="metric-val" style="color:var(--green)">${sessionsThisMonth}</div>
+        <div class="metric-val" style="color:var(--green)">${loginStreak}</div>
         <div class="metric-label">Daily streak</div>
-        <div class="metric-sub" style="color:var(--text2)">Days in a row</div>
+        <div class="metric-sub" style="color:var(--text2)">${loginStreak === 1 ? "Day 1 — keep going!" : `${loginStreak} days in a row`}</div>
       </div>
       <div class="metric-card">
-        <div class="metric-val" style="color:var(--faith)">${faithStreak}</div>
+        <div class="metric-val" style="color:var(--faith)">${p.faithStreak || 0}</div>
         <div class="metric-label">Faith streak</div>
         <div class="metric-sub" style="color:var(--text2)">Days in a row</div>
       </div>
@@ -701,61 +702,119 @@ const HF_PLAYER = (() => {
   };
 
   // ── FAITH ────────────────────────────────────────────────────
-  const faith = (s) => {
+  const faith = async (s) => {
+    const todayKey = new Date().toISOString().split("T")[0];
+    const storageKey = `hf_faith_checklist_${s.userId}_${todayKey}`;
+    const checked = JSON.parse(localStorage.getItem(storageKey) || "[]");
+
+    const prayers = [
+      {
+        id: "morning",
+        title: "Morning prayer",
+        desc: "Before training — Lord, strengthen my body and sharpen my mind.",
+      },
+      {
+        id: "prematch",
+        title: "Pre-match prayer",
+        desc: "Father, as I step onto this pitch I surrender the outcome to You.",
+      },
+      {
+        id: "struggle",
+        title: "When you're struggling",
+        desc: "God, I don't understand this season. Renew my strength.",
+      },
+    ];
+
+    const allChecked = prayers.every((p) => checked.includes(p.id));
+
     setMain(`
-      <div class="faith-hero">
-        <div style="font-size:32px;margin-bottom:10px"><i class="ti ti-cross"></i></div>
-        <div style="font-size:20px;font-weight:700;margin-bottom:6px">Faith & Purpose</div>
-        <div style="font-size:13px;opacity:.8;line-height:1.6">Your talent is God-given.<br>Your discipline is your worship.</div>
-      </div>
-      <div class="faith-verse-card">
-        <div class="verse-text">${HF_SCRIPTURE.getToday().verse}</div>
-        <div class="verse-ref">${HF_SCRIPTURE.getToday().ref}</div>
-      </div>
-      <div class="card faith-card">
-        <div class="card-title"><div class="card-dot faith"></div>Daily prayers for athletes</div>
-        <div class="prayer-card">
-          <div class="prayer-title">Morning prayer before training</div>
-          <div class="prayer-text">Lord, I come before You this morning with gratitude for the gift of health and the ability to compete. Strengthen my body, sharpen my mind, and guard me from injury today. Let every drop of sweat be an act of worship. Amen.</div>
+    <div class="faith-hero">
+      <i class="ti ti-cross" style="font-size:32px;margin-bottom:10px;display:block;color:var(--faith)"></i>
+      <div style="font-size:20px;font-weight:700;margin-bottom:6px">Faith & Purpose</div>
+      <div style="font-size:13px;opacity:.8">Your talent is God-given. Your discipline is your worship.</div>
+    </div>
+
+    <div class="faith-verse-card">
+      <div class="verse-text">${HF_SCRIPTURE.getToday().verse}</div>
+      <div class="verse-ref">${HF_SCRIPTURE.getToday().ref}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot faith"></div>Daily prayers
         </div>
-        <div class="prayer-card">
-          <div class="prayer-title">Pre-match prayer</div>
-          <div class="prayer-text">Father, as I step onto this pitch I surrender the outcome to You. Give me courage, clarity, and the strength to give everything I have. Let me play with joy, compete with integrity, and reflect Your grace. Thank You for this moment. Amen.</div>
-        </div>
-        <div class="prayer-card">
-          <div class="prayer-title">When you're struggling</div>
-          <div class="prayer-text">God, I don't understand this season. Injuries, setbacks, doubts, I bring them all to You. Your word says You work all things for good. Help me trust that. Renew my strength. I believe my breakthrough is coming. Amen.</div>
-        </div>
+        ${
+          allChecked
+            ? `
+          <span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">
+            <i class="ti ti-circle-check"></i> All done
+          </span>`
+            : `
+          <span style="font-family:var(--font-head);font-size:10px;color:var(--text3);">
+            ${checked.length}/${prayers.length} completed
+          </span>`
+        }
       </div>
-      <div class="card faith-card">
-        <div class="card-title"><div class="card-dot faith"></div>Scripture for every moment</div>
-        ${[
-          [
-            "When you doubt yourself",
-            '"For I know the plans I have for you," declares the LORD, "plans to prosper you and not to harm you." ~ Jeremiah 29:11',
-          ],
-          [
-            "Before a big match",
-            '"Have I not commanded you? Be strong and courageous. Do not be afraid." ~ Joshua 1:9',
-          ],
-          [
-            "On hard work",
-            '"Whatever you do, work at it with all your heart, as working for the Lord." ~ Colossians 3:23',
-          ],
-          [
-            "When injured",
-            '"He gives strength to the weary and increases the power of the weak." ~ Isaiah 40:29',
-          ],
-        ]
-          .map(
-            ([title, verse]) => `
-          <div style="padding:12px;background:var(--faith-lt);border-radius:8px;border-left:3px solid var(--faith);margin-bottom:8px">
-            <div style="font-size:11px;font-weight:700;color:var(--faith);margin-bottom:4px">${title}</div>
-            <div style="font-size:12px;color:var(--text2);font-style:italic;line-height:1.6">${verse}</div>
-          </div>`,
-          )
-          .join("")}
-      </div>`);
+
+      ${prayers
+        .map((p) => {
+          const isChecked = checked.includes(p.id);
+          return `
+          <div style="display:flex;align-items:flex-start;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:2px solid ${isChecked ? "var(--green)" : "var(--faith)"};margin-bottom:var(--sp-sm);cursor:pointer;transition:var(--trans);"
+            onclick="HF_PLAYER.togglePrayer('${p.id}', '${todayKey}', '${s.userId}')">
+            <div style="width:20px;height:20px;border:2px solid ${isChecked ? "var(--green)" : "var(--faith)"};background:${isChecked ? "var(--green)" : "transparent"};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+              ${isChecked ? '<i class="ti ti-check" style="font-size:12px;color:#fff;"></i>' : ""}
+            </div>
+            <div>
+              <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${isChecked ? "var(--green)" : "var(--faith)"};margin-bottom:4px;${isChecked ? "text-decoration:line-through;" : ""}">
+                ${p.title}
+              </div>
+              <div style="font-size:12px;color:var(--text2);font-style:italic;line-height:1.5;${isChecked ? "opacity:0.5;" : ""}">
+                ${p.desc}
+              </div>
+            </div>
+          </div>`;
+        })
+        .join("")}
+
+      ${
+        allChecked
+          ? `
+        <div style="text-align:center;padding:var(--sp-lg);color:var(--faith);font-size:13px;font-style:italic;">
+          <i class="ti ti-heart" style="margin-right:6px"></i>
+          All prayers completed for today. Come back tomorrow.
+        </div>`
+          : ""
+      }
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="border-top:2px solid var(--faith);padding-top:var(--sp-md)"><div class="card-dot faith"></div>Scripture for every moment</div>
+      ${[
+        [
+          "When you doubt yourself",
+          '"For I know the plans I have for you," declares the LORD. — Jeremiah 29:11',
+        ],
+        [
+          "Before a big match",
+          '"Have I not commanded you? Be strong and courageous." — Joshua 1:9',
+        ],
+        [
+          "On hard work",
+          '"Whatever you do, work at it with all your heart." — Colossians 3:23',
+        ],
+        ["When injured", '"He gives strength to the weary." — Isaiah 40:29'],
+      ]
+        .map(
+          ([title, verse]) => `
+        <div style="padding:12px;background:var(--faith-lt);border-radius:0;border-left:3px solid var(--faith);margin-bottom:8px">
+          <div style="font-size:11px;font-weight:700;color:var(--faith);margin-bottom:4px">${title}</div>
+          <div style="font-size:12px;color:var(--text2);font-style:italic;line-height:1.6">${verse}</div>
+        </div>`,
+        )
+        .join("")}
+    </div>`);
   };
 
   const updateTrainingDay = async (dayIndex, type) => {
@@ -802,12 +861,36 @@ const HF_PLAYER = (() => {
     health(session);
   };
 
-  const editProfile = () => {
+  const editProfile = (editing = true) => {
     const session = HF_DB.getSession();
     const p = session.profile || {};
+
     setMain(`
+    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
+      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
+        <div style="position:relative;">
+          <div style="width:72px;height:72px;background:#1a7a2e;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
+            ${HF_UTILS.initials(session.name)}
+          </div>
+          <button onclick="HF_UTILS.toast('Profile photo upload coming soon!','success')"
+            style="position:absolute;bottom:-8px;right:-8px;width:24px;height:24px;background:var(--gold);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0f0f0d;">
+            <i class="ti ti-camera" style="font-size:12px"></i>
+          </button>
+        </div>
+        <div>
+          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${session.name}</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.pos || "-"} · ${p.tier || "-"}</div>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <div class="card-title"><div class="card-dot"></div>Edit profile</div>
+      <div class="fg">
+        <label class="required">Full name</label>
+        <input type="text" id="ep-name" value="${session.name || ""}" placeholder="Your full name"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
       <div class="form-row">
         <div class="fg"><label class="required">Position</label>
           <select id="ep-pos">
@@ -837,19 +920,27 @@ const HF_PLAYER = (() => {
         </div>
       </div>
       <div class="fg"><label class="required">Hometown / region</label>
-        <input type="text" id="ep-hometown" value="${p.hometown || ""}" placeholder="e.g. Kumasi, Ashanti">
+        <input type="text" id="ep-hometown" value="${p.hometown || ""}" placeholder="e.g. Kumasi, Ashanti"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
       </div>
-      <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--border);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
-        <i class="ti ti-info-circle" style="margin-right:6px"></i>
-        Your club is assigned by your coach once you join a verified squad.
-      </div>
+      ${
+        !p.club
+          ? `
+        <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--border);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
+          <i class="ti ti-info-circle" style="margin-right:6px"></i>
+          Your club is assigned by your coach once you join a verified squad.
+        </div>`
+          : `
+        <div style="padding:12px;background:rgba(26,122,46,.05);border-left:2px solid var(--green);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
+          <i class="ti ti-circle-check" style="margin-right:6px;color:var(--green)"></i>
+          You are currently signed to <strong style="color:var(--green)">${p.club}</strong>.
+        </div>`
+      }
       <div style="display:flex;gap:8px;margin-top:4px;">
         <button class="btn btn-primary" onclick="HF_PLAYER.saveProfile()">
           <i class="ti ti-circle-check"></i> Save changes
         </button>
-        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('profile')">
-          Cancel
-        </button>
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('profile')">Cancel</button>
       </div>
     </div>`);
   };
@@ -857,11 +948,15 @@ const HF_PLAYER = (() => {
   const saveProfile = async () => {
     const session = HF_DB.getSession();
     const p = session.profile || {};
-
+    const name = document.getElementById("ep-name")?.value.trim();
     const pos = document.getElementById("ep-pos")?.value;
     const tier = document.getElementById("ep-tier")?.value;
     const hometown = document.getElementById("ep-hometown")?.value.trim();
 
+    if (!name) {
+      HF_UTILS.toast("Please enter your full name.", "error");
+      return;
+    }
     if (!pos) {
       HF_UTILS.toast("Please select your position.", "error");
       return;
@@ -871,12 +966,21 @@ const HF_PLAYER = (() => {
       return;
     }
 
+    // update name if changed
+    if (name !== session.name) {
+      const nameResult = await HF_DB.updateUserName(session.userId, name);
+      if (nameResult.error) {
+        HF_UTILS.toast(nameResult.error, "error");
+        return;
+      }
+      session.name = name;
+    }
+
     const updatedProfile = { ...p, pos, tier, hometown };
     const result = await HF_DB.updateUserProfile(
       session.userId,
       updatedProfile,
     );
-
     if (result.error) {
       HF_UTILS.toast(result.error, "error");
       return;
@@ -884,6 +988,10 @@ const HF_PLAYER = (() => {
 
     session.profile = updatedProfile;
     HF_DB.saveSession(session);
+
+    // update topbar name display
+    const nameDisplay = document.getElementById("topbar-name-display");
+    if (nameDisplay) nameDisplay.textContent = name;
 
     HF_UTILS.toast("Profile updated!", "success");
     HF_ROUTER.navTo("profile");
@@ -954,6 +1062,47 @@ const HF_PLAYER = (() => {
     messages(session);
   };
 
+  const togglePrayer = (prayerId, dateKey, userId) => {
+    const storageKey = `hf_faith_checklist_${userId}_${dateKey}`;
+    const checked = JSON.parse(localStorage.getItem(storageKey) || "[]");
+
+    const idx = checked.indexOf(prayerId);
+    if (idx > -1) {
+      checked.splice(idx, 1);
+    } else {
+      checked.push(prayerId);
+      // update faith streak if all prayers done
+      const prayers = ["morning", "prematch", "struggle"];
+      if (prayers.every((p) => checked.includes(p))) {
+        const session = HF_DB.getSession();
+        const profile = session.profile || {};
+        const lastStreakKey = `hf_faith_streak_date_${userId}`;
+        const lastDate = localStorage.getItem(lastStreakKey);
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayKey = yesterday.toISOString().split("T")[0];
+
+        const newStreak =
+          lastDate === yesterdayKey ? (profile.faithStreak || 0) + 1 : 1;
+
+        localStorage.setItem(lastStreakKey, dateKey);
+        const updatedProfile = { ...profile, faithStreak: newStreak };
+        HF_DB.updateUserProfile(userId, updatedProfile).then(() => {
+          session.profile = updatedProfile;
+          HF_DB.saveSession(session);
+        });
+
+        HF_UTILS.toast(
+          `Faith streak: ${newStreak} days! Keep going.`,
+          "success",
+        );
+      }
+    }
+
+    localStorage.setItem(storageKey, JSON.stringify(checked));
+    faith(HF_DB.getSession());
+  };
+
   return {
     render,
     updateTrainingDay,
@@ -963,6 +1112,7 @@ const HF_PLAYER = (() => {
     respondInvite,
     readMessage,
     archiveMessage,
+    togglePrayer,
   };
 })();
 

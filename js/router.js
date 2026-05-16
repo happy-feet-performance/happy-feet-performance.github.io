@@ -69,7 +69,7 @@ const HF_ROUTER = (() => {
         }
       }
       nav.push(
-        { section: verified ? "Tools" : "Community" },
+        { section: "Community" },
         { view: "messages", icon: "ti-message", label: "Messages" },
         {
           view: "faith",
@@ -101,7 +101,7 @@ const HF_ROUTER = (() => {
         );
       }
       nav.push(
-        { section: verified ? "Reports" : "Community" },
+        { section: "Community" },
         { view: "messages", icon: "ti-message", label: "Messages" },
         { section: "Discover" },
         { view: "findmyteam", icon: "ti-map-search", label: "Find my team" },

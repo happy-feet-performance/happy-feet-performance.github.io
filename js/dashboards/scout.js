@@ -1031,34 +1031,61 @@ const HF_SCOUT = (() => {
   const editProfile = () => {
     const session = HF_DB.getSession();
     const p = session.profile || {};
+
     setMain(`
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Edit profile</div>
-        <div class="fg">
-          <label class="required">Organisation / agency</label>
-          <input type="text" id="ep-org" value="${p.org || ""}" placeholder="e.g. HappyFeet Scouting"
-            style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;gap:var(--sp-lg);">
+      <div style="position:relative;">
+        <div style="width:72px;height:72px;background:#185FA5;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
+          ${HF_UTILS.initials(session.name)}
         </div>
-        <div class="fg">
-          <label class="required">Years experience</label>
-          <input type="number" id="ep-exp" value="${p.exp || ""}" min="0" max="50" placeholder="e.g. 5"
-            style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-        </div>
-        <div style="display:flex;gap:8px;margin-top:var(--sp-md);">
-          <button class="btn btn-primary" onclick="HF_SCOUT.saveProfile()">
-            <i class="ti ti-circle-check"></i> Save changes
-          </button>
-          <button class="btn btn-outline" onclick="HF_ROUTER.navTo('profile')">Cancel</button>
-        </div>
-      </div>`);
+        <button onclick="HF_UTILS.toast('Profile photo upload coming soon!','success')"
+          style="position:absolute;bottom:-8px;right:-8px;width:24px;height:24px;background:var(--gold);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0f0f0d;">
+          <i class="ti ti-camera" style="font-size:12px"></i>
+        </button>
+      </div>
+      <div>
+        <div style="font-family:var(--font-head);font-size:22px;font-weight:700;color:#fff;">${session.name}</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.org || "-"}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Edit profile</div>
+      <div class="fg">
+        <label class="required">Full name</label>
+        <input type="text" id="ep-name" value="${session.name || ""}" placeholder="Your full name"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <div class="fg">
+        <label class="required">Organisation / agency</label>
+        <input type="text" id="ep-org" value="${p.org || ""}" placeholder="e.g. HappyFeet Scouting"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <div class="fg">
+        <label class="required">Years experience</label>
+        <input type="number" id="ep-exp" value="${p.exp || ""}" min="0" max="50"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button class="btn btn-primary" onclick="HF_SCOUT.saveProfile()">
+          <i class="ti ti-circle-check"></i> Save changes
+        </button>
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('profile')">Cancel</button>
+      </div>
+    </div>`);
   };
 
   const saveProfile = async () => {
     const session = HF_DB.getSession();
     const p = session.profile || {};
+    const name = document.getElementById("ep-name")?.value.trim();
     const org = document.getElementById("ep-org")?.value.trim();
     const exp = document.getElementById("ep-exp")?.value;
 
+    if (!name) {
+      HF_UTILS.toast("Please enter your full name.", "error");
+      return;
+    }
     if (!org) {
       HF_UTILS.toast("Please enter your organisation name.", "error");
       return;
@@ -1066,6 +1093,15 @@ const HF_SCOUT = (() => {
     if (!exp || parseInt(exp) < 0 || parseInt(exp) > 50) {
       HF_UTILS.toast("Please enter valid years of experience (0-50).", "error");
       return;
+    }
+
+    if (name !== session.name) {
+      const nameResult = await HF_DB.updateUserName(session.userId, name);
+      if (nameResult.error) {
+        HF_UTILS.toast(nameResult.error, "error");
+        return;
+      }
+      session.name = name;
     }
 
     const updatedProfile = { ...p, org, exp };
@@ -1080,6 +1116,10 @@ const HF_SCOUT = (() => {
 
     session.profile = updatedProfile;
     HF_DB.saveSession(session);
+
+    const nameDisplay = document.getElementById("topbar-name-display");
+    if (nameDisplay) nameDisplay.textContent = name;
+
     HF_UTILS.toast("Profile updated!", "success");
     HF_ROUTER.navTo("profile");
   };

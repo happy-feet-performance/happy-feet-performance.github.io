@@ -156,6 +156,15 @@ const HF_DB = (() => {
     return { user: _normaliseUser(user) };
   };
 
+  const updateUserName = async (userId, name) => {
+    const { error } = await _client
+      .from("users")
+      .update({ name })
+      .eq("id", userId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
   // ─── Normalise DB row to app format ────────────────────────
   const _normaliseUser = (u) => ({
     id: u.id,
@@ -457,7 +466,16 @@ const HF_DB = (() => {
       .or(`name.ilike.%${query}%,contact.ilike.%${query}%`)
       .limit(10);
     if (error) return { data: [] };
-    return { data };
+
+    // only return unattached players
+    const unattached =
+      data?.filter((p) => {
+        const status = p.profile?.status;
+        const club = p.profile?.club;
+        return !club || status === "unattached";
+      }) || [];
+
+    return { data: unattached };
   };
 
   const sendSquadInvite = async (coachId, playerId, squadName) => {
@@ -704,7 +722,8 @@ const HF_DB = (() => {
       .delete()
       .eq("to_id", userId)
       .eq("from_id", "admin")
-      .eq("subject", "Squad registration update");
+      .eq("subject", "Squad registration update")
+      .limit(1);
   };
 
   const checkUserStatus = async (userId) => {
@@ -927,8 +946,7 @@ const HF_DB = (() => {
           onMessage(payload.new);
         },
       )
-      .subscribe((status) => {
-      });
+      .subscribe((status) => {});
   };
 
   const subscribeToUserStatus = (userId, onStatusChange) => {
@@ -946,9 +964,7 @@ const HF_DB = (() => {
           onStatusChange(payload.new);
         },
       )
-      .subscribe((status) => {
-        console.log("user status subscription status:", status);
-      });
+      .subscribe();
   };
 
   const subscribeToPendingVerifications = (onNewVerification) => {
@@ -965,9 +981,7 @@ const HF_DB = (() => {
           onNewVerification(payload);
         },
       )
-      .subscribe((status) => {
-        console.log("squad verifications subscription status:", status);
-      });
+      .subscribe();
   };
 
   const subscribeToAgencyVerifications = (onNewVerification) => {
@@ -984,9 +998,7 @@ const HF_DB = (() => {
           onNewVerification(payload);
         },
       )
-      .subscribe((status) => {
-        console.log("agency verifications subscription status:", status);
-      });
+      .subscribe();
   };
 
   const getScoutProspects = async (scoutId) => {
@@ -1157,11 +1169,122 @@ const HF_DB = (() => {
     return { data };
   };
 
+  const removePlayerFromSquad = async (coachId, playerId, reason) => {
+    // update invite status to removed
+    const { error: inviteError } = await _client
+      .from("squad_invites")
+      .update({ status: "removed" })
+      .eq("coach_id", coachId)
+      .eq("player_id", playerId);
+    if (inviteError) return { error: inviteError.message };
+
+    // reset player club and status
+    const { data: player } = await _client
+      .from("users")
+      .select("profile")
+      .eq("id", playerId)
+      .single();
+
+    if (player) {
+      const updatedProfile = {
+        ...player.profile,
+        club: null,
+        status: "unattached",
+      };
+      await _client
+        .from("users")
+        .update({ profile: updatedProfile })
+        .eq("id", playerId);
+    }
+
+    // notify player
+    await _client.from("messages").insert({
+      from_id: coachId,
+      to_id: playerId,
+      subject: "Removed from squad",
+      body: `You have been removed from the squad. Reason: ${reason}.`,
+      read: false,
+    });
+
+    return { success: true };
+  };
+
+  const decrementTeamSize = async (coachId) => {
+    const { data: coach } = await _client
+      .from("users")
+      .select("profile")
+      .eq("id", coachId)
+      .single();
+    if (!coach) return;
+    const updatedProfile = {
+      ...coach.profile,
+      teamSize: Math.max(0, (coach.profile?.teamSize || 1) - 1),
+    };
+    await _client
+      .from("users")
+      .update({ profile: updatedProfile })
+      .eq("id", coachId);
+  };
+
+  const updateLoginStreak = async (userId) => {
+    const { data, error } = await _client
+      .from("users")
+      .select("last_login, login_streak")
+      .eq("id", userId)
+      .single();
+    if (error) return;
+
+    const today = new Date().toISOString().split("T")[0];
+    const lastLogin = data?.last_login;
+    const streak = data?.login_streak || 0;
+
+    // calculate new streak
+    let newStreak = 1;
+    if (lastLogin) {
+      const last = new Date(lastLogin);
+      const now = new Date(today);
+      const diffDays = Math.round((now - last) / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0) return; // already logged in today, don't update
+      if (diffDays === 1) newStreak = streak + 1; // consecutive day
+      // if diffDays > 1, streak resets to 1
+    }
+
+    await _client
+      .from("users")
+      .update({ last_login: today, login_streak: newStreak })
+      .eq("id", userId);
+
+    return newStreak;
+  };
+
+  const getLoginStreak = async (userId) => {
+    const { data, error } = await _client
+      .from("users")
+      .select("login_streak, last_login")
+      .eq("id", userId)
+      .single();
+    if (error) return 0;
+
+    // check if streak is still valid (last login was yesterday or today)
+    const today = new Date().toISOString().split("T")[0];
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayKey = yesterday.toISOString().split("T")[0];
+
+    if (!data.last_login) return 0;
+    if (data.last_login === today || data.last_login === yesterdayKey) {
+      return data.login_streak || 0;
+    }
+    return 0; // streak broken
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     createUser,
     findUser,
     updateUserProfile,
+    updateUserName,
     getSession,
     saveSession,
     clearSession,
@@ -1226,6 +1349,10 @@ const HF_DB = (() => {
     getAllPlayers,
     getUserById,
     _sendMessage,
+    removePlayerFromSquad,
+    decrementTeamSize,
+    updateLoginStreak,
+    getLoginStreak,
   };
 })();
 

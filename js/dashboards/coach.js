@@ -28,16 +28,16 @@ const HF_COACH = (() => {
 
     if (!isVerified) {
       setMain(`
-      <div class="card">
-        <div style="text-align:center;padding:32px;color:var(--text2)">
-          <i class="ti ti-lock" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Squad locked</div>
-          <div style="font-size:13px">Verify your squad first to start adding players.</div>
-          <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="HF_AUTH.showScreen('screen-squad-verify')">
-            <i class="ti ti-clipboard-check"></i> Register your squad
-          </button>
-        </div>
-      </div>`);
+    <div class="card">
+      <div style="text-align:center;padding:32px;color:var(--text2)">
+        <i class="ti ti-lock" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Squad locked</div>
+        <div style="font-size:13px">Register and verify your squad to start adding players.</div>
+        <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="HF_COACH.resubmitSquad()">
+          <i class="ti ti-clipboard-check"></i> Register your squad
+        </button>
+      </div>
+    </div>`);
       return;
     }
 
@@ -88,6 +88,7 @@ const HF_COACH = (() => {
               <th>Tier</th>
               <th>Status</th>
               <th>Rating</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -95,6 +96,7 @@ const HF_COACH = (() => {
               .map((sp) => {
                 const p = sp.player?.profile || {};
                 const name = sp.player?.name || "Unknown";
+                const safeName = name.replace(/'/g, "\\'");
                 const overall = p.ratings
                   ? Math.round(
                       (p.ratings.speed +
@@ -105,7 +107,7 @@ const HF_COACH = (() => {
                     )
                   : null;
                 return `
-                <tr style="cursor:pointer;" onclick="HF_ROUTER.navTo('tracking')">
+                <tr>
                   <td style="font-weight:600">${name}</td>
                   <td>${p.pos || "-"}</td>
                   <td>${p.tier || "-"}</td>
@@ -118,6 +120,11 @@ const HF_COACH = (() => {
                   </td>
                   <td style="font-weight:700;color:${overall ? "var(--gold)" : "var(--text3)"}">
                     ${overall !== null ? overall + "%" : "-"}
+                  </td>
+                  <td>
+                    <button class="btn btn-danger btn-sm" onclick="HF_COACH.confirmKickPlayer('${sp.player_id}', '${safeName}')">
+                      <i class="ti ti-logout"></i> Remove
+                    </button>
                   </td>
                 </tr>`;
               })
@@ -213,9 +220,9 @@ const HF_COACH = (() => {
       ${
         isUnregistered || isRejected
           ? `
-        <button class="btn btn-primary btn-sm" onclick="${isRejected ? "HF_COACH.resubmitSquad()" : "HF_AUTH.showScreen('screen-squad-verify')"}">
-          <i class="ti ti-clipboard-check"></i> ${isRejected ? "Resubmit squad" : "Register your squad"}
-        </button>`
+          <button class="btn btn-primary btn-sm" onclick="HF_COACH.resubmitSquad()">
+            <i class="ti ti-clipboard-check"></i> ${isRejected ? "Resubmit squad" : "Register your squad"}
+          </button>`
           : ""
       }
       ${
@@ -311,83 +318,160 @@ const HF_COACH = (() => {
   // PROFILE
   const profile = (s) => {
     const p = s.profile || {};
+
     setMain(`
-      <div class="profile-hero">
-        ${avatarHTML(s.name, "xl", "#C9961A")}
+    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
+      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
+        <div style="width:72px;height:72px;background:#C49A0A;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#0f0f0d;">
+          ${HF_UTILS.initials(s.name)}
+        </div>
         <div>
-          <div class="profile-name">${s.name}</div>
-          <div class="profile-meta">${p.spec || "Head coach"} · ${p.club || "-"}</div>
-          <div style="margin-top:8px">${badgeHTML("Coach", "gold")}</div>
+          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${s.name}</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.spec || "Head coach"} · ${p.club || "-"}</div>
+          <div style="margin-top:8px;">${badgeHTML("Coach", "gold")}</div>
         </div>
       </div>
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Coaching details</div>
-        <div class="info-grid">
-          <div class="info-cell"><div class="info-label">Licence</div><div class="info-val">${p.licence || "-"}</div></div>
-          <div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp || "-"} years</div></div>
-          <div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club || "-"}</div></div>
-          <div class="info-cell"><div class="info-label">Specialisation</div><div class="info-val">${p.spec || "-"}</div></div>
-          <div class="info-cell"><div class="info-label">Squad size</div><div class="info-val">${p.teamSize || 22} players</div></div>
-          <div class="info-cell"><div class="info-label">${s.contactType === "phone" ? "Phone" : "Email"}</div><div class="info-val">${s.displayContact || s.contact}</div></div>
-        </div>
-      </div>`);
-  };
+    </div>
 
-  // SQUAD
-  const verifiedSquad = async (s) => {
-    const p = s.profile || {};
-    const squadStatus = s.squadStatus || "unregistered";
-    const isVerified = squadStatus === "verified";
-
-    if (!isVerified) {
-      setMain(`
-      <div class="card">
-        <div style="text-align:center;padding:32px;color:var(--text2)">
-          <i class="ti ti-lock" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Squad locked</div>
-          <div style="font-size:13px">Verify your squad first to start adding players.</div>
-          <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="HF_AUTH.showScreen('screen-squad-verify')">
-            <i class="ti ti-clipboard-check"></i> Register your squad
-          </button>
-        </div>
-      </div>`);
-      return;
-    }
-
-    setMain(`
     <div class="card">
       <div class="card-title" style="justify-content:space-between;">
         <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-          <div class="card-dot"></div>Squad roster: ${p.club || "Your club"}
+          <div class="card-dot"></div>Coaching details
         </div>
-        <button class="btn btn-primary btn-sm" onclick="HF_COACH.showInvitePanel()">
-          <i class="ti ti-plus"></i> Invite player
+        <button class="btn btn-outline btn-sm" onclick="HF_COACH.editProfile()">
+          <i class="ti ti-edit"></i> Edit
         </button>
       </div>
-
-      <div id="invite-panel" style="display:none;margin-bottom:var(--sp-lg);padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);">
-        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;">
-          Invite a player
-        </div>
-        <div style="display:flex;gap:8px;">
-          <input type="text" id="player-search-input" placeholder="Search by name or email..."
-            style="flex:1;padding:8px 12px;background:var(--bg);border:0.5px solid var(--border);color:var(--text);font-size:13px;font-family:var(--font);outline:none;"
-            oninput="HF_COACH.searchPlayers(this.value)">
-          <button class="btn btn-outline btn-sm" onclick="HF_COACH.showInvitePanel()">
-            <i class="ti ti-x"></i>
-          </button>
-        </div>
-        <div id="player-search-results" style="margin-top:8px;"></div>
-      </div>
-
-      <div id="squad-roster">
-        <div style="text-align:center;padding:32px;color:var(--text2)">
-          <i class="ti ti-users" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No players yet</div>
-          <div style="font-size:13px">Invite players to your squad using the button above.</div>
-        </div>
+      <div class="info-grid">
+        <div class="info-cell"><div class="info-label">Licence</div><div class="info-val">${p.licence || "-"}</div></div>
+        <div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp || "-"} years</div></div>
+        <div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club || "-"}</div></div>
+        <div class="info-cell"><div class="info-label">Specialisation</div><div class="info-val">${p.spec || "-"}</div></div>
+        <div class="info-cell"><div class="info-label">Squad size</div><div class="info-val">${p.teamSize || 0} players</div></div>
+        <div class="info-cell"><div class="info-label">${s.contactType === "phone" ? "Phone" : "Email"}</div><div class="info-val">${s.displayContact || s.contact}</div></div>
       </div>
     </div>`);
+  };
+
+  const editProfile = () => {
+    const session = HF_DB.getSession();
+    const p = session.profile || {};
+
+    setMain(`
+    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;gap:var(--sp-lg);">
+      <div style="position:relative;">
+        <div style="width:72px;height:72px;background:#C49A0A;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#0f0f0d;">
+          ${HF_UTILS.initials(session.name)}
+        </div>
+        <button onclick="HF_UTILS.toast('Profile photo upload coming soon!','success')"
+          style="position:absolute;bottom:-8px;right:-8px;width:24px;height:24px;background:var(--gold);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0f0f0d;">
+          <i class="ti ti-camera" style="font-size:12px"></i>
+        </button>
+      </div>
+      <div>
+        <div style="font-family:var(--font-head);font-size:22px;font-weight:700;color:#fff;">${session.name}</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.spec || "Head coach"}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Edit profile</div>
+      <div class="fg">
+        <label class="required">Full name</label>
+        <input type="text" id="ep-name" value="${session.name || ""}" placeholder="Your full name"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <div class="form-row">
+        <div class="fg">
+          <label class="required">Coaching licence</label>
+          <select id="ep-licence">
+            <option value="">Select licence</option>
+            <option ${p.licence === "None yet" ? "selected" : ""}>None yet</option>
+            <option ${p.licence === "CAF D" ? "selected" : ""}>CAF D</option>
+            <option ${p.licence === "CAF C" ? "selected" : ""}>CAF C</option>
+            <option ${p.licence === "CAF B" ? "selected" : ""}>CAF B</option>
+            <option ${p.licence === "CAF A" ? "selected" : ""}>CAF A</option>
+            <option ${p.licence === "UEFA Pro" ? "selected" : ""}>UEFA Pro</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="required">Years experience</label>
+          <input type="number" id="ep-exp" value="${p.exp || ""}" min="0" max="50"
+            style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+        </div>
+      </div>
+      <div class="fg">
+        <label>Specialisation</label>
+        <select id="ep-spec">
+          <option ${p.spec === "All-round" ? "selected" : ""}>All-round</option>
+          <option ${p.spec === "Goalkeeper" ? "selected" : ""}>Goalkeeper</option>
+          <option ${p.spec === "Defending" ? "selected" : ""}>Defending</option>
+          <option ${p.spec === "Attacking" ? "selected" : ""}>Attacking</option>
+          <option ${p.spec === "Set pieces" ? "selected" : ""}>Set pieces</option>
+          <option ${p.spec === "Fitness & conditioning" ? "selected" : ""}>Fitness & conditioning</option>
+        </select>
+      </div>
+      <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--border);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
+        <i class="ti ti-info-circle" style="margin-right:6px"></i>
+        Club name is managed through squad verification.
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button class="btn btn-primary" onclick="HF_COACH.saveProfile()">
+          <i class="ti ti-circle-check"></i> Save changes
+        </button>
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('profile')">Cancel</button>
+      </div>
+    </div>`);
+  };
+
+  const saveProfile = async () => {
+    const session = HF_DB.getSession();
+    const p = session.profile || {};
+    const name = document.getElementById("ep-name")?.value.trim();
+    const licence = document.getElementById("ep-licence")?.value;
+    const exp = document.getElementById("ep-exp")?.value;
+    const spec = document.getElementById("ep-spec")?.value;
+
+    if (!name) {
+      HF_UTILS.toast("Please enter your full name.", "error");
+      return;
+    }
+    if (!licence) {
+      HF_UTILS.toast("Please select your coaching licence.", "error");
+      return;
+    }
+    if (!exp || parseInt(exp) < 0 || parseInt(exp) > 50) {
+      HF_UTILS.toast("Please enter valid years of experience (0-50).", "error");
+      return;
+    }
+
+    if (name !== session.name) {
+      const nameResult = await HF_DB.updateUserName(session.userId, name);
+      if (nameResult.error) {
+        HF_UTILS.toast(nameResult.error, "error");
+        return;
+      }
+      session.name = name;
+    }
+
+    const updatedProfile = { ...p, licence, exp, spec };
+    const result = await HF_DB.updateUserProfile(
+      session.userId,
+      updatedProfile,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    session.profile = updatedProfile;
+    HF_DB.saveSession(session);
+
+    const nameDisplay = document.getElementById("topbar-name-display");
+    if (nameDisplay) nameDisplay.textContent = name;
+
+    HF_UTILS.toast("Profile updated!", "success");
+    HF_ROUTER.navTo("profile");
   };
 
   // TRAINING
@@ -682,52 +766,92 @@ const HF_COACH = (() => {
   };
 
   // FAITH
-  const faith = (s) => {
+  const faith = async (s) => {
+    const todayKey = new Date().toISOString().split("T")[0];
+    const storageKey = `hf_faith_checklist_coach_${s.userId}_${todayKey}`;
+    const checked = JSON.parse(localStorage.getItem(storageKey) || "[]");
+
+    const prayers = [
+      {
+        id: "patience",
+        title: "On patience with players",
+        desc: '"Love is patient, love is kind." — 1 Corinthians 13:4',
+      },
+      {
+        id: "leading",
+        title: "On leading well",
+        desc: '"Whoever wants to become great must be your servant." — Matthew 20:26',
+      },
+      {
+        id: "perseverance",
+        title: "On perseverance",
+        desc: '"Let us not become weary in doing good." — Galatians 6:9',
+      },
+    ];
+
+    const allChecked = prayers.every((p) => checked.includes(p.id));
+
     setMain(`
-      <div class="faith-hero">
-        <div style="font-size:32px;margin-bottom:10px"><i class="ti ti-cross"></i></div>
-        <div style="font-size:20px;font-weight:700;margin-bottom:6px">Team Devotion</div>
-        <div style="font-size:13px;opacity:.8">Lead your players in faith as well as football.</div>
-      </div>
-      <div class="faith-verse-card">
-        <div class="verse-text">${HF_SCRIPTURE.getToday().verse}</div>
-        <div class="verse-ref">${HF_SCRIPTURE.getToday().ref}</div>
-      </div>
-      <div class="card faith-card">
-        <div class="card-title"><div class="card-dot faith"></div>How to run team devotion</div>
-        <div style="font-size:12px;color:var(--text2);line-height:2.2">
-          1. <strong style="color:var(--text)">Gather the squad</strong> before every session or match for 5–10 minutes.<br>
-          2. <strong style="color:var(--text)">Read a verse together</strong>, like Colossians 3:23.<br>
-          3. <strong style="color:var(--text)">One player leads prayer</strong> and rotate each session.<br>
-          4. <strong style="color:var(--text)">Set an intention</strong>, like what does the squad play for today?<br>
-          5. <strong style="color:var(--text)">Hands in, one voice</strong>, close together as a team.
+    <div class="faith-hero">
+      <i class="ti ti-cross" style="font-size:32px;margin-bottom:10px;display:block;color:var(--faith)"></i>
+      <div style="font-size:20px;font-weight:700;margin-bottom:6px">Team Devotion</div>
+      <div style="font-size:13px;opacity:.8">Lead your players in faith as well as football.</div>
+    </div>
+
+    <div class="faith-verse-card">
+      <div class="verse-text">${HF_SCRIPTURE.getToday().verse}</div>
+      <div class="verse-ref">${HF_SCRIPTURE.getToday().ref}</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot faith"></div>Daily devotion checklist
         </div>
+        ${
+          allChecked
+            ? `
+          <span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">
+            <i class="ti ti-circle-check"></i> All done
+          </span>`
+            : `
+          <span style="font-family:var(--font-head);font-size:10px;color:var(--text3);">
+            ${checked.length}/${prayers.length} completed
+          </span>`
+        }
       </div>
-      <div class="card faith-card">
-        <div class="card-title"><div class="card-dot faith"></div>Scripture for coaches</div>
-        ${[
-          [
-            "On patience with players",
-            '"Love is patient, love is kind... it keeps no record of wrongs." ~ 1 Corinthians 13:4-5',
-          ],
-          [
-            "On leading well",
-            '"Whoever wants to become great among you must be your servant." ~ Matthew 20:26',
-          ],
-          [
-            "On perseverance",
-            '"Let us not become weary in doing good, for at the proper time we will reap a harvest." ~ Galatians 6:9',
-          ],
-        ]
-          .map(
-            ([title, verse]) => `
-          <div class="prayer-card">
-            <div class="prayer-title">${title}</div>
-            <div class="prayer-text">${verse}</div>
-          </div>`,
-          )
-          .join("")}
-      </div>`);
+      ${prayers
+        .map((p) => {
+          const isChecked = checked.includes(p.id);
+          return `
+          <div style="display:flex;align-items:flex-start;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:2px solid ${isChecked ? "var(--green)" : "var(--faith)"};margin-bottom:var(--sp-sm);cursor:pointer;"
+            onclick="HF_COACH.togglePrayer('${p.id}', '${todayKey}', '${s.userId}')">
+            <div style="width:20px;height:20px;border:2px solid ${isChecked ? "var(--green)" : "var(--faith)"};background:${isChecked ? "var(--green)" : "transparent"};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
+              ${isChecked ? '<i class="ti ti-check" style="font-size:12px;color:#fff;"></i>' : ""}
+            </div>
+            <div>
+              <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${isChecked ? "var(--green)" : "var(--faith)"};margin-bottom:4px;">
+                ${p.title}
+              </div>
+              <div style="font-size:12px;color:var(--text2);font-style:italic;line-height:1.5;${isChecked ? "opacity:0.5;" : ""}">
+                ${p.desc}
+              </div>
+            </div>
+          </div>`;
+        })
+        .join("")}
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="border-top:2px solid var(--faith);padding-top:var(--sp-md)"><div class="card-dot faith"></div>How to run team devotion</div>
+      <div style="font-size:12px;color:var(--text2);line-height:2.2">
+        1. <strong style="color:var(--text)">Gather the squad</strong> before every session — 5-10 minutes.<br>
+        2. <strong style="color:var(--text)">Read a verse together</strong> — today: ${HF_SCRIPTURE.getToday().ref}.<br>
+        3. <strong style="color:var(--text)">One player leads prayer</strong> — rotate each session.<br>
+        4. <strong style="color:var(--text)">Set an intention</strong> — what does the squad play for today?<br>
+        5. <strong style="color:var(--text)">Hands in, one voice</strong> — close together as a team.
+      </div>
+    </div>`);
   };
 
   const findmyteam = (s) => {
@@ -773,40 +897,63 @@ const HF_COACH = (() => {
     const session = HF_DB.getSession();
     const { data } = await HF_DB.searchPlayers(query);
 
-    // get pending and accepted invites to filter out
+    // get all invites to check status
     const { data: existingInvites } = await HF_DB.getCoachInvites(
       session.userId,
     );
-    const excludedIds = new Set(
-      existingInvites
-        ?.filter((i) => i.status === "pending" || i.status === "accepted")
-        .map((i) => i.player_id) || [],
-    );
 
-    const filtered = data?.filter((p) => !excludedIds.has(p.id)) || [];
+    // map player IDs to their invite status
+    const inviteStatusMap = {};
+    existingInvites?.forEach((i) => {
+      inviteStatusMap[i.player_id] = i.status;
+    });
 
-    if (filtered.length === 0) {
+    if (!data || data.length === 0) {
       results.innerHTML = `<div style="font-size:13px;color:var(--text2);padding:8px">No available players found.</div>`;
       return;
     }
 
-    results.innerHTML = filtered
-      .map(
-        (p) => `
-    <div style="display:flex;align-items:center;gap:var(--sp-md);padding:10px;background:var(--bg);border:0.5px solid var(--border);margin-bottom:4px;">
-      <div class="avatar avatar-sm" style="background:var(--green)">${HF_UTILS.initials(p.name)}</div>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
-        <div style="font-size:11px;color:var(--text2)">${p.profile?.pos || "-"} · ${p.profile?.tier || "-"} · ${p.profile?.hometown || "-"}</div>
-        <div style="font-size:11px;color:${p.profile?.status === "unattached" ? "var(--green)" : "var(--text3)"}">
-          ${p.profile?.status === "unattached" || !p.profile?.club ? "Unattached" : p.profile?.club}
+    results.innerHTML = data
+      .map((p) => {
+        const inviteStatus = inviteStatusMap[p.id];
+        const isPending = inviteStatus === "pending";
+        const isAccepted = inviteStatus === "accepted";
+        const safeName = p.name.replace(/'/g, "\\'");
+
+        const statusBadge = isPending
+          ? `<span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">Invite sent</span>`
+          : isAccepted
+            ? `<span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(26,122,46,.15);color:var(--green);">In squad</span>`
+            : "";
+
+        const inviteBtn = isPending
+          ? `<button class="btn btn-outline btn-sm" disabled style="opacity:0.4;cursor:not-allowed;">
+           <i class="ti ti-clock"></i> Pending
+         </button>`
+          : isAccepted
+            ? `<button class="btn btn-outline btn-sm" disabled style="opacity:0.4;cursor:not-allowed;">
+           <i class="ti ti-circle-check"></i> Signed
+         </button>`
+            : `<button class="btn btn-primary btn-sm" onclick="HF_COACH.invitePlayer('${p.id}', '${safeName}')">
+           <i class="ti ti-send"></i> Invite
+         </button>`;
+
+        return `
+      <div style="display:flex;align-items:center;gap:var(--sp-md);padding:10px;background:var(--bg);border:0.5px solid var(--border);margin-bottom:4px;${isPending || isAccepted ? "opacity:0.7;" : ""}">
+        <div class="avatar avatar-sm" style="background:var(--green)">${HF_UTILS.initials(p.name)}</div>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
+            ${statusBadge}
+          </div>
+          <div style="font-size:11px;color:var(--text2)">${p.profile?.pos || "-"} · ${p.profile?.tier || "-"} · ${p.profile?.hometown || "-"}</div>
+          <div style="font-size:11px;color:${!p.profile?.club ? "var(--green)" : "var(--text3)"}">
+            ${!p.profile?.club || p.profile?.status === "unattached" ? "Unattached" : p.profile?.club}
+          </div>
         </div>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="HF_COACH.invitePlayer('${p.id}', '${p.name.replace(/'/g, "\\'")}')">
-        <i class="ti ti-send"></i> Invite
-      </button>
-    </div>`,
-      )
+        ${inviteBtn}
+      </div>`;
+      })
       .join("");
   };
 
@@ -951,14 +1098,19 @@ const HF_COACH = (() => {
   };
 
   const resubmitSquad = () => {
+    const session = HF_DB.getSession();
+    const p = session.profile || {};
+    const squadStatus = session.squadStatus || "unregistered";
+    const isFirstTime = squadStatus === "unregistered";
+
     setMain(`
     <div class="auth-card" style="max-width:480px;margin:0 auto;">
-      <div class="auth-title">Resubmit squad registration</div>
-      <div class="auth-sub">Enter your updated team details for verification</div>
+      <div class="auth-title">${isFirstTime ? "Register your squad" : "Resubmit squad registration"}</div>
+      <div class="auth-sub">${isFirstTime ? "Tell us about your team so we can verify it" : "Update your team details for verification"}</div>
       <div class="error-box" id="resubmit-err"></div>
       <div class="fg">
         <label class="required">Team name</label>
-        <input type="text" id="rs-team" placeholder="e.g. Kumasi Academy FC"
+        <input type="text" id="rs-team" value="${p.club || ""}" placeholder="e.g. Kumasi Academy FC"
           style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
       </div>
       <div class="fg">
@@ -980,7 +1132,7 @@ const HF_COACH = (() => {
       </div>
       <div style="display:flex;gap:8px;margin-top:var(--sp-md);">
         <button class="btn btn-primary" onclick="HF_COACH.submitResubmission()">
-          <i class="ti ti-send"></i> Submit for verification
+          <i class="ti ti-send"></i> ${isFirstTime ? "Submit for verification" : "Resubmit for verification"}
         </button>
         <button class="btn btn-outline" onclick="HF_ROUTER.navTo('dashboard')">
           Cancel
@@ -989,7 +1141,6 @@ const HF_COACH = (() => {
     </div>`);
 
     // prefill team name from session
-    const session = HF_DB.getSession();
     const teamInput = document.getElementById("rs-team");
     if (teamInput) teamInput.value = session.profile?.club || "";
   };
@@ -1053,6 +1204,68 @@ const HF_COACH = (() => {
     messages(session);
   };
 
+  const confirmKickPlayer = (playerId, playerName) => {
+    // first confirmation
+    if (
+      !confirm(
+        `Are you sure you want to remove ${playerName} from your squad?\n\nThis will remove them from all tracking data.`,
+      )
+    )
+      return;
+
+    // second confirmation with reason
+    const reason = prompt(
+      `Please enter a reason for removing ${playerName}.\n\nThis cannot be undone.`,
+    );
+    if (!reason) {
+      HF_UTILS.toast("Removal cancelled — reason is required.", "error");
+      return;
+    }
+    if (reason.trim().length < 5) {
+      HF_UTILS.toast("Please provide a more detailed reason.", "error");
+      return;
+    }
+
+    kickPlayerFromSquad(playerId, playerName, reason);
+  };
+
+  const kickPlayerFromSquad = async (playerId, playerName, reason) => {
+    const session = HF_DB.getSession();
+    const result = await HF_DB.removePlayerFromSquad(
+      session.userId,
+      playerId,
+      reason,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    // decrement team size
+    await HF_DB.decrementTeamSize(session.userId);
+    session.profile = {
+      ...session.profile,
+      teamSize: Math.max(0, (session.profile?.teamSize || 1) - 1),
+    };
+    HF_DB.saveSession(session);
+
+    HF_UTILS.toast(
+      `${playerName} has been removed from your squad.`,
+      "success",
+    );
+    squad(session);
+  };
+
+  const togglePrayer = (prayerId, dateKey, userId) => {
+    const storageKey = `hf_faith_checklist_coach_${userId}_${dateKey}`;
+    const checked = JSON.parse(localStorage.getItem(storageKey) || "[]");
+    const idx = checked.indexOf(prayerId);
+    if (idx > -1) checked.splice(idx, 1);
+    else checked.push(prayerId);
+    localStorage.setItem(storageKey, JSON.stringify(checked));
+    faith(HF_DB.getSession());
+  };
+
   return {
     render,
     readMessage,
@@ -1065,6 +1278,10 @@ const HF_COACH = (() => {
     declineAdminEdits,
     resubmitSquad,
     submitResubmission,
+    confirmKickPlayer,
+    togglePrayer,
+    editProfile,
+    saveProfile,
   };
 })();
 

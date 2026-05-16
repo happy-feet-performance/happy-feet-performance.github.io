@@ -159,12 +159,14 @@ const HF_ADMIN = (() => {
       toast(result.error, "error");
       return;
     }
+
     const { data: agencyPending } = await HF_DB.getPendingAgencyVerifications();
     HF_ROUTER.refreshSidenavBadge(
       "agency-verifications",
       agencyPending?.length || 0,
       "var(--gold)",
     );
+
     toast(`${agencyName} has been verified!`, "success");
     agencyVerifications(HF_DB.getSession());
   };
@@ -182,12 +184,14 @@ const HF_ADMIN = (() => {
       toast(result.error, "error");
       return;
     }
+
     const { data: agencyPending } = await HF_DB.getPendingAgencyVerifications();
     HF_ROUTER.refreshSidenavBadge(
       "agency-verifications",
       agencyPending?.length || 0,
       "var(--gold)",
     );
+
     toast(`${agencyName} has been rejected.`, "success");
     agencyVerifications(HF_DB.getSession());
   };
