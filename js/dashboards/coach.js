@@ -48,7 +48,7 @@ const HF_COACH = (() => {
     <div class="card">
       <div class="card-title" style="justify-content:space-between;">
         <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-          <div class="card-dot"></div>Squad roster — ${p.club || "Your club"}
+          <div class="card-dot"></div>Squad roster: ${p.club || "Your club"}
           <span style="font-family:var(--font-head);font-size:10px;color:var(--text3);margin-left:4px">${squadPlayers?.length || 0} players</span>
         </div>
         <button class="btn btn-primary btn-sm" onclick="HF_COACH.showInvitePanel()">
@@ -518,8 +518,13 @@ const HF_COACH = (() => {
   };
 
   // TRACKING
-  const tracking = (s) => {
-    if (verifiedSquad.length === 0) {
+  const tracking = async (s) => {
+    const { data: squadPlayers } = await HF_DB.getSquadPlayers(s.userId);
+    const { data: recentRatings } = await HF_DB.getSquadSessionRatings(
+      s.userId,
+    );
+
+    if (!squadPlayers || squadPlayers.length === 0) {
       setMain(`
       <div class="card">
         <div style="text-align:center;padding:32px;color:var(--text2)">
@@ -535,45 +540,107 @@ const HF_COACH = (() => {
     }
 
     setMain(`
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Log a player session rating</div>
-        <div class="form-row">
-          <div class="fg"><label>Player</label>
-            <select id="tr-player">
-              ${verifiedSquad.map((p) => `<option>${p.name}</option>`).join("")}
-            </select>
-          </div>
-          <div class="fg"><label>Session type</label>
-            <select><option>Technical</option><option>Tactical</option><option>Physical</option><option>Recovery</option></select>
-          </div>
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Log a session rating</div>
+      <div class="form-row">
+        <div class="fg"><label class="required">Player</label>
+          <select id="tr-player">
+            <option value="">Select player</option>
+            ${squadPlayers.map((sp) => `<option value="${sp.player_id}">${sp.player?.name || "Unknown"}</option>`).join("")}
+          </select>
         </div>
-        ${["Speed", "Technical", "Tactical", "Physical"]
-          .map(
-            (l) => `
-          <div class="bar-row">
-            <div class="bar-head">
-              <span>${l}</span>
-              <span id="cv-${l.toLowerCase()}" style="color:var(--gold);font-weight:600">7</span>
-            </div>
-            <input type="range" min="1" max="10" value="7" style="width:100%;accent-color:var(--gold);margin-top:4px"
-              oninput="document.getElementById('cv-${l.toLowerCase()}').textContent=this.value">
-          </div>`,
-          )
-          .join("")}
-        <button class="btn btn-primary" style="margin-top:8px" onclick="HF_UTILS.toast('Session rating saved! ✓','success')">Save rating ✓</button>
+        <div class="fg"><label class="required">Session type</label>
+          <select id="tr-type">
+            <option value="">Select type</option>
+            <option>Technical</option>
+            <option>Tactical</option>
+            <option>Physical</option>
+            <option>Recovery</option>
+            <option>Match</option>
+          </select>
+        </div>
       </div>
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Squad performance snapshot</div>
-        <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr)">
-          <div class="metric-card"><div class="metric-val" style="color:var(--gold)">76</div><div class="metric-label">Squad avg rating</div></div>
-          <div class="metric-card"><div class="metric-val" style="color:var(--green)">14</div><div class="metric-label">Sessions this month</div></div>
-          <div class="metric-card"><div class="metric-val" style="color:var(--red)">2</div><div class="metric-label">Flagged players</div></div>
-        </div>
-      </div>`);
+      ${["Speed", "Technical", "Tactical", "Physical"]
+        .map(
+          (l) => `
+        <div class="bar-row">
+          <div class="bar-head">
+            <span>${l}</span>
+            <span id="cv-${l.toLowerCase()}" style="color:var(--gold);font-weight:600">7</span>
+          </div>
+          <input type="range" min="1" max="10" value="7" step="1"
+            style="width:100%;accent-color:var(--gold);margin-top:4px"
+            oninput="document.getElementById('cv-${l.toLowerCase()}').textContent=this.value">
+        </div>`,
+        )
+        .join("")}
+      <div class="fg" style="margin-top:8px">
+        <label>Notes</label>
+        <input type="text" id="tr-notes" placeholder="e.g. Strong first touch, work on weak foot"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <button class="btn btn-primary" style="margin-top:8px" onclick="HF_COACH.saveSessionRating()">
+        <i class="ti ti-circle-check"></i> Save rating
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Recent session ratings</div>
+      ${
+        !recentRatings || recentRatings.length === 0
+          ? `
+        <div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">
+          No ratings logged yet.
+        </div>`
+          : `<table class="table">
+          <thead><tr><th>Player</th><th>Type</th><th>Overall</th><th>Date</th></tr></thead>
+          <tbody>
+            ${recentRatings
+              .map(
+                (r) => `
+              <tr>
+                <td style="font-weight:600">${r.player?.name || "-"}</td>
+                <td>${r.session_type}</td>
+                <td style="font-weight:700;color:${r.overall >= 8 ? "var(--green)" : r.overall >= 6 ? "var(--gold)" : "var(--red)"}">
+                  ${r.overall}/10
+                </td>
+                <td style="color:var(--text2)">${HF_UTILS.timeAgo(r.created_at)}</td>
+              </tr>`,
+              )
+              .join("")}
+          </tbody>
+        </table>`
+      }
+    </div>`);
   };
 
   // HEALTH
-  const health = (s) => {
+  const health = async (s) => {
+    const { data: squadPlayers } = await HF_DB.getSquadPlayers(s.userId);
+
+    if (!squadPlayers || squadPlayers.length === 0) {
+      setMain(`
+      <div class="card">
+        <div style="text-align:center;padding:32px;color:var(--text2)">
+          <i class="ti ti-stethoscope" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No players to monitor yet</div>
+          <div style="font-size:13px;margin-bottom:16px">Invite players to your squad to start tracking their health and wellness.</div>
+          <button class="btn btn-primary btn-sm" onclick="HF_ROUTER.navTo('squad')">
+            <i class="ti ti-users"></i> Go to squad
+          </button>
+        </div>
+      </div>`);
+
+      // show popup
+      setTimeout(() => {
+        HF_UTILS.toast(
+          "Invite players to your squad to unlock health tracking.",
+          "success",
+        );
+      }, 300);
+      return;
+    }
+
     setMain(`
       <div class="metrics-grid">
         <div class="metric-card"><div class="metric-val" style="color:var(--green)">16</div><div class="metric-label">Fully fit</div></div>
@@ -614,67 +681,15 @@ const HF_COACH = (() => {
 
   // RECRUITMENT
   const recruitment = (s) => {
-    const prospects = [
-      {
-        name: "Yaw Darko",
-        pos: "ST",
-        age: 16,
-        region: "Kumasi",
-        pot: "Elite",
-        speed: 91,
-        tech: 87,
-        gender: "male",
-      },
-      {
-        name: "Adjoa Frempong",
-        pos: "CM",
-        age: 15,
-        region: "Accra",
-        pot: "High",
-        speed: 84,
-        tech: 89,
-        gender: "female",
-      },
-      {
-        name: "Nana Amponsah",
-        pos: "GK",
-        age: 17,
-        region: "Tamale",
-        pot: "High",
-        speed: 76,
-        tech: 82,
-        gender: "male",
-      },
-    ];
-    const potColors = { Elite: "red", High: "gold", Good: "green" };
     setMain(`
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Recruitment prospects</div>
-        <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Players flagged as potential recruits by the Scout Agent.</div>
-        ${prospects
-          .map((pr) => {
-            const avg = Math.round((pr.speed + pr.tech) / 2);
-            const gc =
-              pr.gender === "female"
-                ? "rgba(212,83,126,.1)"
-                : "rgba(24,95,165,.1)";
-            const gcol = pr.gender === "female" ? "#993556" : "#185FA5";
-            return `
-            <div class="prospect-row" onclick="HF_UTILS.toast('Full profile coming in next version.','success')">
-              <div class="avatar avatar-md" style="background:${potColors[pr.pot] === "red" ? "var(--red)" : "var(--gold)"}">${HF_UTILS.initials(pr.name)}</div>
-              <div style="flex:1">
-                <div style="font-size:13px;font-weight:600">${pr.name}</div>
-                <div style="font-size:11px;color:var(--text2)">${pr.pos} · Age ${pr.age} · ${pr.region}</div>
-                <span style="font-size:10px;padding:1px 7px;border-radius:8px;background:${gc};color:${gcol};font-weight:600">${pr.gender === "female" ? "Female" : "Male"}</span>
-              </div>
-              <div style="text-align:right">
-                <div style="font-size:16px;font-weight:700;color:var(--gold)">${avg}</div>
-                ${badgeHTML(pr.pot, potColors[pr.pot])}
-              </div>
-            </div>`;
-          })
-          .join("")}
-      </div>`);
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Recruitment prospects</div>
+      <div style="text-align:center;padding:32px;color:var(--text2)">
+        <i class="ti ti-search" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No prospects yet</div>
+        <div style="font-size:13px">Players flagged by verified scouts will appear here once scouts share reports.</div>
+      </div>
+    </div>`);
   };
 
   // MESSAGES
@@ -775,17 +790,17 @@ const HF_COACH = (() => {
       {
         id: "patience",
         title: "On patience with players",
-        desc: '"Love is patient, love is kind." — 1 Corinthians 13:4',
+        desc: '"Love is patient, love is kind." ~ 1 Corinthians 13:4',
       },
       {
         id: "leading",
         title: "On leading well",
-        desc: '"Whoever wants to become great must be your servant." — Matthew 20:26',
+        desc: '"Whoever wants to become great must be your servant." ~ Matthew 20:26',
       },
       {
         id: "perseverance",
         title: "On perseverance",
-        desc: '"Let us not become weary in doing good." — Galatians 6:9',
+        desc: '"Let us not become weary in doing good." ~ Galatians 6:9',
       },
     ];
 
@@ -845,11 +860,11 @@ const HF_COACH = (() => {
     <div class="card">
       <div class="card-title" style="border-top:2px solid var(--faith);padding-top:var(--sp-md)"><div class="card-dot faith"></div>How to run team devotion</div>
       <div style="font-size:12px;color:var(--text2);line-height:2.2">
-        1. <strong style="color:var(--text)">Gather the squad</strong> before every session — 5-10 minutes.<br>
-        2. <strong style="color:var(--text)">Read a verse together</strong> — today: ${HF_SCRIPTURE.getToday().ref}.<br>
-        3. <strong style="color:var(--text)">One player leads prayer</strong> — rotate each session.<br>
-        4. <strong style="color:var(--text)">Set an intention</strong> — what does the squad play for today?<br>
-        5. <strong style="color:var(--text)">Hands in, one voice</strong> — close together as a team.
+        1. <strong style="color:var(--text)">Gather the squad</strong> before every session: 5-10 minutes.<br>
+        2. <strong style="color:var(--text)">Read a verse together</strong>: ${HF_SCRIPTURE.getToday().ref}.<br>
+        3. <strong style="color:var(--text)">One player leads prayer</strong>: rotate each session.<br>
+        4. <strong style="color:var(--text)">Set an intention</strong>: what does the squad play for today?<br>
+        5. <strong style="color:var(--text)">Hands in, one voice</strong>: close together as a team.
       </div>
     </div>`);
   };
@@ -1218,7 +1233,7 @@ const HF_COACH = (() => {
       `Please enter a reason for removing ${playerName}.\n\nThis cannot be undone.`,
     );
     if (!reason) {
-      HF_UTILS.toast("Removal cancelled — reason is required.", "error");
+      HF_UTILS.toast("Removal cancelled: reason is required.", "error");
       return;
     }
     if (reason.trim().length < 5) {
@@ -1266,6 +1281,50 @@ const HF_COACH = (() => {
     faith(HF_DB.getSession());
   };
 
+  const saveSessionRating = async () => {
+    const session = HF_DB.getSession();
+    const playerId = document.getElementById("tr-player")?.value;
+    const sessionType = document.getElementById("tr-type")?.value;
+
+    if (!playerId) {
+      HF_UTILS.toast("Please select a player.", "error");
+      return;
+    }
+    if (!sessionType) {
+      HF_UTILS.toast("Please select a session type.", "error");
+      return;
+    }
+
+    const ratings = {
+      speed:
+        parseInt(document.getElementById("cv-speed")?.textContent || 7) * 10,
+      technical:
+        parseInt(document.getElementById("cv-technical")?.textContent || 7) *
+        10,
+      tactical:
+        parseInt(document.getElementById("cv-tactical")?.textContent || 7) * 10,
+      physical:
+        parseInt(document.getElementById("cv-physical")?.textContent || 7) * 10,
+    };
+
+    const result = await HF_DB.saveSessionRating(
+      session.userId,
+      playerId,
+      sessionType,
+      ratings,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    HF_UTILS.toast(
+      `Session rating saved! Overall: ${result.overall}/100`,
+      "success",
+    );
+    tracking(session);
+  };
+
   return {
     render,
     readMessage,
@@ -1282,6 +1341,7 @@ const HF_COACH = (() => {
     togglePrayer,
     editProfile,
     saveProfile,
+    saveSessionRating,
   };
 })();
 

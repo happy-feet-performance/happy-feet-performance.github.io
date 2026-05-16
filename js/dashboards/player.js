@@ -93,7 +93,7 @@ const HF_PLAYER = (() => {
       <div class="metric-card">
         <div class="metric-val" style="color:var(--green)">${loginStreak}</div>
         <div class="metric-label">Daily streak</div>
-        <div class="metric-sub" style="color:var(--text2)">${loginStreak === 1 ? "Day 1 — keep going!" : `${loginStreak} days in a row`}</div>
+        <div class="metric-sub" style="color:var(--text2)">${loginStreak === 1 ? "Day 1: keep going!" : `${loginStreak} days in a row`}</div>
       </div>
       <div class="metric-card">
         <div class="metric-val" style="color:var(--faith)">${p.faithStreak || 0}</div>
@@ -239,10 +239,16 @@ const HF_PLAYER = (() => {
   };
 
   // ── STATS ────────────────────────────────────────────────────
-  const stats = (s) => {
+  const stats = async (s) => {
     const r = s.profile?.ratings || {};
     const overall = calcRating(r);
-    const hasStats = r.speed > 0 || r.tech > 0 || r.tact > 0 || r.phys > 0;
+    const { data: sessions } = await HF_DB.getPlayerSessionRatings(s.userId);
+    const hasStats = sessions && sessions.length > 0;
+
+    // build trend from real session data
+    const trendData = sessions
+      ? [...sessions].reverse().map((s) => s.overall)
+      : [];
 
     setMain(`
     <div class="card">
@@ -253,11 +259,13 @@ const HF_PLAYER = (() => {
           <div class="metric-label">Overall</div>
         </div>
         <div class="metric-card">
-          <div class="metric-val" style="color:var(--green)">0</div>
+          <div class="metric-val" style="color:var(--green)">${sessions?.length || 0}</div>
           <div class="metric-label">Sessions</div>
         </div>
         <div class="metric-card">
-          <div class="metric-val" style="color:var(--blue)">-</div>
+          <div class="metric-val" style="color:var(--blue)">
+            ${hasStats ? sessions[0].overall + "/100" : "-"}
+          </div>
           <div class="metric-label">Last rating</div>
         </div>
       </div>
@@ -271,10 +279,11 @@ const HF_PLAYER = (() => {
         <div style="text-align:center;padding:32px;color:var(--text2)">
           <i class="ti ti-chart-line" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No data yet</div>
-          <div style="font-size:13px">Your rating trend will appear here once your coach logs session data.</div>
+          <div style="font-size:13px">Your rating trend will appear once your coach logs session data.</div>
         </div>`
           : `
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-top:6px">
+        ${HF_UTILS.miniChartHTML(trendData)}
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-top:6px">
           <span>Oldest</span><span>Latest</span>
         </div>`
       }
@@ -288,18 +297,34 @@ const HF_PLAYER = (() => {
         <div style="text-align:center;padding:32px;color:var(--text2)">
           <i class="ti ti-history" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No sessions yet</div>
-          <div style="font-size:13px">Session history will appear here once your coach starts logging data.</div>
+          <div style="font-size:13px">Session history will appear once your coach starts logging data.</div>
         </div>`
           : `
         <table class="table">
-          <thead><tr><th>Date</th><th>Type</th><th>Rating</th><th>Status</th></tr></thead>
+          <thead><tr><th>Date</th><th>Type</th><th>Overall</th><th>Speed</th><th>Technical</th><th>Tactical</th><th>Physical</th></tr></thead>
           <tbody>
-            <tr><td colspan="4" style="text-align:center;color:var(--text2);padding:20px">No sessions logged yet</td></tr>
+            ${sessions
+              .map(
+                (r) => `
+              <tr>
+                <td style="color:var(--text2)">${HF_UTILS.timeAgo(r.created_at)}</td>
+                <td>${r.session_type}</td>
+                <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
+                  ${r.overall}
+                </td>
+                <td>${r.speed}</td>
+                <td>${r.technical}</td>
+                <td>${r.tactical}</td>
+                <td>${r.physical}</td>
+              </tr>`,
+              )
+              .join("")}
           </tbody>
         </table>`
       }
     </div>`);
   };
+
   // ── TRAINING ─────────────────────────────────────────────────
   const training = async (s) => {
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -711,7 +736,7 @@ const HF_PLAYER = (() => {
       {
         id: "morning",
         title: "Morning prayer",
-        desc: "Before training — Lord, strengthen my body and sharpen my mind.",
+        desc: "Before training: Lord, strengthen my body and sharpen my mind.",
       },
       {
         id: "prematch",
@@ -794,17 +819,17 @@ const HF_PLAYER = (() => {
       ${[
         [
           "When you doubt yourself",
-          '"For I know the plans I have for you," declares the LORD. — Jeremiah 29:11',
+          '"For I know the plans I have for you," declares the LORD. ~ Jeremiah 29:11',
         ],
         [
           "Before a big match",
-          '"Have I not commanded you? Be strong and courageous." — Joshua 1:9',
+          '"Have I not commanded you? Be strong and courageous." ~ Joshua 1:9',
         ],
         [
           "On hard work",
-          '"Whatever you do, work at it with all your heart." — Colossians 3:23',
+          '"Whatever you do, work at it with all your heart." ~ Colossians 3:23',
         ],
-        ["When injured", '"He gives strength to the weary." — Isaiah 40:29'],
+        ["When injured", '"He gives strength to the weary." ~ Isaiah 40:29'],
       ]
         .map(
           ([title, verse]) => `

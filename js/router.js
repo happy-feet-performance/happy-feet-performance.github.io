@@ -58,15 +58,17 @@ const HF_ROUTER = (() => {
               icon: "ti-chart-line",
               label: "Player tracking",
             },
-            { section: "Tools" },
-            {
-              view: "health",
-              icon: "ti-heart-rate-monitor",
-              label: "Health & wellness",
-            },
-            { view: "recruitment", icon: "ti-search", label: "Recruitment" },
           );
         }
+        nav.push(
+          { section: "Tools" },
+          {
+            view: "health",
+            icon: "ti-heart-rate-monitor",
+            label: "Health & wellness",
+          },
+          { view: "recruitment", icon: "ti-search", label: "Recruitment" },
+        );
       }
       nav.push(
         { section: "Community" },
@@ -330,7 +332,9 @@ const HF_ROUTER = (() => {
           if (newStatus && newStatus !== session.squadStatus) {
             session.squadStatus = newStatus;
             HF_DB.saveSession(session);
-            _buildSidenav(session);
+
+            // rebuild sidenav with new status and current team size
+            _buildSidenav(session, 0, 0, teamSize);
 
             if (newStatus === "verified") {
               HF_UTILS.toast(
@@ -346,7 +350,6 @@ const HF_ROUTER = (() => {
               );
             }
 
-            // re-render current view with updated session
             const activeNav = document.querySelector(".nav-item.active");
             const currentView = activeNav?.dataset.view || "dashboard";
             _routeTo(currentView, session);
@@ -360,7 +363,9 @@ const HF_ROUTER = (() => {
           if (newStatus && newStatus !== session.agencyStatus) {
             session.agencyStatus = newStatus;
             HF_DB.saveSession(session);
-            _buildSidenav(session);
+
+            // rebuild sidenav with new agency status
+            _buildSidenav(session, 0, 0);
 
             if (newStatus === "verified") {
               HF_UTILS.toast(
@@ -389,13 +394,18 @@ const HF_ROUTER = (() => {
     session,
     unreadCount = 0,
     pendingVerifications = 0,
+    teamSizeOverride = null,
   ) => {
     const nav = el("sidenav");
     const squadStatus = session.squadStatus || "unregistered";
+    const teamSize =
+      teamSizeOverride !== null
+        ? teamSizeOverride
+        : session.profile?.teamSize || 0;
 
     let items;
     if (session.role === "coach") {
-      items = NAVS.coach(squadStatus, session.profile?.teamSize || 0);
+      items = NAVS.coach(squadStatus, teamSize);
     } else if (session.role === "scout") {
       items = NAVS.scout(session.agencyStatus || "unregistered");
     } else {

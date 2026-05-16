@@ -1279,6 +1279,74 @@ const HF_DB = (() => {
     return 0; // streak broken
   };
 
+  const saveSessionRating = async (coachId, playerId, sessionType, ratings) => {
+    const overall = Math.round(
+      (ratings.speed +
+        ratings.technical +
+        ratings.tactical +
+        ratings.physical) /
+        4,
+    );
+    const { error } = await _client.from("session_ratings").insert({
+      player_id: playerId,
+      coach_id: coachId,
+      session_type: sessionType,
+      speed: ratings.speed,
+      technical: ratings.technical,
+      tactical: ratings.tactical,
+      physical: ratings.physical,
+      overall,
+    });
+    if (error) return { error: error.message };
+
+    // update player's profile ratings with latest
+    const { data: player } = await _client
+      .from("users")
+      .select("profile")
+      .eq("id", playerId)
+      .single();
+
+    if (player) {
+      const updatedProfile = {
+        ...player.profile,
+        ratings: {
+          speed: ratings.speed,
+          tech: ratings.technical,
+          tact: ratings.tactical,
+          phys: ratings.physical,
+        },
+      };
+      await _client
+        .from("users")
+        .update({ profile: updatedProfile })
+        .eq("id", playerId);
+    }
+
+    return { success: true, overall };
+  };
+
+  const getPlayerSessionRatings = async (playerId, limit = 10) => {
+    const { data, error } = await _client
+      .from("session_ratings")
+      .select("*")
+      .eq("player_id", playerId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getSquadSessionRatings = async (coachId) => {
+    const { data, error } = await _client
+      .from("session_ratings")
+      .select("*, player:users!session_ratings_player_id_fkey(id, name)")
+      .eq("coach_id", coachId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) return { data: [] };
+    return { data };
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     createUser,
@@ -1353,6 +1421,9 @@ const HF_DB = (() => {
     decrementTeamSize,
     updateLoginStreak,
     getLoginStreak,
+    saveSessionRating,
+    getPlayerSessionRatings,
+    getSquadSessionRatings,
   };
 })();
 
