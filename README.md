@@ -48,7 +48,7 @@ happyfeet/
 │   └── dashboard.css           # App shell, topbar, sidenav, layout
 └── js/
 ├── config.js               # Supabase URL + anon key
-├── theme.js                # Light/dark mode toggle with localStorage persistence
+├── theme.js                # Light/dark mode toggle
 ├── scripture.js            # Daily rotating scripture from a pool of 30 (day-of-year based)
 ├── utils.js                # DOM, avatars, bars, badges, toasts, hashing, mini charts, calendars
 ├── db.js                   # Database abstraction layer (Supabase)

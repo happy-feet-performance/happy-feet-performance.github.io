@@ -721,101 +721,438 @@ const HF_PLAYER = (() => {
   };
 
   // ── ACHIEVEMENTS ─────────────────────────────────────────────
-  const achievements = (s) => {
-    const overall = calcRating(s.profile?.ratings || {});
-    const hasStats =
-      s.profile?.ratings?.speed > 0 || s.profile?.ratings?.tech > 0;
 
-    const earned = [
-      {
-        icon: '<i class="ti ti-star"></i>',
-        title: "First session logged",
-        sub: "You started your HappyFeet journey",
-        date: "Day 1",
-        earned: true,
-      },
-      {
-        icon: '<i class="ti ti-cross"></i>',
-        title: "5-day faith streak",
-        sub: "Complete 5 consecutive devotions",
-        date: null,
-        earned: (s.profile?.faithStreak || 0) >= 5,
-      },
-      {
-        icon: '<i class="ti ti-trending-up"></i>',
-        title: "First rating improvement",
-        sub: "Get your first session rating from a coach",
-        date: null,
-        earned: hasStats,
-      },
-      {
-        icon: '<i class="ti ti-run"></i>',
-        title: "10 sessions completed",
-        sub: "Log 10 training sessions",
-        date: null,
-        earned: false,
-      },
-      {
-        icon: '<i class="ti ti-ball-football"></i>',
-        title: "First clean sheet",
-        sub: "Record a 90-min shutout",
-        date: null,
-        earned: false,
-      },
-      {
-        icon: '<i class="ti ti-chart-bar"></i>',
-        title: "Reach 80+ overall rating",
-        sub: "Get your overall rating above 80",
-        date: null,
-        earned: overall !== null && overall >= 80,
-      },
-    ];
+  const ACHIEVEMENTS = {
+    performance: {
+      label: "Performance",
+      icon: "ti-ball-football",
+      color: "var(--gold)",
+      items: [
+        {
+          id: "first_session",
+          label: "First touch",
+          desc: "Have your first session rated by a coach",
+          icon: "ti-star",
+          tier: 1,
+        },
+        {
+          id: "sessions_5",
+          label: "Getting started",
+          desc: "5 sessions rated by your coach",
+          icon: "ti-star",
+          tier: 2,
+          requires: ["first_session"],
+        },
+        {
+          id: "sessions_25",
+          label: "Dedicated",
+          desc: "25 sessions rated by your coach",
+          icon: "ti-trophy",
+          tier: 3,
+          requires: ["sessions_5"],
+        },
+        {
+          id: "rating_60",
+          label: "Promising",
+          desc: "Reach an average overall rating of 60",
+          icon: "ti-chart-line",
+          tier: 2,
+          requires: ["first_session"],
+        },
+        {
+          id: "rating_75",
+          label: "Talented",
+          desc: "Reach an average overall rating of 75",
+          icon: "ti-chart-line",
+          tier: 3,
+          requires: ["rating_60"],
+        },
+        {
+          id: "rating_90",
+          label: "Elite",
+          desc: "Reach an average overall rating of 90",
+          icon: "ti-crown",
+          tier: 4,
+          requires: ["rating_75"],
+        },
+      ],
+    },
+    consistency: {
+      label: "Consistency",
+      icon: "ti-calendar",
+      color: "var(--blue)",
+      items: [
+        {
+          id: "streak_3",
+          label: "Showing up",
+          desc: "3 day login streak",
+          icon: "ti-flame",
+          tier: 1,
+        },
+        {
+          id: "streak_7",
+          label: "Weekly warrior",
+          desc: "7 day login streak",
+          icon: "ti-flame",
+          tier: 2,
+          requires: ["streak_3"],
+        },
+        {
+          id: "streak_30",
+          label: "Unstoppable",
+          desc: "30 day login streak",
+          icon: "ti-flame",
+          tier: 3,
+          requires: ["streak_7"],
+        },
+        {
+          id: "training_5",
+          label: "In the gym",
+          desc: "Complete 5 training sessions",
+          icon: "ti-barbell",
+          tier: 2,
+          requires: ["streak_3"],
+        },
+        {
+          id: "training_20",
+          label: "Iron will",
+          desc: "Complete 20 training sessions",
+          icon: "ti-barbell",
+          tier: 3,
+          requires: ["training_5"],
+        },
+      ],
+    },
+    wellness: {
+      label: "Wellness",
+      icon: "ti-heart-rate-monitor",
+      color: "var(--green)",
+      items: [
+        {
+          id: "first_checkin",
+          label: "Body check",
+          desc: "Log your first wellness check-in",
+          icon: "ti-heart",
+          tier: 1,
+        },
+        {
+          id: "checkins_7",
+          label: "Self aware",
+          desc: "7 wellness check-ins logged",
+          icon: "ti-heart",
+          tier: 2,
+          requires: ["first_checkin"],
+        },
+        {
+          id: "checkins_30",
+          label: "Holistic athlete",
+          desc: "30 wellness check-ins logged",
+          icon: "ti-heart",
+          tier: 3,
+          requires: ["checkins_7"],
+        },
+        {
+          id: "wellness_perfect",
+          label: "Peak condition",
+          desc: "Log all wellness metrics at 8 or above",
+          icon: "ti-award",
+          tier: 3,
+          requires: ["checkins_7"],
+        },
+      ],
+    },
+    faith: {
+      label: "Faith",
+      icon: "ti-cross",
+      color: "var(--faith)",
+      items: [
+        {
+          id: "first_prayer",
+          label: "First step",
+          desc: "Complete your first daily prayer",
+          icon: "ti-cross",
+          tier: 1,
+        },
+        {
+          id: "faith_7",
+          label: "Faithful",
+          desc: "7 day faith streak",
+          icon: "ti-cross",
+          tier: 2,
+          requires: ["first_prayer"],
+        },
+        {
+          id: "faith_30",
+          label: "Devoted",
+          desc: "30 day faith streak",
+          icon: "ti-cross",
+          tier: 3,
+          requires: ["faith_7"],
+        },
+      ],
+    },
+    community: {
+      label: "Community",
+      icon: "ti-users",
+      color: "var(--red)",
+      items: [
+        {
+          id: "join_squad",
+          label: "Team player",
+          desc: "Join a verified squad",
+          icon: "ti-users",
+          tier: 1,
+        },
+        {
+          id: "scout_flagged",
+          label: "On the radar",
+          desc: "Get flagged as an elite prospect",
+          icon: "ti-flag",
+          tier: 2,
+          requires: ["join_squad"],
+        },
+        {
+          id: "report_shared",
+          label: "Making waves",
+          desc: "Have your scouting report shared",
+          icon: "ti-file-text",
+          tier: 3,
+          requires: ["scout_flagged"],
+        },
+        {
+          id: "scout_placed",
+          label: "The journey begins",
+          desc: "Get placed by a scout",
+          icon: "ti-rocket",
+          tier: 4,
+          requires: ["report_shared"],
+        },
+      ],
+    },
+  };
+
+  const achievements = async (s) => {
+    const { data: unlocked } = await HF_DB.getAchievements(s.userId);
+    await HF_DB.checkAndUnlockAchievements(s.userId);
+
+    const unlockedIds = new Set(unlocked.map((a) => a.id));
+    const unlockedMap = {};
+    unlocked.forEach((a) => (unlockedMap[a.id] = a));
+
+    const totalCount = Object.values(ACHIEVEMENTS).reduce(
+      (sum, cat) => sum + cat.items.length,
+      0,
+    );
+    const unlockedCount = unlocked.length;
+
+    const renderTree = (cat) => {
+      const items = cat.items;
+      const nodeSize = 72;
+      const hGap = 120;
+      const vGap = 100;
+
+      // assign positions by tier
+      const tiers = {};
+      items.forEach((item) => {
+        if (!tiers[item.tier]) tiers[item.tier] = [];
+        tiers[item.tier].push(item);
+      });
+
+      const maxTier = Math.max(...Object.keys(tiers).map(Number));
+      const maxPerTier = Math.max(...Object.values(tiers).map((t) => t.length));
+      const svgW = maxTier * hGap + nodeSize + 40;
+      const svgH = maxPerTier * vGap + nodeSize + 20;
+
+      // calculate node positions
+      const positions = {};
+      Object.entries(tiers).forEach(([tier, tierItems]) => {
+        const x = (parseInt(tier) - 1) * hGap + 20;
+        tierItems.forEach((item, idx) => {
+          const totalH = tierItems.length * vGap;
+          const startY = (svgH - totalH) / 2;
+          const y = startY + idx * vGap;
+          positions[item.id] = { x, y };
+        });
+      });
+
+      // build connection lines
+      const lines = items
+        .flatMap((item) => {
+          if (!item.requires) return [];
+          return item.requires.map((reqId) => {
+            const from = positions[reqId];
+            const to = positions[item.id];
+            if (!from || !to) return "";
+            const isActive = unlockedIds.has(reqId) && unlockedIds.has(item.id);
+            const isPending =
+              unlockedIds.has(reqId) && !unlockedIds.has(item.id);
+            const color = isActive
+              ? cat.color
+              : isPending
+                ? "rgba(196,154,10,.4)"
+                : "var(--border)";
+            return `<line 
+          x1="${from.x + nodeSize / 2}" y1="${from.y + nodeSize / 2}"
+          x2="${to.x + nodeSize / 2}"   y2="${to.y + nodeSize / 2}"
+          stroke="${color}" stroke-width="${isActive ? 2 : 1}"
+          stroke-dasharray="${isPending ? "4,4" : "none"}"/>`;
+          });
+        })
+        .join("");
+
+      // build nodes
+      const nodes = items
+        .map((item) => {
+          const pos = positions[item.id];
+          const isUnlocked = unlockedIds.has(item.id);
+          const requires = item.requires || [];
+          const prereqsMet = requires.every((r) => unlockedIds.has(r));
+          const isLocked = !prereqsMet && !isUnlocked;
+
+          const bgColor = isUnlocked
+            ? cat.color
+            : isLocked
+              ? "#1a1a18"
+              : "#1a1a18";
+          const borderColor = isUnlocked
+            ? cat.color
+            : prereqsMet
+              ? cat.color
+              : "#333";
+          const borderWidth = isUnlocked ? 2 : prereqsMet ? 2 : 1;
+          const borderDash = prereqsMet && !isUnlocked ? "4,3" : "none";
+          const iconColor = isUnlocked
+            ? "#0f0f0d"
+            : isLocked
+              ? "#444"
+              : cat.color + "88";
+          const textColor = isUnlocked ? cat.color : isLocked ? "#444" : "#888";
+
+          return `
+        <g transform="translate(${pos.x}, ${pos.y})" 
+           style="cursor:${isLocked ? "default" : "pointer"}"
+           onclick="HF_PLAYER.showAchievementDetail('${item.id}')">
+          <rect width="${nodeSize}" height="${nodeSize}" 
+          fill="${bgColor}" 
+          stroke="${borderColor}" 
+          stroke-width="${borderWidth}"
+          stroke-dasharray="${borderDash}"
+          rx="0"/>
+          ${
+            isUnlocked
+              ? `
+            <rect width="${nodeSize}" height="4" fill="${cat.color}" rx="0"/>`
+              : ""
+          }
+          <text x="${nodeSize / 2}" y="${nodeSize / 2 - 6}" 
+            text-anchor="middle" 
+            font-family="tabler-icons" 
+            font-size="20"
+            fill="${iconColor}">
+          </text>
+          <foreignObject x="4" y="${nodeSize / 2 - 8}" width="${nodeSize - 8}" height="20">
+            <div xmlns="http://www.w3.org/1999/xhtml" 
+              style="text-align:center;font-size:10px;color:${iconColor};">
+              <i class="ti ${isLocked ? "ti-lock" : item.icon}"></i>
+            </div>
+          </foreignObject>
+          <text x="${nodeSize / 2}" y="${nodeSize - 8}"
+            text-anchor="middle"
+            font-family="Inter, sans-serif"
+            font-size="8"
+            font-weight="700"
+            letter-spacing="0.5"
+            text-transform="uppercase"
+            fill="${textColor}">
+            ${isLocked ? "???" : item.label.length > 12 ? item.label.toUpperCase().slice(0, 12) + "..." : item.label.toUpperCase()}
+          </text>
+          ${
+            isUnlocked
+              ? `
+            <circle cx="${nodeSize - 8}" cy="8" r="6" fill="var(--green)"/>
+            <text x="${nodeSize - 8}" y="12" text-anchor="middle" font-size="8" fill="white">✓</text>`
+              : ""
+          }
+        </g>`;
+        })
+        .join("");
+
+      const catUnlocked = items.filter((i) => unlockedIds.has(i.id)).length;
+      const catKey = cat.label.toLowerCase().replace(/\s/g, "-");
+
+      return `
+        <div class="card" style="margin-bottom:var(--sp-lg);">
+          <div class="card-title" style="justify-content:space-between;cursor:pointer;"
+            onclick="
+              const c=document.getElementById('tree-${catKey}');
+              const i=document.getElementById('tree-chevron-${catKey}');
+              c.style.display=c.style.display==='none'?'block':'none';
+              i.className='ti '+(c.style.display==='none'?'ti-chevron-down':'ti-chevron-up');
+            ">
+            <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+              <i class="ti ${cat.icon}" style="color:${cat.color}"></i>
+              ${cat.label}
+              <span style="font-size:11px;color:var(--text3);font-family:var(--font);text-transform:none;letter-spacing:0;font-weight:400;">
+                ${catUnlocked}/${items.length}
+              </span>
+            </div>
+            <i id="tree-chevron-${catKey}" class="ti ti-chevron-down" style="font-size:14px;color:var(--text3)"></i>
+          </div>
+          <div id="tree-${catKey}" style="display:none;">
+            <div style="overflow-x:auto;">
+              <svg width="${svgW}" height="${svgH}" xmlns="http://www.w3.org/2000/svg">
+                ${lines}
+                ${nodes}
+              </svg>
+            </div>
+            <div id="achievement-detail-${catKey}" style="display:none;margin-top:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:2px solid ${cat.color};"></div>
+          </div>
+        </div>`;
+    };
 
     setMain(`
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Achievements</div>
-      ${earned
-        .map(
-          (a) => `
-        <div class="achievement" style="opacity:${a.earned ? "1" : "0.4"};">
-          <div class="achievement-icon" style="color:${a.earned ? "var(--gold)" : "var(--text3)"}">
-            ${a.icon}
-          </div>
-          <div>
-            <div class="achievement-title">${a.title}</div>
-            <div class="achievement-sub">${a.sub}</div>
-          </div>
-          <div class="achievement-date">
-            ${
-              a.earned
-                ? `<span style="color:var(--green);font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Earned</span>`
-                : `<span style="color:var(--text3);font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Locked</span>`
-            }
-          </div>
-        </div>`,
-        )
+    <div class="welcome-banner">
+      <div>
+        <div class="welcome-title">Achievements</div>
+        <div class="welcome-sub">${unlockedCount} of ${totalCount} unlocked</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold);">${Math.round((unlockedCount / totalCount) * 100)}%</div>
+        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,.4);">Complete</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:var(--sp-md);flex-wrap:wrap;margin-bottom:var(--sp-lg);">
+      ${Object.entries(ACHIEVEMENTS)
+        .map(([key, cat]) => {
+          const catUnlocked = cat.items.filter((a) =>
+            unlockedIds.has(a.id),
+          ).length;
+          const pct = Math.round((catUnlocked / cat.items.length) * 100);
+          return `
+          <div style="flex:1;min-width:120px;padding:var(--sp-md);background:var(--bg2);border-top:2px solid ${cat.color};">
+            <div style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${cat.color};margin-bottom:4px;">
+              <i class="ti ${cat.icon}" style="margin-right:4px"></i>${cat.label}
+            </div>
+            <div style="font-size:18px;font-weight:700;color:var(--text)">${catUnlocked}/${cat.items.length}</div>
+            <div style="height:3px;background:var(--border);margin-top:6px;">
+              <div style="height:100%;width:${pct}%;background:${cat.color};transition:width 0.3s ease;"></div>
+            </div>
+          </div>`;
+        })
         .join("")}
     </div>
 
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Next milestone</div>
-      ${
-        overall === null
-          ? `
-        <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--gold);font-size:13px;color:var(--text2)">
-          Get your first session rating from your coach to start unlocking achievements.
-        </div>`
-          : overall < 80
-            ? `
-        <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--gold);font-size:13px;color:var(--text2)">
-          <strong style="color:var(--text)">Reach 80+ overall rating</strong>: You're at ${overall}%. Keep pushing!
-        </div>`
-            : `
-        <div style="padding:12px;background:rgba(26,122,46,.05);border-left:2px solid var(--green);font-size:13px;color:var(--text2)">
-          <strong style="color:var(--green)">Elite status reached!</strong> You're at ${overall}%. Outstanding.
-        </div>`
-      }
-    </div>`);
+    ${Object.values(ACHIEVEMENTS)
+      .map((cat) => renderTree(cat))
+      .join("")}
+
+    <div style="display:flex;gap:var(--sp-lg);flex-wrap:wrap;padding:var(--sp-md);background:var(--bg2);font-size:11px;color:var(--text2);">
+      <div style="display:flex;align-items:center;gap:6px;"><div style="width:16px;height:16px;background:var(--gold);"></div>Unlocked</div>
+      <div style="display:flex;align-items:center;gap:6px;"><div style="width:16px;height:16px;background:#1a1a18;border:1px solid var(--gold);"></div>Available</div>
+      <div style="display:flex;align-items:center;gap:6px;"><div style="width:16px;height:16px;background:#1a1a18;border:1px solid #333;opacity:0.4;"></div>Locked</div>
+    </div>
+  `);
   };
 
   // ── HEALTH ─────────────────────────────────────────────────
@@ -1322,6 +1659,20 @@ const HF_PLAYER = (() => {
       return;
     }
 
+    await HF_DB.checkAndUnlockAchievements(session.userId).then(
+      ({ newlyUnlocked }) => {
+        if (newlyUnlocked?.length > 0) {
+          setTimeout(() => {
+            HF_UTILS.launchConfetti();
+            HF_UTILS.toast(
+              `🏆 Achievement unlocked: ${newlyUnlocked.length} new!`,
+              "success",
+            );
+          }, 500);
+        }
+      },
+    );
+
     HF_UTILS.toast("Health check-in logged!", "success");
     health(session);
   };
@@ -1557,7 +1908,7 @@ const HF_PLAYER = (() => {
     messages(HF_DB.getSession());
   };
 
-  const togglePrayer = (prayerId, dateKey, userId) => {
+  const togglePrayer = async (prayerId, dateKey, userId) => {
     const storageKey = `hf_faith_checklist_${userId}_${dateKey}`;
     const checked = JSON.parse(localStorage.getItem(storageKey) || "[]");
 
@@ -1586,6 +1937,21 @@ const HF_PLAYER = (() => {
           session.profile = updatedProfile;
           HF_DB.saveSession(session);
         });
+
+        // at the end of each function before the final toast/nav
+        await HF_DB.checkAndUnlockAchievements(session.userId).then(
+          ({ newlyUnlocked }) => {
+            if (newlyUnlocked?.length > 0) {
+              setTimeout(() => {
+                HF_UTILS.launchConfetti();
+                HF_UTILS.toast(
+                  `🏆 Achievement unlocked: ${newlyUnlocked.length} new!`,
+                  "success",
+                );
+              }, 500);
+            }
+          },
+        );
 
         HF_UTILS.toast(
           `Faith streak: ${newStreak} days! Keep going.`,
@@ -2204,6 +2570,20 @@ const HF_PLAYER = (() => {
       return;
     }
 
+    await HF_DB.checkAndUnlockAchievements(session.userId).then(
+      ({ newlyUnlocked }) => {
+        if (newlyUnlocked?.length > 0) {
+          setTimeout(() => {
+            HF_UTILS.launchConfetti();
+            HF_UTILS.toast(
+              `🏆 Achievement unlocked: ${newlyUnlocked.length} new!`,
+              "success",
+            );
+          }, 500);
+        }
+      },
+    );
+
     HF_UTILS.toast(
       completed ? "Session marked complete! 💪" : "Session unmarked.",
       "success",
@@ -2294,12 +2674,62 @@ const HF_PLAYER = (() => {
     }
   };
 
+  const showAchievementDetail = (achievementId) => {
+    const item = Object.values(ACHIEVEMENTS)
+      .flatMap((c) => c.items)
+      .find((i) => i.id === achievementId);
+    const cat = Object.values(ACHIEVEMENTS).find((c) =>
+      c.items.find((i) => i.id === achievementId),
+    );
+    if (!item || !cat) return;
+
+    const catKey = cat.label.toLowerCase().replace(/\s/g, "-");
+    const detailId = `achievement-detail-${catKey}`;
+    const detail = document.getElementById(detailId);
+    if (!detail) return;
+
+    const isVisible = detail.style.display !== "none";
+    document
+      .querySelectorAll('[id^="achievement-detail-"]')
+      .forEach((el) => (el.style.display = "none"));
+    if (isVisible) return;
+
+    detail.style.display = "block";
+    detail.innerHTML = `
+    <div style="display:flex;align-items:center;gap:var(--sp-md);">
+      <i class="ti ${item.icon}" style="font-size:24px;color:${cat.color}"></i>
+      <div>
+        <div style="font-family:var(--font-head);font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:${cat.color};">
+          ${item.label}
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-top:2px;">${item.desc}</div>
+        ${
+          item.requires?.length
+            ? `
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">
+            Requires: ${item.requires
+              .map((r) => {
+                const req = Object.values(ACHIEVEMENTS)
+                  .flatMap((c) => c.items)
+                  .find((i) => i.id === r);
+                return req?.label || r;
+              })
+              .join(", ")}
+          </div>`
+            : ""
+        }
+      </div>
+    </div>`;
+  };
+
   return {
     render,
     training,
     updateTrainingDay,
     showDayPicker,
     logSessionComplete,
+    toggleSessionComplete,
+    selectTrainingDay,
     logHealthCheckin,
     showHealthSliders,
     showHealthCards,
@@ -2328,9 +2758,7 @@ const HF_PLAYER = (() => {
     requestTrial,
     messageCoach,
     sendCoachMessage,
-    toggleSessionComplete,
-    completionSection,
-    selectTrainingDay,
+    showAchievementDetail,
   };
 })();
 
