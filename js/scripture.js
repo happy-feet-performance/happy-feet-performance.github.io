@@ -8,7 +8,7 @@ const HF_SCRIPTURE = (() => {
 
   const SCRIPTURES = [
     { verse: '"I can do all things through Christ who strengthens me."',                                ref: 'Philippians 4:13' },
-    { verse: '"For I know the plans I have for you, declares the LORD, plans to prosper you and not to harm you."', ref: 'Jeremiah 29:11' },
+    { verse: '""For I know the plans I have for you", declares the LORD, "plans to prosper you and not to harm you.""', ref: 'Jeremiah 29:11' },
     { verse: '"Have I not commanded you? Be strong and courageous. Do not be afraid."',                ref: 'Joshua 1:9' },
     { verse: '"Whatever you do, work at it with all your heart, as working for the Lord."',            ref: 'Colossians 3:23' },
     { verse: '"He gives strength to the weary and increases the power of the weak."',                  ref: 'Isaiah 40:29' },

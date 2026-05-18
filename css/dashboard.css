@@ -354,11 +354,8 @@
   margin-bottom: var(--sp-sm);
 }
 .verse-ref {
-  font-family: var(--font-head);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-s);
   font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--faith);
 }
 
@@ -432,6 +429,13 @@
   .devotion-grid {
     grid-template-columns: repeat(4, 1fr);
   }
+}
+
+#nav-overlay {
+  pointer-events: none;
+}
+#nav-overlay.open {
+  pointer-events: all;
 }
 
 /* ── MOBILE BREAKPOINTS ── */

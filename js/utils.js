@@ -205,8 +205,8 @@ const HF_UTILS = (() => {
 
     const msgRow = (m) => `
       <div class="msg-item" id="msg-${m.id}" onclick="HF_${role.toUpperCase()}.readMessage('${m.id}', document.getElementById('msg-${m.id}'))">
-        <div class="avatar avatar-md" style="background:#0f0f0d;display:flex;align-items:center;justify-content:center;">
-          <i class="ti ti-shield" style="font-size:16px;color:${m.from_id === "admin" || m.from_id === "system" ? "var(--gold)" : "var(--blue)"}"></i>
+        <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
+          <i class="ti ti-shield" style="font-size:16px;color:${!m.read ? 'var(--gold)' : 'var(--text2)'}"></i>
         </div>
         <div style="flex:1">
           <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
@@ -219,6 +219,7 @@ const HF_UTILS = (() => {
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
           ${!m.read ? `<div class="msg-unread" id="badge-${m.id}">1</div>` : ""}
           <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
+            title="Archive message"
             onclick="event.stopPropagation();HF_${role.toUpperCase()}.archiveMessage('${m.id}', this)">
             <i class="ti ti-archive"></i>
           </button>
@@ -257,8 +258,11 @@ const HF_UTILS = (() => {
 
   const launchConfetti = () => {
     const colors = ["#C49A0A", "#1a7a2e", "#ffffff", "#185FA5", "#0f0f0d"];
+    const pieces = [];
+
     for (let i = 0; i < 120; i++) {
       const piece = document.createElement("div");
+      piece.className = "confetti-piece";
       piece.style.cssText = `
       position:fixed;top:-10px;
       left:${Math.random() * 100}vw;
@@ -271,10 +275,16 @@ const HF_UTILS = (() => {
       transform:rotate(${Math.random() * 360}deg);
     `;
       document.body.appendChild(piece);
+      pieces.push(piece);
       setTimeout(() => piece.remove(), 4000);
     }
-  };
 
+    // store cleanup function globally so navTo can call it
+    window._stopConfetti = () => {
+      document.querySelectorAll(".confetti-piece").forEach((p) => p.remove());
+      window._stopConfetti = null;
+    };
+  };
   return {
     initials,
     age,

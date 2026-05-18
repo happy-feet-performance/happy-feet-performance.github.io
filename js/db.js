@@ -165,6 +165,16 @@ const HF_DB = (() => {
     return { success: true };
   };
 
+  const checkContactExists = async (contact) => {
+    const normalised = contact.toLowerCase().replace(/\s/g, "");
+    const { data } = await _client
+      .from("users")
+      .select("id")
+      .eq("contact", normalised)
+      .maybeSingle();
+    return { data };
+  };
+
   // ─── Normalise DB row to app format ────────────────────────
   const _normaliseUser = (u) => ({
     id: u.id,
@@ -482,14 +492,32 @@ const HF_DB = (() => {
     // check if invite already exists
     const { data: existing } = await _client
       .from("squad_invites")
-      .select("id, status")
+      .select("id, status, declined_at")
       .eq("coach_id", coachId)
       .eq("player_id", playerId)
-      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-    if (existing)
-      return { error: "An invite has already been sent to this player." };
+    if (existing) {
+      if (existing.status === "pending") {
+        return { error: "An invite has already been sent to this player." };
+      }
+      if (existing.status === "accepted") {
+        return { error: "This player is already in your squad." };
+      }
+      if (existing.status === "declined" && existing.declined_at) {
+        const declinedAt = new Date(existing.declined_at);
+        const hoursPassed =
+          (Date.now() - declinedAt.getTime()) / (1000 * 60 * 60);
+        if (hoursPassed < 24) {
+          const hoursLeft = Math.ceil(24 - hoursPassed);
+          return {
+            error: `This player declined your invite. You can send another in ${hoursLeft} hour${hoursLeft > 1 ? "s" : ""}.`,
+          };
+        }
+      }
+    }
 
     const { error } = await _client.from("squad_invites").insert({
       coach_id: coachId,
@@ -499,12 +527,19 @@ const HF_DB = (() => {
     });
     if (error) return { error: error.message };
 
-    // send notification message to player
+    // fetch coach name
+    const { data: coach } = await _client
+      .from("users")
+      .select("name")
+      .eq("id", coachId)
+      .single();
+    const coachName = coach?.name || "A coach";
+
     await _client.from("messages").insert({
       from_id: coachId,
       to_id: playerId,
       subject: "Squad invite",
-      body: `You have been invited to join ${squadName}. Go to your messages to accept or decline.`,
+      body: `${coachName} has invited you to join ${squadName}. Go to your messages to accept or decline.`,
       read: false,
     });
 
@@ -532,33 +567,72 @@ const HF_DB = (() => {
 
     const { error } = await _client
       .from("squad_invites")
-      .update({ status, responded_at: new Date().toISOString() })
+      .update({
+        status,
+        responded_at: new Date().toISOString(),
+        declined_at: !accept ? new Date().toISOString() : null,
+      })
       .eq("id", inviteId);
     if (error) return { error: error.message };
 
+    // fetch player name
+    const { data: player } = await _client
+      .from("users")
+      .select("name")
+      .eq("id", playerId)
+      .single();
+    const playerName = player?.name || "A player";
+
     if (accept) {
-      const { data: player } = await _client
+      const { data: playerProfile } = await _client
         .from("users")
         .select("profile")
         .eq("id", playerId)
         .single();
 
       const updatedProfile = {
-        ...player.profile,
+        ...playerProfile.profile,
         club: squadName,
         status: "signed",
       };
-
       await _client
         .from("users")
         .update({ profile: updatedProfile })
         .eq("id", playerId);
 
+      // notify coach
       await _client.from("messages").insert({
         from_id: playerId,
         to_id: coachId,
         subject: "Invite accepted",
-        body: `A player has accepted your invite to join ${squadName}.`,
+        body: `${playerName} has accepted your invite to join ${squadName}.`,
+        read: false,
+      });
+
+      // confirm to player
+      await _client.from("messages").insert({
+        from_id: "system",
+        to_id: playerId,
+        subject: "Welcome to the squad!",
+        body: `You have successfully joined ${squadName}. Your coach will be in touch. Good luck!`,
+        read: false,
+      });
+    } else {
+      // notify coach
+      await _client.from("messages").insert({
+        from_id: playerId,
+        to_id: coachId,
+        subject: "Invite declined",
+        body: `${playerName} has declined your invite to join ${squadName}. You can send another invite after 24 hours.`,
+        read: false,
+      });
+
+      // confirm to player
+      await _client.from("messages").insert({
+        from_id: "system",
+        to_id: playerId,
+        subject: "Invite declined",
+        body: `You have declined the invite to join ${squadName}. You can still receive invites from other coaches.`,
         read: false,
       });
     }
@@ -753,6 +827,13 @@ const HF_DB = (() => {
     await _client
       .from("messages")
       .update({ archived: true, read: true })
+      .eq("id", messageId);
+  };
+
+  const unarchiveMessage = async (messageId) => {
+    await _client
+      .from("messages")
+      .update({ archived: false })
       .eq("id", messageId);
   };
 
@@ -1163,7 +1244,7 @@ const HF_DB = (() => {
   const getCoachInvites = async (coachId) => {
     const { data, error } = await _client
       .from("squad_invites")
-      .select("player_id, status")
+      .select("player_id, status, declined_at")
       .eq("coach_id", coachId);
     if (error) return { data: [] };
     return { data };
@@ -1347,6 +1428,26 @@ const HF_DB = (() => {
     return { data };
   };
 
+  const getAllUsersBasic = async () => {
+    const { data, error } = await _client
+      .from("users")
+      .select("id, name, role")
+      .order("name", { ascending: true });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const searchAllUsers = async (query, excludeId) => {
+    const { data, error } = await _client
+      .from("users")
+      .select("id, name, role, contact")
+      .or(`name.ilike.%${query}%,contact.ilike.%${query}%`)
+      .neq("id", excludeId)
+      .limit(8);
+    if (error) return { data: [] };
+    return { data };
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     createUser,
@@ -1381,6 +1482,7 @@ const HF_DB = (() => {
     getUserNameById,
     getCoachInvites,
     archiveMessage,
+    unarchiveMessage,
     getArchivedMessages,
     markMessageRead,
     getAllVerifications,
@@ -1389,6 +1491,8 @@ const HF_DB = (() => {
     banUser,
     unbanUser,
     removeUser,
+    getAllUsersBasic,
+    checkContactExists,
     checkUserStatus,
     searchPlayers,
     sendSquadInvite,
@@ -1424,6 +1528,7 @@ const HF_DB = (() => {
     saveSessionRating,
     getPlayerSessionRatings,
     getSquadSessionRatings,
+    searchAllUsers,
   };
 })();
 

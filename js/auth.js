@@ -20,9 +20,13 @@ const HF_AUTH = (() => {
 
   // ─── Screens ───────────────────────────────────────────────
   const showScreen = (id) => {
+    document.getElementById("nav-overlay")?.classList.remove("open");
+    document.getElementById("sidenav")?.classList.remove("open");
+
     document
       .querySelectorAll(".auth-screen")
       .forEach((s) => s.classList.remove("active"));
+    document.getElementById(id)?.classList.add("active");
     const scr = el(id);
     if (scr) scr.classList.add("active");
   };
@@ -171,6 +175,8 @@ const HF_AUTH = (() => {
 
   // ─── Step 2 → Step 3 ───────────────────────────────────────
   const goStep3 = async () => {
+    document.getElementById("nav-overlay")?.classList.remove("open");
+    document.getElementById("sidenav")?.classList.remove("open");
     const name = el("su-name")?.value.trim();
     const pass = el("su-pass")?.value;
     hideError("signup-err");
@@ -207,6 +213,17 @@ const HF_AUTH = (() => {
 
     if (!pass || pass.length < 6) {
       showError("signup-err", "Password must be at least 6 characters.");
+      return;
+    }
+
+    const { data: existing } = await HF_DB.checkContactExists(contact);
+    if (existing) {
+      showError(
+        "signup-err",
+        contactType === "phone"
+          ? "This phone number is already registered."
+          : "This email address is already registered.",
+      );
       return;
     }
 
@@ -368,7 +385,6 @@ const HF_AUTH = (() => {
       const regionInput = el("sq-region");
       if (clubInput) {
         clubInput.value = state.signup.profile.club || "";
-        clubInput.readOnly = true;
         clubInput.style.opacity = "0.6";
         clubInput.style.cursor = "not-allowed";
       }
@@ -727,6 +743,11 @@ const HF_AUTH = (() => {
     HF_ROUTER.launch(session);
   };
 
+  const skipVerification = () => {
+    const session = HF_DB.getSession();
+    HF_ROUTER.launch(session);
+  };
+
   // ─── Expose to window (called from onclick) ─────────────────
   return {
     showScreen,
@@ -746,6 +767,7 @@ const HF_AUTH = (() => {
     enterWithPendingAgency,
     toggleTag,
     getSelectedTags,
+    skipVerification,
   };
 })();
 

@@ -243,6 +243,7 @@ img {
 
 .card.faith-card {
   border-top: 2px solid var(--faith);
+  font-family: var(--font);
 }
 
 .card-title {
@@ -257,6 +258,15 @@ img {
   gap: var(--sp-sm);
   color: var(--text);
 }
+
+.faith-card .card-title {
+  font-family: var(--font);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  font-size: 14px;
+}
+
 .card-dot {
   width: 6px;
   height: 6px;
