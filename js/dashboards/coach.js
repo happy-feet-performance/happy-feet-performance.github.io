@@ -1017,16 +1017,190 @@ const HF_COACH = (() => {
 </div>`);
   };
 
-  const findmyteam = (s) => {
+  const findmyteam = async (s) => {
+    const p = s.profile || {};
+    const isVerified = s.squadStatus === "verified";
+    const { data: players } = await HF_DB.getUnattachedPlayers();
+
+    // get current recruitment status
+    const { data: coachData } = (await HF_DB._client)
+      ? { data: null }
+      : { data: null };
+
     setMain(`
+    <div class="welcome-banner">
+      <div>
+        <div class="welcome-title">Find my team</div>
+        <div class="welcome-sub">Discover unattached players for your squad</div>
+      </div>
+    </div>
+
+    ${
+      isVerified
+        ? `
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+            <div class="card-dot"></div>Your recruitment status
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <span style="font-size:12px;color:var(--text2)">Open for recruitment</span>
+            <input type="checkbox" id="recruitment-toggle" ${p.openForRecruitment ? "checked" : ""}
+              onchange="HF_COACH.toggleRecruitment(this.checked)"
+              style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+          </label>
+        </div>
+        <div style="font-size:13px;color:var(--text2);">
+          ${
+            p.openForRecruitment
+              ? '<i class="ti ti-circle-check" style="color:var(--green);margin-right:6px"></i>Your squad is visible to players looking for a team.'
+              : '<i class="ti ti-eye-off" style="color:var(--text3);margin-right:6px"></i>Your squad is hidden from players. Toggle to appear in Find my team.'
+          }
+        </div>
+      </div>`
+        : `
+      <div style="padding:var(--sp-lg);background:rgba(196,154,10,.06);border-left:3px solid var(--gold);margin-bottom:var(--sp-lg);">
+        <div style="font-size:13px;color:var(--text2);">
+          <i class="ti ti-lock" style="margin-right:6px"></i>
+          Verify your squad to appear in player searches and browse unattached players.
+        </div>
+      </div>`
+    }
+
     <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Find my team</div>
-      <div style="text-align:center;padding:32px;color:var(--text2)">
-        <i class="ti ti-map-search" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Coming soon</div>
-        <div style="font-size:13px">Team listings and player discovery coming in the next update.</div>
+      <div class="card-title"><div class="card-dot"></div>Unattached players</div>
+      <div style="display:flex;gap:8px;margin-bottom:var(--sp-lg);flex-wrap:wrap;">
+        <select id="fmt-pos" onchange="HF_COACH.filterPlayers()"
+          style="padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
+          <option value="">All positions</option>
+          <option>GK</option><option>CB</option><option>LB</option><option>RB</option>
+          <option>DM</option><option>CM</option><option>CAM</option>
+          <option>LW</option><option>RW</option><option>ST</option>
+        </select>
+        <select id="fmt-tier" onchange="HF_COACH.filterPlayers()"
+          style="padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
+          <option value="">All tiers</option>
+          <option>U10</option><option>U12</option><option>U14</option><option>U16</option>
+          <option>U18</option><option>U21</option><option>Professional</option>
+        </select>
+        <input type="text" id="fmt-search" placeholder="Search by name..."
+          oninput="HF_COACH.filterPlayers()"
+          style="flex:1;min-width:120px;padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
+      </div>
+
+      <div id="fmt-players-list">
+        ${
+          !players || players.length === 0
+            ? `
+          <div style="text-align:center;padding:32px;color:var(--text2)">
+            <i class="ti ti-users" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No unattached players</div>
+            <div style="font-size:13px">Unattached players will appear here as they register.</div>
+          </div>`
+            : players.map((p) => _playerCard(p, s.userId, isVerified)).join("")
+        }
       </div>
     </div>`);
+
+    window._fmtAllPlayers = players;
+    window._fmtCoachId = s.userId;
+    window._fmtIsVerified = isVerified;
+  };
+
+  const _playerCard = (p, coachId, isVerified) => {
+    const prof = p.profile || {};
+    const safeName = p.name.replace(/'/g, "\\'");
+    const overall = prof.ratings
+      ? Math.round(
+          (prof.ratings.speed +
+            prof.ratings.tech +
+            prof.ratings.tact +
+            prof.ratings.phys) /
+            4,
+        )
+      : null;
+
+    return `
+    <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);margin-bottom:var(--sp-sm);">
+      <div class="avatar avatar-md" style="background:var(--green)">${HF_UTILS.initials(p.name)}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
+        <div style="font-size:11px;color:var(--text2)">${prof.pos || "-"} · ${prof.tier || "-"} · ${prof.hometown || "-"}</div>
+        <div style="font-size:11px;color:var(--green)">Unattached</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        ${overall !== null ? `<div style="font-size:16px;font-weight:700;color:var(--gold)">${overall}%</div>` : '<div style="font-size:13px;color:var(--text3)">Unrated</div>'}
+      </div>
+      ${
+        isVerified
+          ? `
+        <button class="btn btn-primary btn-sm" onclick="HF_COACH.invitePlayer('${p.id}', '${safeName}')">
+          <i class="ti ti-send"></i> Invite
+        </button>`
+          : ""
+      }
+    </div>`;
+  };
+
+  const filterPlayers = () => {
+    const pos = document.getElementById("fmt-pos")?.value;
+    const tier = document.getElementById("fmt-tier")?.value;
+    const search = document.getElementById("fmt-search")?.value.toLowerCase();
+    const list = document.getElementById("fmt-players-list");
+    if (!list || !window._fmtAllPlayers) return;
+
+    const filtered = window._fmtAllPlayers.filter((p) => {
+      const prof = p.profile || {};
+      const matchPos = !pos || prof.pos === pos;
+      const matchTier = !tier || prof.tier === tier;
+      const matchSearch = !search || p.name.toLowerCase().includes(search);
+      return matchPos && matchTier && matchSearch;
+    });
+
+    list.innerHTML =
+      filtered.length === 0
+        ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No players match your filters.</div>`
+        : filtered
+            .map((p) =>
+              _playerCard(p, window._fmtCoachId, window._fmtIsVerified),
+            )
+            .join("");
+  };
+
+  const toggleRecruitment = async (value) => {
+    const session = HF_DB.getSession();
+    const result = await HF_DB.toggleRecruitment(session.userId, value);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    session.profile = { ...session.profile, openForRecruitment: value };
+    HF_DB.saveSession(session);
+
+    // notify squad players if opening for recruitment
+    if (value) {
+      const { data: squadPlayers } = await HF_DB.getSquadPlayers(
+        session.userId,
+      );
+      if (squadPlayers?.length > 0) {
+        for (const sp of squadPlayers) {
+          await HF_DB._sendMessage(
+            "system",
+            sp.player_id,
+            "Your squad is now recruiting",
+            `Your coach ${session.name} has opened ${session.profile?.club || "your squad"} for recruitment. New players may be joining the squad soon.`,
+          );
+        }
+      }
+    }
+
+    HF_UTILS.toast(
+      value
+        ? "Your squad is now visible to players!"
+        : "Your squad is now hidden from players.",
+      "success",
+    );
   };
 
   const readMessage = async (messageId, el) => {
@@ -2648,25 +2822,27 @@ const HF_COACH = (() => {
     editProfile,
     saveProfile,
     saveSessionRating,
+    saveSessionRatingFromTracking,
+    checkExistingRating,
     contactAdmin,
     sendAdminMessage,
+    toggleCustomSubject,
     composeMessage,
     sendComposedMessage,
-    toggleCustomSubject,
     searchRecipients,
     selectRecipient,
     removeRecipient,
+    trackPlayer,
+    savePlayerRating,
+    viewPlayerHealth,
+    viewThread,
     toggleMsgActions,
     replyToMessage,
     sendReply,
     viewSenderProfile,
     reportToAdmin,
-    viewThread,
-    trackPlayer,
-    savePlayerRating,
-    viewPlayerHealth,
-    saveSessionRatingFromTracking,
-    checkExistingRating,
+    filterPlayers,
+    toggleRecruitment,
   };
 })();
 

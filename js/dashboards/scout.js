@@ -1089,16 +1089,98 @@ const HF_SCOUT = (() => {
   };
 
   // ── FIND MY TEAM ───────────────────────────────────────────
-  const findmyteam = (s) => {
+  const findmyteam = async (s) => {
+    const { data: coaches } = await HF_DB.getVerifiedCoaches();
+
     setMain(`
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Find my team</div>
-        <div style="text-align:center;padding:32px;color:var(--text2)">
-          <i class="ti ti-map-search" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Coming soon</div>
-          <div style="font-size:13px">Team listings coming in the next update.</div>
-        </div>
-      </div>`);
+    <div class="welcome-banner">
+      <div>
+        <div class="welcome-title">Find my team</div>
+        <div class="welcome-sub">Browse verified coaches and squads</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:var(--sp-lg);flex-wrap:wrap;">
+      <input type="text" id="fmt-search" placeholder="Search by coach or club name..."
+        oninput="HF_SCOUT.filterFMTCoaches()"
+        style="flex:1;padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
+    </div>
+
+    <div id="fmt-coaches-list">
+      ${
+        !coaches || coaches.length === 0
+          ? `
+        <div class="card">
+          <div style="text-align:center;padding:32px;color:var(--text2)">
+            <i class="ti ti-building" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No verified coaches yet</div>
+            <div style="font-size:13px">Verified coaches will appear here.</div>
+          </div>
+        </div>`
+          : coaches
+              .map(
+                (c) => `
+          <div class="card" style="margin-bottom:var(--sp-md);">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-md);">
+              <div style="display:flex;align-items:center;gap:var(--sp-md);">
+                <div class="avatar avatar-md" style="background:var(--gold)">${HF_UTILS.initials(c.name)}</div>
+                <div>
+                  <div style="font-size:13px;font-weight:600;color:var(--text)">${c.name}</div>
+                  <div style="font-size:12px;color:var(--text2)">${c.profile?.club || "-"}</div>
+                  <div style="font-size:11px;color:var(--text3)">${c.profile?.spec || "Head coach"} · ${c.profile?.exp || "-"} yrs</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.messagePlayer('${c.id}', '${c.name.replace(/'/g, "\\'")}')">
+                  <i class="ti ti-message"></i> Message
+                </button>
+              </div>
+            </div>
+          </div>`,
+              )
+              .join("")
+      }
+    </div>`);
+
+    window._fmtScoutCoaches = coaches;
+  };
+
+  const filterFMTCoaches = () => {
+    const search = document.getElementById("fmt-search")?.value.toLowerCase();
+    const list = document.getElementById("fmt-coaches-list");
+    if (!list || !window._fmtScoutCoaches) return;
+
+    const filtered = window._fmtScoutCoaches.filter((c) => {
+      const matchSearch =
+        !search ||
+        c.name.toLowerCase().includes(search) ||
+        (c.profile?.club || "").toLowerCase().includes(search);
+      return matchSearch;
+    });
+
+    list.innerHTML =
+      filtered.length === 0
+        ? `<div class="card"><div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No coaches match your search.</div></div>`
+        : filtered
+            .map(
+              (c) => `
+        <div class="card" style="margin-bottom:var(--sp-md);">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-md);">
+            <div style="display:flex;align-items:center;gap:var(--sp-md);">
+              <div class="avatar avatar-md" style="background:var(--gold)">${HF_UTILS.initials(c.name)}</div>
+              <div>
+                <div style="font-size:13px;font-weight:600;color:var(--text)">${c.name}</div>
+                <div style="font-size:12px;color:var(--text2)">${c.profile?.club || "-"}</div>
+                <div style="font-size:11px;color:var(--text3)">${c.profile?.spec || "Head coach"} · ${c.profile?.exp || "-"} yrs</div>
+              </div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.messagePlayer('${c.id}', '${c.name.replace(/'/g, "\\'")}')">
+              <i class="ti ti-message"></i> Message
+            </button>
+          </div>
+        </div>`,
+            )
+            .join("");
   };
 
   // ── EDIT PROFILE ───────────────────────────────────────────
@@ -2545,13 +2627,14 @@ ${reportEl.textContent.trim()}
     generateReport,
     submitGenerateReport,
     viewReport,
-    downloadReport,
     shareReportViaMessage,
     searchReportRecipients,
     selectReportRecipient,
     clearReportRecipient,
     sendReportMessage,
+    downloadReport,
     downloadReportPDF,
+    filterFMTCoaches,
   };
 })();
 

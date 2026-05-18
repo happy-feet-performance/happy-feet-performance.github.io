@@ -48,17 +48,167 @@ const HF_PLAYER = (() => {
     fn(session);
   };
 
-  const findmyteam = (s) => {
+  // ── FIND MY TEAM ───────────────────────────────────────
+  const findmyteam = async (s) => {
+    const { data: coaches } = await HF_DB.getOpenCoaches();
+    const p = s.profile || {};
+
+    setMain(`
+    <div class="welcome-banner">
+      <div>
+        <div class="welcome-title">Find my team</div>
+        <div class="welcome-sub">Browse verified coaches looking for players</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:var(--sp-lg);flex-wrap:wrap;">
+      <select id="fmt-league" onchange="HF_PLAYER.filterCoaches()" 
+        style="padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
+        <option value="">All leagues</option>
+        <option>Ghana Premier League</option>
+        <option>Division One League</option>
+        <option>MTN FA Cup</option>
+        <option>CAF Champions League</option>
+        <option>Other</option>
+      </select>
+      <input type="text" id="fmt-search" placeholder="Search by coach or club name..."
+        oninput="HF_PLAYER.filterCoaches()"
+        style="flex:1;min-width:150px;padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
+    </div>
+
+    <div id="coaches-list">
+      ${
+        !coaches || coaches.length === 0
+          ? `
+        <div class="card">
+          <div style="text-align:center;padding:32px;color:var(--text2)">
+            <i class="ti ti-map-search" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No coaches recruiting yet</div>
+            <div style="font-size:13px">Verified coaches who are open for recruitment will appear here.</div>
+          </div>
+        </div>`
+          : coaches.map((c) => _coachCard(c, s.userId)).join("")
+      }
+    </div>`);
+
+    window._fmtAllCoaches = coaches;
+    window._fmtUserId = s.userId;
+  };
+
+  const _coachCard = (c, playerId) => {
+    const p = c.profile || {};
+    const safeName = c.name.replace(/'/g, "\\'");
+    return `
+    <div class="card" style="margin-bottom:var(--sp-md);">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-md);">
+        <div style="display:flex;align-items:center;gap:var(--sp-md);">
+          <div class="avatar avatar-lg" style="background:var(--gold);width:48px;height:48px;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:18px;font-weight:700;color:#0f0f0d;">
+            ${HF_UTILS.initials(c.name)}
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text)">${c.name}</div>
+            <div style="font-size:12px;color:var(--text2)">${p.club || "-"}</div>
+            <div style="font-size:11px;color:var(--text3)">${p.spec || "Head coach"} · ${p.exp || "-"} yrs exp · ${p.licence || "-"}</div>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--gold)">${p.teamSize || 0}</div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.08em">Players</div>
+        </div>
+      </div>
+      <div style="margin-top:var(--sp-md);padding-top:var(--sp-md);border-top:0.5px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="HF_PLAYER.requestTrial('${c.id}', '${safeName}')">
+          <i class="ti ti-send"></i> Request trial
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="HF_PLAYER.messageCoach('${c.id}', '${safeName}')">
+          <i class="ti ti-message"></i> Message
+        </button>
+      </div>
+    </div>`;
+  };
+
+  const filterCoaches = () => {
+    const league = document.getElementById("fmt-league")?.value;
+    const search = document.getElementById("fmt-search")?.value.toLowerCase();
+    const list = document.getElementById("coaches-list");
+    if (!list || !window._fmtAllCoaches) return;
+
+    const filtered = window._fmtAllCoaches.filter((c) => {
+      const p = c.profile || {};
+      const matchLeague = !league || p.league === league;
+      const matchSearch =
+        !search ||
+        c.name.toLowerCase().includes(search) ||
+        (p.club || "").toLowerCase().includes(search);
+      return matchLeague && matchSearch;
+    });
+
+    list.innerHTML =
+      filtered.length === 0
+        ? `<div class="card"><div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No coaches match your filters.</div></div>`
+        : filtered.map((c) => _coachCard(c, window._fmtUserId)).join("");
+  };
+
+  const requestTrial = async (coachId, coachName) => {
+    const session = HF_DB.getSession();
+    const p = session.profile || {};
+
+    const result = await HF_DB._sendMessage(
+      session.userId,
+      coachId,
+      "Trial request",
+      `${session.name} (${p.pos || "Player"} · ${p.tier || "-"} · ${p.hometown || "-"}) has requested a trial with your squad. Check their profile on HappyFeet.`,
+    );
+
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+    HF_UTILS.toast(`Trial request sent to ${coachName}!`, "success");
+  };
+
+  const messageCoach = async (coachId, coachName) => {
+    const session = HF_DB.getSession();
     setMain(`
     <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Find my team</div>
-      <div style="text-align:center;padding:32px;color:var(--text2)">
-        <i class="ti ti-map-search" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Coming soon</div>
-        <div style="font-size:13px">Team listings and player discovery coming in the next update.</div>
+      <div class="card-title"><div class="card-dot"></div>Message ${coachName}</div>
+      <div class="fg">
+        <label class="required">Message</label>
+        <textarea id="fmt-msg-body" rows="4" placeholder="Introduce yourself..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="HF_PLAYER.sendCoachMessage('${coachId}', '${coachName.replace(/'/g, "\\'")}')">
+          <i class="ti ti-send"></i> Send
+        </button>
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('findmyteam')">Cancel</button>
       </div>
     </div>`);
   };
+
+  const sendCoachMessage = async (coachId, coachName) => {
+    const session = HF_DB.getSession();
+    const body = document.getElementById("fmt-msg-body")?.value.trim();
+    if (!body) {
+      HF_UTILS.toast("Please enter a message.", "error");
+      return;
+    }
+
+    const result = await HF_DB._sendMessage(
+      session.userId,
+      coachId,
+      `Message from ${session.name}`,
+      body,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    HF_UTILS.toast(`Message sent to ${coachName}!`, "success");
+    HF_ROUTER.navTo("findmyteam");
+  };
+
   // ── DASHBOARD ───────────────────────────────────────────────
   const dashboard = async (s) => {
     const p = s.profile || {};
@@ -331,9 +481,7 @@ const HF_PLAYER = (() => {
           <tbody>
             ${sessions
               .map((r) => {
-                const isToday =
-                  r.created_at?.split("T")[0] ===
-                  _localDate();
+                const isToday = r.created_at?.split("T")[0] === _localDate();
                 return `
                 <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
                   <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
@@ -745,8 +893,7 @@ const HF_PLAYER = (() => {
           <tbody>
             ${logs
               .map((l) => {
-                const isToday =
-                  l.date === _localDate();
+                const isToday = l.date === _localDate();
                 return `
                 <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
                   <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
@@ -1890,6 +2037,8 @@ const HF_PLAYER = (() => {
     render,
     updateTrainingDay,
     logHealthCheckin,
+    showHealthSliders,
+    showHealthCards,
     editProfile,
     saveProfile,
     respondInvite,
@@ -1905,14 +2054,16 @@ const HF_PLAYER = (() => {
     searchRecipients,
     selectRecipient,
     removeRecipient,
+    viewThread,
     toggleMsgActions,
     replyToMessage,
     sendReply,
     viewSenderProfile,
     reportToAdmin,
-    viewThread,
-    showHealthCards,
-    showHealthSliders,
+    filterCoaches,
+    requestTrial,
+    messageCoach,
+    sendCoachMessage,
   };
 })();
 

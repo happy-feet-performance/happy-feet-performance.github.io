@@ -1744,6 +1744,59 @@ const HF_DB = (() => {
     return { data };
   };
 
+  const getVerifiedCoaches = async () => {
+    const { data, error } = await _client
+      .from("users")
+      .select("id, name, profile, squad_status")
+      .eq("role", "coach")
+      .eq("squad_status", "verified")
+      .order("name", { ascending: true });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getUnattachedPlayers = async (filters = {}) => {
+    let query = _client
+      .from("users")
+      .select("id, name, profile")
+      .eq("role", "player");
+
+    if (filters.pos) query = query.eq("profile->>pos", filters.pos);
+    if (filters.tier) query = query.eq("profile->>tier", filters.tier);
+    if (filters.search) query = query.ilike("name", `%${filters.search}%`);
+
+    const { data, error } = await query.order("name", { ascending: true });
+    if (error) return { data: [] };
+
+    // filter unattached in JS since profile is JSON
+    const unattached =
+      data?.filter(
+        (u) => !u.profile?.club || u.profile?.status === "unattached",
+      ) || [];
+    return { data: unattached };
+  };
+
+  const toggleRecruitment = async (userId, value) => {
+    const { error } = await _client
+      .from("users")
+      .update({ open_for_recruitment: value })
+      .eq("id", userId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const getOpenCoaches = async () => {
+    const { data, error } = await _client
+      .from("users")
+      .select("id, name, profile, squad_status")
+      .eq("role", "coach")
+      .eq("squad_status", "verified")
+      .eq("open_for_recruitment", true)
+      .order("name", { ascending: true });
+    if (error) return { data: [] };
+    return { data };
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     createUser,
@@ -1835,6 +1888,10 @@ const HF_DB = (() => {
     removeAllChannels,
     saveProspectReport,
     getProspectReport,
+    getVerifiedCoaches,
+    getUnattachedPlayers,
+    toggleRecruitment,
+    getOpenCoaches,
   };
 })();
 
