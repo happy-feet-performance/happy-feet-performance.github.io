@@ -23,6 +23,11 @@ const HF_AUTH = (() => {
     document.getElementById("nav-overlay")?.classList.remove("open");
     document.getElementById("sidenav")?.classList.remove("open");
 
+    // reset subscriptions if going back to auth
+    if (id === "screen-login" || id === "screen-signup-role") {
+      if (window.HF_ROUTER) HF_ROUTER.resetSubscriptions();
+    }
+
     document
       .querySelectorAll(".auth-screen")
       .forEach((s) => s.classList.remove("active"));
@@ -390,6 +395,8 @@ const HF_AUTH = (() => {
 
   // ─── Complete signup ────────────────────────────────────────
   const completeSignup = async () => {
+    if (window.HF_ROUTER) HF_ROUTER.resetSubscriptions();
+
     const result = await HF_DB.createUser(state.signup);
     if (result.error) {
       toast(result.error, "error");

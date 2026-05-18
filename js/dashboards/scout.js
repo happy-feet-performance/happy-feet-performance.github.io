@@ -567,6 +567,17 @@ const HF_SCOUT = (() => {
           <i class="ti ti-user"></i> View profile
         </button>
         ${
+          !sp.report
+            ? `
+  <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.generateReport('${scoutId}', '${sp.player_id}', '${safeName}')">
+    <i class="ti ti-sparkles"></i> Generate report
+  </button>`
+            : `
+  <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.viewReport('${scoutId}', '${sp.player_id}', '${safeName}')">
+    <i class="ti ti-file-text"></i> View report
+  </button>`
+        }
+        ${
           !sp.flagged
             ? `
           <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.flagProspect('${scoutId}', '${sp.player_id}', '${safeName}')">
@@ -576,10 +587,15 @@ const HF_SCOUT = (() => {
         }
         ${
           !sp.report_shared
-            ? `
-          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.shareReport('${scoutId}', '${sp.player_id}', '${safeName}')">
-            <i class="ti ti-file-text"></i> Share report
-          </button>`
+            ? sp.report
+              ? `
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.shareReportViaMessage('${scoutId}', '${sp.player_id}', '${safeName}')">
+          <i class="ti ti-file-text"></i> Share report
+        </button>`
+              : `
+        <button class="btn btn-outline btn-sm" style="opacity:0.4;cursor:not-allowed;" disabled title="Generate a report first">
+          <i class="ti ti-file-text"></i> Share report
+        </button>`
             : ""
         }
         <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.messagePlayer('${sp.player_id}', '${safeName}')">
@@ -715,12 +731,15 @@ const HF_SCOUT = (() => {
                           <div style="font-size:11px;color:var(--text2)">${p.pos || "-"} · ${p.tier || "-"} · ${p.hometown || "-"}</div>
                         </div>
                         ${
-                          stage.key === "flagged"
+                          sp.report
                             ? `
-                          <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="HF_SCOUT.shareReport('${s.userId}', '${sp.player_id}', '${name}')">
+                          <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="HF_SCOUT.shareReportViaMessage('${s.userId}', '${sp.player_id}', '${name.replace(/'/g, "\\'")}')">
                             <i class="ti ti-file-text"></i> Share report
                           </button>`
-                            : ""
+                            : `
+                          <button class="btn btn-outline btn-sm" style="margin-left:auto;opacity:0.4;cursor:not-allowed;" disabled title="Generate a report first">
+                            <i class="ti ti-file-text"></i> No report yet
+                          </button>`
                         }
                         ${
                           stage.key === "report_shared"
@@ -1849,6 +1868,604 @@ const HF_SCOUT = (() => {
     HF_UTILS.toast(`${senderName} has been reported to admin.`, "success");
   };
 
+  const generateReport = async (scoutId, playerId, playerName) => {
+    const { data: player } = await HF_DB.getUserById(playerId);
+    const { data: sessions } = await HF_DB.getPlayerSessionRatings(playerId);
+    const { data: prospect } = await HF_DB.getProspectReport(scoutId, playerId);
+    const session = HF_DB.getSession();
+    const p = player?.profile || {};
+
+    const latestSession = sessions?.[0];
+    const avgOverall = sessions?.length
+      ? Math.round(
+          sessions.reduce((sum, s) => sum + s.overall, 0) / sessions.length,
+        )
+      : null;
+
+    setMain(`
+    <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);">
+      <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('prospects')">
+        <i class="ti ti-arrow-left"></i> Back
+      </button>
+      <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+        Generate scouting report for ${playerName}
+      </div>
+    </div>
+
+    ${
+      prospect?.report
+        ? `
+      <div style="padding:10px 12px;background:rgba(26,122,46,.06);border-left:2px solid var(--green);font-size:13px;color:var(--text2);margin-bottom:var(--sp-lg);">
+        <i class="ti ti-circle-check" style="color:var(--green);margin-right:6px"></i>
+        Report already generated ${HF_UTILS.timeAgo(prospect.report_generated_at)}. 
+        <span onclick="HF_SCOUT.viewReport('${scoutId}', '${playerId}', '${playerName.replace(/'/g, "\\'")}')" 
+          style="color:var(--gold);cursor:pointer;text-decoration:underline;">View existing report</span>
+      </div>`
+        : ""
+    }
+
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Player data</div>
+      <div class="info-grid">
+        <div class="info-cell"><div class="info-label">Name</div><div class="info-val">${playerName}</div></div>
+        <div class="info-cell"><div class="info-label">Position</div><div class="info-val">${p.pos || "-"}</div></div>
+        <div class="info-cell"><div class="info-label">Age tier</div><div class="info-val">${p.tier || "-"}</div></div>
+        <div class="info-cell"><div class="info-label">Hometown</div><div class="info-val">${p.hometown || "-"}</div></div>
+        <div class="info-cell"><div class="info-label">Club status</div><div class="info-val">${p.club || "Unattached"}</div></div>
+        <div class="info-cell"><div class="info-label">Sessions logged</div><div class="info-val">${sessions?.length || 0}</div></div>
+        ${avgOverall ? `<div class="info-cell"><div class="info-label">Avg overall</div><div class="info-val" style="color:var(--gold)">${avgOverall}/100</div></div>` : ""}
+        ${
+          latestSession
+            ? `
+          <div class="info-cell"><div class="info-label">Latest speed</div><div class="info-val">${latestSession.speed}/100</div></div>
+          <div class="info-cell"><div class="info-label">Latest technical</div><div class="info-val">${latestSession.technical}/100</div></div>
+          <div class="info-cell"><div class="info-label">Latest tactical</div><div class="info-val">${latestSession.tactical}/100</div></div>
+          <div class="info-cell"><div class="info-label">Latest physical</div><div class="info-val">${latestSession.physical}/100</div></div>`
+            : ""
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Scout observations</div>
+      <div class="fg">
+        <label>Key strengths observed</label>
+        <textarea id="scout-strengths" rows="3" placeholder="e.g. Exceptional first touch, strong aerial ability, natural leader..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
+      </div>
+      <div class="fg">
+        <label>Areas needing development</label>
+        <textarea id="scout-weaknesses" rows="3" placeholder="e.g. Weak foot needs work, positional awareness in defensive phase..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
+      </div>
+      <div class="fg">
+        <label>Additional context</label>
+        <textarea id="scout-context" rows="2" placeholder="e.g. Observed in 3 matches, plays in Ghana Premier League youth setup..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
+      </div>
+      <div class="fg">
+        <label>Target clubs / leagues</label>
+        <input type="text" id="scout-targets" placeholder="e.g. MLS academies, Bundesliga youth teams..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <button class="btn btn-primary" id="generate-report-btn" onclick="HF_SCOUT.submitGenerateReport('${scoutId}', '${playerId}', '${playerName.replace(/'/g, "\\'")}')">
+        <i class="ti ti-sparkles"></i> Generate AI report
+      </button>
+    </div>`);
+  };
+
+  const submitGenerateReport = async (scoutId, playerId, playerName) => {
+    const btn = document.getElementById("generate-report-btn");
+    const strengths = document.getElementById("scout-strengths")?.value.trim();
+    const weaknesses = document
+      .getElementById("scout-weaknesses")
+      ?.value.trim();
+    const context = document.getElementById("scout-context")?.value.trim();
+    const targets = document.getElementById("scout-targets")?.value.trim();
+
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ti ti-loader"></i> Generating...';
+    }
+
+    const { data: player } = await HF_DB.getUserById(playerId);
+    const { data: sessions } = await HF_DB.getPlayerSessionRatings(playerId);
+    const session = HF_DB.getSession();
+    const p = player?.profile || {};
+    const avgOverall = sessions?.length
+      ? Math.round(
+          sessions.reduce((sum, s) => sum + s.overall, 0) / sessions.length,
+        )
+      : null;
+    const latestSession = sessions?.[0];
+
+    const prompt = `You are an expert football scout writing a professional scouting report for an African football talent platform called HappyFeet.
+
+Generate a detailed, professional scouting report for the following player:
+
+PLAYER DETAILS:
+- Name: ${playerName}
+- Position: ${p.pos || "Unknown"}
+- Age tier: ${p.tier || "Unknown"}
+- Hometown: ${p.hometown || "Unknown"}
+- Club status: ${p.club || "Unattached"}
+
+PERFORMANCE DATA:
+- Sessions logged: ${sessions?.length || 0}
+- Average overall rating: ${avgOverall ? avgOverall + "/100" : "No data"}
+${
+  latestSession
+    ? `- Latest speed: ${latestSession.speed}/100
+- Latest technical: ${latestSession.technical}/100
+- Latest tactical: ${latestSession.tactical}/100
+- Latest physical: ${latestSession.physical}/100`
+    : "- No session data available"
+}
+
+SCOUT OBSERVATIONS:
+- Strengths: ${strengths || "Not provided"}
+- Areas for development: ${weaknesses || "Not provided"}
+- Additional context: ${context || "Not provided"}
+- Target clubs/leagues: ${targets || "Not specified"}
+
+SCOUT AGENCY: ${session.profile?.org || "HappyFeet Scouting"}
+
+Write a professional scouting report with the following sections:
+1. PLAYER OVERVIEW
+2. TECHNICAL ANALYSIS
+3. PHYSICAL ANALYSIS  
+4. TACTICAL AWARENESS
+5. KEY STRENGTHS
+6. AREAS FOR IMPROVEMENT
+7. SCOUT RECOMMENDATION
+8. POTENTIAL RATING (score out of 10 with brief justification)
+
+Be specific, professional, and constructive. Focus on the African football context and potential for development. Format each section clearly.`;
+
+    try {
+      const isLocal =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1" ||
+        window.location.protocol === "file:";
+
+      let reportText;
+
+      if (isLocal) {
+        await new Promise((r) => setTimeout(r, 1500));
+        reportText = `SCOUTING REPORT FOR ${playerName.toUpperCase()}
+
+1. PLAYER OVERVIEW
+${playerName} is a ${p.tier || "youth"} ${p.pos || "field"} player from ${p.hometown || "Ghana"}. Currently ${p.club ? "signed to " + p.club : "unattached and available"}.
+
+2. TECHNICAL ANALYSIS
+Based on available session data, the player shows ${avgOverall ? (avgOverall >= 75 ? "strong" : avgOverall >= 60 ? "developing" : "early-stage") : "unmeasured"} technical ability${latestSession ? ` with a technical rating of ${latestSession.technical}/100` : ""}.
+
+3. PHYSICAL ANALYSIS
+${latestSession ? `Physical rating of ${latestSession.physical}/100 with speed at ${latestSession.speed}/100.` : "Physical data not yet available (further sessions required)."}
+
+4. TACTICAL AWARENESS
+${latestSession ? `Tactical rating of ${latestSession.tactical}/100.` : "Tactical assessment pending further observation."}
+
+5. KEY STRENGTHS
+${strengths || "To be assessed in further sessions."}
+
+6. AREAS FOR IMPROVEMENT
+${weaknesses || "Comprehensive assessment required."}
+
+7. SCOUT RECOMMENDATION
+${avgOverall && avgOverall >= 70 ? "RECOMMEND for trial: player shows significant promise." : "MONITOR: continue observation before making placement recommendation."}
+
+8. POTENTIAL RATING
+${avgOverall ? Math.round(avgOverall / 10) : 6}/10: ${avgOverall && avgOverall >= 75 ? "High potential with right development pathway." : "Developing talent requiring structured support."}
+
+Report generated by ${session.profile?.org || "HappyFeet Scouting"}.
+[LOCAL MOCK: Deploy to see real AI report]`;
+      } else {
+        const response = await fetch("/.netlify/functions/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            system:
+              "You are an expert football scout writing professional scouting reports for African football talent.",
+            messages: [{ role: "user", content: prompt }],
+          }),
+        });
+        const data = await response.json();
+        reportText =
+          data.content?.map((c) => c.text || "").join("") ||
+          "Report generation failed.";
+      }
+
+      // save report
+      const report = {
+        text: reportText,
+        playerName,
+        position: p.pos,
+        tier: p.tier,
+        generatedBy: session.profile?.org || "HappyFeet Scouting",
+        avgOverall,
+      };
+
+      await HF_DB.saveProspectReport(scoutId, playerId, report);
+      HF_UTILS.toast("Report generated!", "success");
+      viewReport(scoutId, playerId, playerName);
+    } catch (err) {
+      HF_UTILS.toast("Failed to generate report. Please try again.", "error");
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-sparkles"></i> Generate AI report';
+      }
+    }
+  };
+
+  const viewReport = async (scoutId, playerId, playerName) => {
+    const { data } = await HF_DB.getProspectReport(scoutId, playerId);
+    const session = HF_DB.getSession();
+    window._currentReport = data.report;
+
+    if (!data?.report) {
+      HF_UTILS.toast("No report found. Generate one first.", "error");
+      return;
+    }
+
+    const report = data.report;
+
+    setMain(`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-lg);flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;align-items:center;gap:var(--sp-md);">
+        <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('prospects')">
+          <i class="ti ti-arrow-left"></i> Back
+        </button>
+        <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+          Scouting report for ${playerName}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.generateReport('${scoutId}', '${playerId}', '${playerName.replace(/'/g, "\\'")}')">
+          <i class="ti ti-refresh"></i> Regenerate
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.downloadReport('${playerName.replace(/'/g, "\\'")}')">
+          <i class="ti ti-markdown"></i> Download .md
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.downloadReportPDF('${playerName.replace(/'/g, "\\'")}', window._currentReport)">
+          <i class="ti ti-file-type-pdf"></i> Download PDF
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="HF_SCOUT.shareReportViaMessage('${scoutId}', '${playerId}', '${playerName.replace(/'/g, "\\'")}')">
+          <i class="ti ti-send"></i> Share with coach
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-lg);">
+        <div>
+          <div style="font-family:var(--font-head);font-size:18px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+            ${playerName}
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">
+            ${report.position || "-"} · ${report.tier || "-"} · ${report.generatedBy}
+          </div>
+        </div>
+        ${
+          report.avgOverall
+            ? `
+          <div style="text-align:right;">
+            <div style="font-family:var(--font-head);font-size:36px;font-weight:700;color:var(--gold)">${report.avgOverall}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.1em">Avg overall</div>
+          </div>`
+            : ""
+        }
+      </div>
+
+      <div style="white-space:pre-line;font-size:13px;color:var(--text);line-height:1.8;background:var(--bg2);padding:var(--sp-lg);">
+        ${report.text}
+      </div>
+
+      <div style="font-size:11px;color:var(--text3);margin-top:var(--sp-md);">
+        Generated ${HF_UTILS.timeAgo(data.report_generated_at)}
+      </div>
+    </div>`);
+  };
+
+  const shareReportViaMessage = async (scoutId, playerId, playerName) => {
+    const { data } = await HF_DB.getProspectReport(scoutId, playerId);
+    const { data: verifiedClubs } = await HF_DB.getVerifiedClubs();
+    const session = HF_DB.getSession();
+
+    if (!data?.report) {
+      HF_UTILS.toast("No report to share.", "error");
+      return;
+    }
+
+    setMain(`
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Share report: ${playerName}</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:var(--sp-lg);">
+        Send this scouting report to a coach. Select a verified coach from the list or search for any user.
+      </div>
+      <div class="fg">
+        <label class="required">Send to</label>
+        <input type="text" id="share-search" placeholder="Search by name or email..."
+          oninput="HF_SCOUT.searchReportRecipients(this.value)"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+        <div id="share-search-results" style="margin-top:4px;"></div>
+        <div id="share-selected" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(196,154,10,.08);border-left:2px solid var(--gold);font-size:13px;color:var(--text);align-items:center;justify-content:space-between;">
+          <span id="share-selected-name"></span>
+          <span onclick="HF_SCOUT.clearReportRecipient()" style="cursor:pointer;color:var(--text3);">
+            <i class="ti ti-x"></i>
+          </span>
+        </div>
+        <input type="hidden" id="share-to-id">
+      </div>
+      <div class="fg">
+        <label>Additional message</label>
+        <textarea id="share-message" rows="3" placeholder="Add a note to accompany the report..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="HF_SCOUT.sendReportMessage('${scoutId}', '${playerId}', '${playerName.replace(/'/g, "\\'")}')">
+          <i class="ti ti-send"></i> Send report
+        </button>
+        <button class="btn btn-outline" onclick="HF_SCOUT.viewReport('${scoutId}', '${playerId}', '${playerName.replace(/'/g, "\\'")}')">
+          Cancel
+        </button>
+      </div>
+    </div>`);
+  };
+
+  const searchReportRecipients = async (query) => {
+    const results = document.getElementById("share-search-results");
+    if (!results) return;
+    if (!query || query.length < 2) {
+      results.innerHTML = "";
+      return;
+    }
+
+    const session = HF_DB.getSession();
+    const { data } = await HF_DB.searchAllUsers(query, session.userId);
+    const coaches = data?.filter((u) => u.role === "coach") || [];
+
+    if (coaches.length === 0) {
+      results.innerHTML = `<div style="font-size:13px;color:var(--text2);padding:8px">No coaches found.</div>`;
+      return;
+    }
+
+    results.innerHTML = coaches
+      .map(
+        (u) => `
+    <div style="display:flex;align-items:center;gap:var(--sp-md);padding:10px;background:var(--bg);border:0.5px solid var(--border);margin-bottom:4px;cursor:pointer;"
+      onmousedown="event.preventDefault();HF_SCOUT.selectReportRecipient('${u.id}', '${u.name.replace(/'/g, "\\'")}')">
+      <div class="avatar avatar-sm" style="background:var(--gold)">${HF_UTILS.initials(u.name)}</div>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${u.name}</div>
+        <div style="font-size:11px;color:var(--text2)">Coach</div>
+      </div>
+    </div>`,
+      )
+      .join("");
+  };
+
+  const selectReportRecipient = (userId, userName) => {
+    document.getElementById("share-to-id").value = userId;
+    document.getElementById("share-search").value = "";
+    document.getElementById("share-search-results").innerHTML = "";
+    document.getElementById("share-selected-name").textContent = userName;
+    document.getElementById("share-selected").style.display = "flex";
+  };
+
+  const clearReportRecipient = () => {
+    document.getElementById("share-to-id").value = "";
+    document.getElementById("share-selected").style.display = "none";
+    document.getElementById("share-selected-name").textContent = "";
+  };
+
+  const sendReportMessage = async (scoutId, playerId, playerName) => {
+    const session = HF_DB.getSession();
+    const toId = document.getElementById("share-to-id")?.value;
+    const note = document.getElementById("share-message")?.value.trim();
+
+    if (!toId) {
+      HF_UTILS.toast("Please select a recipient.", "error");
+      return;
+    }
+
+    const { data } = await HF_DB.getProspectReport(scoutId, playerId);
+    if (!data?.report) {
+      HF_UTILS.toast("No report to share.", "error");
+      return;
+    }
+
+    const body = `${note ? note + "\n\n" : ""}--- SCOUTING REPORT: ${playerName} ---\n\n${data.report.text}`;
+
+    await HF_DB._sendMessage(
+      session.userId,
+      toId,
+      `Scouting report: ${playerName}`,
+      body,
+    );
+
+    // mark report as shared
+    await HF_DB.updateProspectStatus(scoutId, playerId, {
+      report_shared: true,
+      status: "shared",
+    });
+
+    HF_UTILS.toast("Report shared with coach!", "success");
+    HF_ROUTER.navTo("prospects");
+  };
+
+  const downloadReport = (playerName) => {
+    const reportEl = document.querySelector(
+      '.card [style*="white-space:pre-line"]',
+    );
+    if (!reportEl) {
+      HF_UTILS.toast("No report to download.", "error");
+      return;
+    }
+
+    const session = HF_DB.getSession();
+    const date = new Date().toLocaleDateString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric",
+    });
+    const agencyName = session.profile?.org || "HappyFeet Scouting";
+
+    const mdContent = `# Scouting Report — ${playerName}
+
+**Generated by:** ${agencyName}  
+**Date:** ${date}  
+**Platform:** HappyFeet Performance Hub
+
+---
+
+${reportEl.textContent.trim()}
+
+---
+
+*This report was generated by HappyFeet AI and reviewed by ${agencyName}.*
+`;
+
+    const blob = new Blob([mdContent], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `scouting-report-${playerName.toLowerCase().replace(/\s+/g, "-")}-${date.replace(/\//g, "-")}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    HF_UTILS.toast("Report downloaded!", "success");
+  };
+
+  const downloadReportPDF = (playerName, report) => {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const session = HF_DB.getSession();
+    const agency = session.profile?.org || "HappyFeet Scouting";
+    const date = new Date().toLocaleDateString("en-US", {
+      month: "2-digit",
+      day: "2-digit",
+      year: "numeric",
+    });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 48;
+    const contentWidth = pageWidth - margin * 2;
+    let y = margin;
+
+    // header bar
+    doc.setFillColor(196, 154, 10);
+    doc.rect(0, 0, pageWidth, 56, "F");
+
+    // title
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.setTextColor(15, 15, 13);
+    doc.text("SCOUTING REPORT", margin, 36);
+
+    // agency name right aligned
+    doc.setFontSize(10);
+    doc.text(agency, pageWidth - margin, 36, { align: "right" });
+
+    y = 80;
+
+    // player name
+    doc.setFontSize(22);
+    doc.setTextColor(15, 15, 13);
+    doc.setFont("helvetica", "bold");
+    doc.text(playerName.toUpperCase(), margin, y);
+    y += 20;
+
+    // date and position
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      `Generated: ${date}  |  ${report.position || "-"}  |  ${report.tier || "-"}`,
+      margin,
+      y,
+    );
+    y += 8;
+
+    // divider
+    doc.setDrawColor(196, 154, 10);
+    doc.setLineWidth(1);
+    doc.line(margin, y, pageWidth - margin, y);
+    y += 20;
+
+    // avg overall if available
+    if (report.avgOverall) {
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text("AVERAGE OVERALL RATING", pageWidth - margin - 80, y - 12, {
+        align: "right",
+      });
+      doc.setFontSize(28);
+      doc.setTextColor(196, 154, 10);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${report.avgOverall}/100`, pageWidth - margin, y + 4, {
+        align: "right",
+      });
+      y += 20;
+    }
+
+    // report body
+    doc.setFontSize(11);
+    doc.setTextColor(30, 30, 30);
+    doc.setFont("helvetica", "normal");
+
+    const lines = doc.splitTextToSize(report.text || "", contentWidth);
+    const lineHeight = 16;
+
+    lines.forEach((line) => {
+      // check if new page needed
+      if (y > doc.internal.pageSize.getHeight() - margin) {
+        doc.addPage();
+        y = margin;
+
+        // header on new page
+        doc.setFillColor(196, 154, 10);
+        doc.rect(0, 0, pageWidth, 8, "F");
+        y = 32;
+      }
+
+      // style section headers
+      if (line.match(/^\d+\.\s+[A-Z\s]+$/) || line.match(/^[A-Z\s]{4,}$/)) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(196, 154, 10);
+        doc.text(line, margin, y);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.setTextColor(30, 30, 30);
+      } else {
+        doc.text(line, margin, y);
+      }
+
+      y += lineHeight;
+    });
+
+    // footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(
+        `HappyFeet Performance Hub  |  ${agency}  |  Page ${i} of ${pageCount}`,
+        pageWidth / 2,
+        doc.internal.pageSize.getHeight() - 24,
+        { align: "center" },
+      );
+    }
+
+    doc.save(
+      `scouting-report-${playerName.toLowerCase().replace(/\s+/g, "-")}-${date.replace(/\//g, "-")}.pdf`,
+    );
+    HF_UTILS.toast("PDF downloaded!", "success");
+  };
+
   return {
     render,
     resubmitAgency,
@@ -1873,18 +2490,28 @@ const HF_SCOUT = (() => {
     toggleSavedActions,
     contactAdmin,
     sendAdminMessage,
+    toggleCustomSubject,
     composeMessage,
     sendComposedMessage,
-    toggleCustomSubject,
     searchRecipients,
     selectRecipient,
     removeRecipient,
+    viewThread,
     toggleMsgActions,
     replyToMessage,
     sendReply,
     viewSenderProfile,
     reportToAdmin,
-    viewThread,
+    generateReport,
+    submitGenerateReport,
+    viewReport,
+    downloadReport,
+    shareReportViaMessage,
+    searchReportRecipients,
+    selectReportRecipient,
+    clearReportRecipient,
+    sendReportMessage,
+    downloadReportPDF,
   };
 })();
 

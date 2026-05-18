@@ -1713,7 +1713,35 @@ const HF_DB = (() => {
   };
 
   const removeAllChannels = () => {
-    _client.removeAllChannels();
+    try {
+      _client.removeAllChannels();
+    } catch (e) {
+      console.log("channel cleanup:", e.message);
+    }
+  };
+
+  const saveProspectReport = async (scoutId, playerId, report) => {
+    const { error } = await _client
+      .from("scout_prospects")
+      .update({
+        report,
+        report_generated_at: new Date().toISOString(),
+      })
+      .eq("scout_id", scoutId)
+      .eq("player_id", playerId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const getProspectReport = async (scoutId, playerId) => {
+    const { data, error } = await _client
+      .from("scout_prospects")
+      .select("report, report_generated_at")
+      .eq("scout_id", scoutId)
+      .eq("player_id", playerId)
+      .single();
+    if (error) return { data: null };
+    return { data };
   };
 
   // ─── Public API ────────────────────────────────────────────
@@ -1805,6 +1833,8 @@ const HF_DB = (() => {
     getTodayHealthLog,
     getPlayerHealthLogs,
     removeAllChannels,
+    saveProspectReport,
+    getProspectReport,
   };
 })();
 

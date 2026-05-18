@@ -1561,7 +1561,7 @@ const HF_COACH = (() => {
     }
 
     // send message to player
-    const subject = `Session rating — ${today}`;
+    const subject = `Session rating: ${today}`;
     const body = `Your ${sessionType} session has been rated.\n\nOverall: ${overall}/100\nSpeed: ${ratings.speed}/100 · Technical: ${ratings.technical}/100 · Tactical: ${ratings.tactical}/100 · Physical: ${ratings.physical}/100${notes ? `\n\nCoach notes: ${notes}` : ""}`;
 
     const { data: existingMsg } = await _client

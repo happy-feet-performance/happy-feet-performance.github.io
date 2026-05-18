@@ -107,7 +107,7 @@ HappyFeet uses a custom auth system built on top of Supabase's database layer. P
 
 **Admin:**
 - Admins are stored in the `users` table with `role: 'admin'`
-- Multiple admins supported — all receive notifications for verification events
+- Multiple admins supported: all receive notifications for verification events
 - Accessed via separate admin login screen
 
 ### Real-time
