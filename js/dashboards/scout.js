@@ -188,43 +188,6 @@ const HF_SCOUT = (() => {
     </div>
 
     <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Recent scouting activity</div>
-      ${
-        !isVerified
-          ? `
-        <div style="text-align:center;padding:32px;color:var(--text2)">
-          <i class="ti ti-lock" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Locked until agency is verified</div>
-          <div style="font-size:13px">Scouting activity will appear here once your agency is verified.</div>
-        </div>`
-          : trackedCount === 0
-            ? `
-        <div style="text-align:center;padding:32px;color:var(--text2)">
-          <i class="ti ti-activity" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No activity yet</div>
-          <div style="font-size:13px">Start discovering and saving players to see activity here.</div>
-        </div>`
-            : `
-        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:var(--sp-sm);">
-          ${activityStats
-            .map(
-              (stat) => `
-            <div style="padding:var(--sp-md);background:var(--bg2);border-top:2px solid ${stat.color};display:flex;align-items:center;gap:var(--sp-md);">
-              <div style="width:36px;height:36px;background:${stat.color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                <i class="ti ${stat.icon}" style="font-size:16px;color:${stat.color}"></i>
-              </div>
-              <div>
-                <div style="font-family:var(--font);font-size:20px;font-weight:700;color:${stat.color}">${stat.val}</div>
-                <div style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">${stat.label}</div>
-              </div>
-            </div>`,
-            )
-            .join("")}
-        </div>`
-      }
-    </div>
-
-    <div class="card">
       <div class="card-title" style="justify-content:space-between;align-items:center;">
         <div style="display:flex;align-items:center;gap:var(--sp-sm);">
           <div class="card-dot"></div>Recent AI conversations
@@ -658,25 +621,23 @@ const HF_SCOUT = (() => {
       status: "shared",
     });
     if (result.error) {
-      toast(result.error, "error");
+      HF_UTILS.toast(result.error, "error");
       return;
     }
 
     const session = HF_DB.getSession();
     const { data } = await HF_DB.getProspectReport(scoutId, playerId);
 
-    const body = data?.report?.text
-      ? `${session.name} from ${session.profile?.org || "HappyFeet Scouting"} has shared your scouting report with partner clubs.\n\n--- YOUR SCOUTING REPORT ---\n\n${data.report.text}`
-      : `${session.name} from ${session.profile?.org || "HappyFeet Scouting"} has shared your profile with partner clubs.`;
-
     await HF_DB._sendMessage(
       "system",
       playerId,
       "Your scouting report has been shared",
-      body,
+      data?.report?.text
+        ? `${session.name} from ${session.profile?.org || "HappyFeet Scouting"} has shared your scouting report with partner clubs.\n\n--- YOUR SCOUTING REPORT ---\n\n${data.report.text}`
+        : `${session.name} from ${session.profile?.org || "HappyFeet Scouting"} has shared your profile with partner clubs.`,
     );
 
-    toast(`Report shared for ${name}!`, "success");
+    HF_UTILS.toast(`Report shared for ${name}!`, "success");
     prospects(HF_DB.getSession());
   };
 
@@ -1185,23 +1146,27 @@ const HF_SCOUT = (() => {
 
   // ── MESSAGES ───────────────────────────────────────────────
   const messages = async (s) => {
-    const { data: msgs } = await HF_DB.getMessages(s.userId);
-    const { data: archived } = await HF_DB.getArchivedMessages(s.userId);
+    const [{ data: msgs }, { data: archived }] = await Promise.all([
+      HF_DB.getMessages(s.userId),
+      HF_DB.getArchivedMessages(s.userId),
+    ]);
 
     // enrich messages with sender names
-    const enriched = await Promise.all(
-      (msgs || []).map(async (m) => ({
-        ...m,
-        senderName: await HF_DB.getUserNameById(m.from_id),
-      })),
-    );
+    const allSenderIds = [
+      ...(msgs || []).map((m) => m.from_id),
+      ...(archived || []).map((m) => m.from_id),
+    ];
+    const senderNames = await HF_DB.getUserNamesByIds(allSenderIds);
 
-    const enrichedArchived = await Promise.all(
-      (archived || []).map(async (m) => ({
-        ...m,
-        senderName: await HF_DB.getUserNameById(m.from_id),
-      })),
-    );
+    const enriched = (msgs || []).map((m) => ({
+      ...m,
+      senderName: senderNames[m.from_id] || "HappyFeet",
+    }));
+
+    const enrichedArchived = (archived || []).map((m) => ({
+      ...m,
+      senderName: senderNames[m.from_id] || "HappyFeet",
+    }));
 
     setMain(`
       <div class="card">
@@ -1302,7 +1267,7 @@ const HF_SCOUT = (() => {
     <div class="welcome-banner">
       <div>
         <div class="welcome-title">Club network</div>
-        <div class="welcome-sub">Browse verified squads — request access to see full details</div>
+        <div class="welcome-sub">Browse verified squads and request access to see full details</div>
       </div>
       <div style="text-align:right;flex-shrink:0;">
         <div style="font-size:32px;font-weight:700;color:var(--gold);">${approvedIds.size}</div>
@@ -1966,8 +1931,28 @@ const HF_SCOUT = (() => {
       return;
     }
 
+    // create one shared thread ID for all recipients
+    const threadId = crypto.randomUUID();
+
     for (const recipient of recipients) {
-      await HF_DB._sendMessage(session.userId, recipient.id, subject, body);
+      await HF_DB._sendMessage(
+        session.userId,
+        recipient.id,
+        subject,
+        body,
+        threadId,
+      );
+    }
+
+    // also send a copy to self so sender can see the thread
+    if (recipients.length > 1) {
+      await HF_DB._sendMessage(
+        session.userId,
+        session.userId,
+        subject,
+        `[Group message to ${recipients.map((r) => r.name).join(", ")}]\n\n${body}`,
+        threadId,
+      );
     }
 
     window._composeRecipients = [];
@@ -2632,6 +2617,13 @@ Report generated by ${session.profile?.org || "HappyFeet Scouting"}.
       body,
     );
 
+    await HF_DB._sendMessage(
+      "system",
+      playerId,
+      "Your scouting report has been shared",
+      `${session.name} from ${session.profile?.org || "HappyFeet Scouting"} has shared your scouting report with a coach. Your profile is being actively considered for opportunities.`,
+    );
+
     // mark report as shared
     await HF_DB.updateProspectStatus(scoutId, playerId, {
       report_shared: true,
@@ -2849,7 +2841,7 @@ ${reportEl.textContent.trim()}
     const panel = document.getElementById("club-detail-panel");
     const chevron = document.getElementById(`chevron-${coachId}`);
 
-    // if same club is open — close it
+    // if same club is open, close it
     if (
       panel &&
       panel.dataset.openCoach === coachId &&

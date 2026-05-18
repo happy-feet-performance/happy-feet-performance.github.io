@@ -292,7 +292,6 @@ const HF_COACH = (() => {
     const isAwaitingCoach = squadStatus === "awaiting_coach_approval";
     const newUser = HF_UTILS.isNewUser(s);
     const { data: readiness } = await HF_DB.getSquadReadiness(s.userId);
-
     const { data: agentConvos } = await HF_DB.getAgentConversations(s.userId);
 
     const squadStatusBadge = isVerified
@@ -1170,20 +1169,27 @@ const HF_COACH = (() => {
 
   // MESSAGES
   const messages = async (s) => {
-    const { data: msgs } = await HF_DB.getMessages(s.userId);
-    const { data: archived } = await HF_DB.getArchivedMessages(s.userId);
-    const enriched = await Promise.all(
-      (msgs || []).map(async (m) => ({
-        ...m,
-        senderName: await HF_DB.getUserNameById(m.from_id),
-      })),
-    );
-    const enrichedArchived = await Promise.all(
-      (archived || []).map(async (m) => ({
-        ...m,
-        senderName: await HF_DB.getUserNameById(m.from_id),
-      })),
-    );
+    const [{ data: msgs }, { data: archived }] = await Promise.all([
+      HF_DB.getMessages(s.userId),
+      HF_DB.getArchivedMessages(s.userId),
+    ]);
+
+    const allSenderIds = [
+      ...(msgs || []).map((m) => m.from_id),
+      ...(archived || []).map((m) => m.from_id),
+    ];
+    const senderNames = await HF_DB.getUserNamesByIds(allSenderIds);
+
+    const enriched = (msgs || []).map((m) => ({
+      ...m,
+      senderName: senderNames[m.from_id] || "HappyFeet",
+    }));
+
+    const enrichedArchived = (archived || []).map((m) => ({
+      ...m,
+      senderName: senderNames[m.from_id] || "HappyFeet",
+    }));
+
     const isAwaitingReview = s.squadStatus === "awaiting_coach_approval";
 
     setMain(`
@@ -1369,38 +1375,34 @@ const HF_COACH = (() => {
     ]
       .map(
         ([icon, title, desc], i) => `
-      <div style="display:flex;align-items:flex-start;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:3px solid var(--faith);">
-        <div style="width:32px;height:32px;background:var(--faith);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-size:15px;">
-          <i class="ti ${icon}"></i>
-        </div>
-        <div>
-          <div style="font-family:var(--font);font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;">
-            ${i + 1}. ${title}
-          </div>
-          <div style="font-size:12px;color:var(--text2);line-height:1.5;">${desc}</div>
-        </div>
-      </div>`,
+          <div style="display:flex;align-items:flex-start;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:3px solid var(--faith);">
+            <div style="width:32px;height:32px;background:var(--faith);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-size:15px;">
+              <i class="ti ${icon}"></i>
+            </div>
+            <div>
+              <div style="font-family:var(--font);font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;">
+                ${i + 1}. ${title}
+              </div>
+              <div style="font-size:12px;color:var(--text2);line-height:1.5;">${desc}</div>
+            </div>
+          </div>`,
       )
       .join("")}
-  </div>
-</div>`);
+      </div>
+    </div>`);
   };
 
   const findmyteam = async (s) => {
+    const { data: players } = await HF_DB.getUnattachedPlayers();
+    const { data: prospects } = await HF_DB.getFlaggedProspects();
     const p = s.profile || {};
     const isVerified = s.squadStatus === "verified";
-    const { data: players } = await HF_DB.getUnattachedPlayers();
-
-    // get current recruitment status
-    const { data: coachData } = (await HF_DB._client)
-      ? { data: null }
-      : { data: null };
 
     setMain(`
     <div class="welcome-banner">
       <div>
         <div class="welcome-title">Find my team</div>
-        <div class="welcome-sub">Discover unattached players for your squad</div>
+        <div class="welcome-sub">Browse players and scout recommendations</div>
       </div>
     </div>
 
@@ -1408,36 +1410,56 @@ const HF_COACH = (() => {
       isVerified
         ? `
       <div class="card">
-        <div class="card-title" style="justify-content:space-between;">
+        <div class="card-title" style="justify-content:space-between;align-items:center;">
           <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-            <div class="card-dot"></div>Your recruitment status
+            <div class="card-dot"></div>Recruitment status
           </div>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
-            <span style="font-size:12px;color:var(--text2)">Open for recruitment</span>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:0;">
+            <span style="font-size:12px;color:var(--text2);white-space:nowrap;">Open for recruitment</span>
             <input type="checkbox" id="recruitment-toggle" ${p.openForRecruitment ? "checked" : ""}
               onchange="HF_COACH.toggleRecruitment(this.checked)"
-              style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;">
+              style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer;flex-shrink:0;">
           </label>
         </div>
-        <div style="font-size:13px;color:var(--text2);">
-          ${
-            p.openForRecruitment
-              ? '<i class="ti ti-circle-check" style="color:var(--green);margin-right:6px"></i>Your squad is visible to players looking for a team.'
-              : '<i class="ti ti-eye-off" style="color:var(--text3);margin-right:6px"></i>Your squad is hidden from players. Toggle to appear in Find my team.'
-          }
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-md);">
+          <div style="padding:var(--sp-md);background:var(--bg2);border-left:3px solid ${p.openForRecruitment ? "var(--green)" : "var(--border)"};">
+            <div style="font-size:12px;font-weight:600;color:${p.openForRecruitment ? "var(--green)" : "var(--text2)"};margin-bottom:4px;">
+              <i class="ti ti-${p.openForRecruitment ? "eye" : "eye-off"}" style="margin-right:4px"></i>
+              ${p.openForRecruitment ? "Visible to players" : "Hidden from players"}
+            </div>
+            <div style="font-size:11px;color:var(--text3);">
+              ${
+                p.openForRecruitment
+                  ? "Players looking for a team can find and send you trial requests."
+                  : "Toggle on to appear in player searches and receive trial requests."
+              }
+            </div>
+          </div>
+          <div style="padding:var(--sp-md);background:var(--bg2);border-left:3px solid var(--border);">
+            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px;">
+              <i class="ti ti-users" style="margin-right:4px"></i>Trial requests
+            </div>
+            <div style="font-size:11px;color:var(--text3);">
+              Players who send trial requests appear in your squad page to accept or decline.
+            </div>
+          </div>
         </div>
       </div>`
         : `
       <div style="padding:var(--sp-lg);background:rgba(196,154,10,.06);border-left:3px solid var(--gold);margin-bottom:var(--sp-lg);">
         <div style="font-size:13px;color:var(--text2);">
           <i class="ti ti-lock" style="margin-right:6px"></i>
-          Verify your squad to appear in player searches and browse unattached players.
+          Verify your squad to invite players and appear in player searches.
         </div>
       </div>`
     }
 
     <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Unattached players</div>
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Browse players
+        </div>
+      </div>
       <div style="display:flex;gap:8px;margin-bottom:var(--sp-lg);flex-wrap:wrap;">
         <select id="fmt-pos" onchange="HF_COACH.filterPlayers()"
           style="padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
@@ -1456,7 +1478,6 @@ const HF_COACH = (() => {
           oninput="HF_COACH.filterPlayers()"
           style="flex:1;min-width:120px;padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
       </div>
-
       <div id="fmt-players-list">
         ${
           !players || players.length === 0
@@ -1469,7 +1490,81 @@ const HF_COACH = (() => {
             : players.map((p) => _playerCard(p, s.userId, isVerified)).join("")
         }
       </div>
-    </div>`);
+    </div>
+
+    ${
+      prospects && prospects.length > 0
+        ? `
+      <div class="card">
+        <div class="card-title">
+          <div class="card-dot"></div>Scout recommendations
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:var(--sp-md);">
+          Players flagged by verified scouts as elite prospects.
+        </div>
+        ${prospects
+          .map((sp) => {
+            const player = sp.player || {};
+            const rp = player.profile || {};
+            const scout = sp.scout || {};
+            const overall = rp.ratings
+              ? Math.round(
+                  (rp.ratings.speed +
+                    rp.ratings.tech +
+                    rp.ratings.tact +
+                    rp.ratings.phys) /
+                    4,
+                )
+              : null;
+            const safeName = (player.name || "").replace(/'/g, "\\'");
+            const safeScout = (scout.name || "").replace(/'/g, "\\'");
+
+            return `
+            <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
+              <div class="avatar avatar-md" style="background:var(--green)">${HF_UTILS.initials(player.name || "?")}</div>
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:600;color:var(--text)">${player.name || "-"}</div>
+                <div style="font-size:11px;color:var(--text2)">${rp.pos || "-"} · ${rp.tier || "-"} · ${rp.hometown || "-"}</div>
+                <div style="font-size:11px;color:var(--text3);margin-top:2px">
+                  <i class="ti ti-flag" style="color:var(--gold);margin-right:4px"></i>
+                  Flagged by ${scout.name || "Scout"} · ${sp.scout_agency || ""}
+                </div>
+              </div>
+              <div style="text-align:right;flex-shrink:0;margin-right:8px;">
+                ${
+                  overall !== null
+                    ? `<div style="font-size:16px;font-weight:700;color:var(--gold)">${overall}%</div>`
+                    : '<div style="font-size:13px;color:var(--text3)">Unrated</div>'
+                }
+                ${
+                  sp.report_shared
+                    ? `
+                  <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:1px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
+                    Report available
+                  </span>`
+                    : ""
+                }
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                ${
+                  isVerified
+                    ? `
+                  <button class="btn btn-primary btn-sm" onclick="HF_COACH.invitePlayer('${player.id}', '${safeName}')">
+                    <i class="ti ti-send"></i> Invite
+                  </button>`
+                    : ""
+                }
+                <button class="btn btn-outline btn-sm" onclick="HF_COACH.messageScout('${sp.scout_id}', '${safeScout}')">
+                  <i class="ti ti-message"></i> Scout
+                </button>
+              </div>
+            </div>`;
+          })
+          .join("")}
+      </div>`
+        : ""
+    }
+  `);
 
     window._fmtAllPlayers = players;
     window._fmtCoachId = s.userId;
@@ -2379,8 +2474,28 @@ const HF_COACH = (() => {
       return;
     }
 
+    // create one shared thread ID for all recipients
+    const threadId = crypto.randomUUID();
+
     for (const recipient of recipients) {
-      await HF_DB._sendMessage(session.userId, recipient.id, subject, body);
+      await HF_DB._sendMessage(
+        session.userId,
+        recipient.id,
+        subject,
+        body,
+        threadId,
+      );
+    }
+
+    // also send a copy to self so sender can see the thread
+    if (recipients.length > 1) {
+      await HF_DB._sendMessage(
+        session.userId,
+        session.userId,
+        subject,
+        `[Group message to ${recipients.map((r) => r.name).join(", ")}]\n\n${body}`,
+        threadId,
+      );
     }
 
     window._composeRecipients = [];

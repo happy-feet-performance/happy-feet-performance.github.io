@@ -278,6 +278,7 @@ const HF_PLAYER = (() => {
     const loginStreak = await HF_DB.getLoginStreak(s.userId);
     const newUser = HF_UTILS.isNewUser(s);
     const { data: agentConvos } = await HF_DB.getAgentConversations(s.userId);
+    const unreadCount = await HF_DB.getUnreadCount(s.userId);
 
     setMain(`
     <div class="welcome-banner">
@@ -309,10 +310,10 @@ const HF_PLAYER = (() => {
         <div class="metric-label">Faith streak</div>
         <div class="metric-sub" style="color:var(--text2)">Days in a row</div>
       </div>
-      <div class="metric-card">
-        <div class="metric-val" style="color:var(--red)">0</div>
+      <div class="metric-card" style="cursor:pointer;" onclick="HF_ROUTER.navTo('messages')">
+        <div class="metric-val" style="color:var(--red)">${unreadCount}</div>
         <div class="metric-label">Messages</div>
-        <div class="metric-sub" style="color:var(--text2)">All caught up</div>
+        <div class="metric-sub" style="color:var(--text2)">${unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}</div>
       </div>
     </div>
 
@@ -1508,24 +1509,27 @@ const HF_PLAYER = (() => {
 
   // ── MESSAGES ─────────────────────────────────────────────────
   const messages = async (s) => {
-    const { data: msgs } = await HF_DB.getMessages(s.userId);
-    const { data: archived } = await HF_DB.getArchivedMessages(s.userId);
-    const { data: invites } = await HF_DB.getSquadInvites(s.userId);
+    const [{ data: msgs }, { data: archived }, { data: invites }] =
+      await Promise.all([
+        HF_DB.getMessages(s.userId),
+        HF_DB.getArchivedMessages(s.userId),
+        HF_DB.getSquadInvites(s.userId),
+      ]);
+    const allSenderIds = [
+      ...(msgs || []).map((m) => m.from_id),
+      ...(archived || []).map((m) => m.from_id),
+    ];
+    const senderNames = await HF_DB.getUserNamesByIds(allSenderIds);
 
-    // enrich messages with sender names
-    const enriched = await Promise.all(
-      (msgs || []).map(async (m) => ({
-        ...m,
-        senderName: await HF_DB.getUserNameById(m.from_id),
-      })),
-    );
+    const enriched = (msgs || []).map((m) => ({
+      ...m,
+      senderName: senderNames[m.from_id] || "HappyFeet",
+    }));
 
-    const enrichedArchived = await Promise.all(
-      (archived || []).map(async (m) => ({
-        ...m,
-        senderName: await HF_DB.getUserNameById(m.from_id),
-      })),
-    );
+    const enrichedArchived = (archived || []).map((m) => ({
+      ...m,
+      senderName: senderNames[m.from_id] || "HappyFeet",
+    }));
 
     setMain(`
     ${
@@ -2326,8 +2330,28 @@ const HF_PLAYER = (() => {
       return;
     }
 
+    // create one shared thread ID for all recipients
+    const threadId = crypto.randomUUID();
+
     for (const recipient of recipients) {
-      await HF_DB._sendMessage(session.userId, recipient.id, subject, body);
+      await HF_DB._sendMessage(
+        session.userId,
+        recipient.id,
+        subject,
+        body,
+        threadId,
+      );
+    }
+
+    // also send a copy to self so sender can see the thread
+    if (recipients.length > 1) {
+      await HF_DB._sendMessage(
+        session.userId,
+        session.userId,
+        subject,
+        `[Group message to ${recipients.map((r) => r.name).join(", ")}]\n\n${body}`,
+        threadId,
+      );
     }
 
     window._composeRecipients = [];

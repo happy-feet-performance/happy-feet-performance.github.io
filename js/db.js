@@ -30,6 +30,8 @@ const HF_DB = (() => {
 
   const clearSession = () => sessionStorage.removeItem("hf_session");
 
+  const _nameCache = {};
+
   // ─── Users ─────────────────────────────────────────────────
   const createUser = async (data) => {
     const normalised = data.contact.toLowerCase().replace(/\s/g, "");
@@ -900,48 +902,22 @@ const HF_DB = (() => {
   };
 
   const getMessages = async (userId) => {
-    // get all messages where user is recipient
-    const { data: received, error: recvError } = await _client
+    const { data, error } = await _client
       .from("messages")
       .select("*")
-      .eq("to_id", userId)
+      .or(`to_id.eq.${userId},from_id.eq.${userId}`)
       .eq("archived", false)
       .order("created_at", { ascending: false });
-    if (recvError) return { data: [] };
 
-    // get thread IDs the user has participated in
-    const threadIds = [
-      ...new Set(received.map((m) => m.thread_id).filter(Boolean)),
-    ];
+    if (error) return { data: [] };
 
-    // get latest message per thread across all participants
-    let allThreadMessages = [];
-    if (threadIds.length > 0) {
-      const { data: threadMsgs } = await _client
-        .from("messages")
-        .select("*")
-        .in("thread_id", threadIds)
-        .order("created_at", { ascending: false });
-      allThreadMessages = threadMsgs || [];
-    }
-
-    // deduplicate by thread_id: keep only the latest per thread
+    // deduplicate by thread_id — keep latest per thread in JS
     const seen = new Set();
     const deduped = [];
-
-    // combine and sort by created_at descending
-    const combined = [...received];
-    for (const tm of allThreadMessages) {
-      if (!combined.find((m) => m.id === tm.id)) combined.push(tm);
-    }
-    combined.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-    for (const m of combined) {
+    for (const m of data) {
       const key = m.thread_id || m.id;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      // only include if user is a participant
-      if (m.to_id === userId || m.from_id === userId) {
+      if (!seen.has(key)) {
+        seen.add(key);
         deduped.push(m);
       }
     }
@@ -1355,7 +1331,6 @@ const HF_DB = (() => {
       .from("messages")
       .select("*")
       .eq("thread_id", threadId)
-      .or(`to_id.eq.${userId},from_id.eq.${userId}`)
       .order("created_at", { ascending: true });
     if (error) return { data: [] };
     return { data };
@@ -1366,13 +1341,19 @@ const HF_DB = (() => {
     if (userId === "system") return "HappyFeet System";
     if (userId === "admin") return "HappyFeet Admin";
 
+    // return cached result if available
+    if (_nameCache[userId]) return _nameCache[userId];
+
     const { data, error } = await _client
       .from("users")
-      .select("name, role")
+      .select("name")
       .eq("id", userId)
       .maybeSingle();
 
     if (error || !data) return "HappyFeet";
+
+    // cache the result
+    _nameCache[userId] = data.name;
     return data.name;
   };
 
@@ -2310,6 +2291,44 @@ const HF_DB = (() => {
     return { data };
   };
 
+  const getUnreadCount = async (userId) => {
+    const { data, error } = await _client
+      .from("messages")
+      .select("id")
+      .eq("to_id", userId)
+      .eq("read", false)
+      .eq("archived", false);
+    if (error) return 0;
+    return data?.length || 0;
+  };
+
+  const getUserNamesByIds = async (ids) => {
+    const uniqueIds = [
+      ...new Set(ids.filter((id) => id && id !== "system" && id !== "admin")),
+    ];
+
+    // return cached ones immediately
+    const result = { system: "HappyFeet System", admin: "HappyFeet Admin" };
+    const uncached = uniqueIds.filter((id) => !_nameCache[id]);
+
+    if (uncached.length > 0) {
+      const { data } = await _client
+        .from("users")
+        .select("id, name")
+        .in("id", uncached);
+
+      (data || []).forEach((u) => {
+        _nameCache[u.id] = u.name;
+      });
+    }
+
+    uniqueIds.forEach((id) => {
+      result[id] = _nameCache[id] || "HappyFeet";
+    });
+
+    return result;
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     localDate: _localDate,
@@ -2359,6 +2378,7 @@ const HF_DB = (() => {
     checkUserStatus,
     searchPlayers,
     sendSquadInvite,
+    getUserNamesByIds,
     getSquadInvites,
     getSquadPlayers,
     getFlaggedProspects,
@@ -2385,6 +2405,7 @@ const HF_DB = (() => {
     getAllPlayers,
     getUserById,
     getThread,
+    getUnreadCount,
     _sendMessage,
     removePlayerFromSquad,
     decrementTeamSize,
