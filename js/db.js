@@ -911,7 +911,7 @@ const HF_DB = (() => {
 
     if (error) return { data: [] };
 
-    // deduplicate by thread_id — keep latest per thread in JS
+    // deduplicate by thread_id: keep latest per thread in JS
     const seen = new Set();
     const deduped = [];
     for (const m of data) {

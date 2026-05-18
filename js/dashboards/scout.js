@@ -1319,32 +1319,33 @@ const HF_SCOUT = (() => {
 
     return `
     <div class="card" style="margin-bottom:var(--sp-md);">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-md);">
-        <div style="display:flex;align-items:center;gap:var(--sp-md);">
-          <div style="width:48px;height:48px;background:${isApproved ? "var(--green)" : "var(--bg2)"};border:2px solid ${isApproved ? "var(--green)" : "var(--border)"};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:${isApproved ? "#fff" : "var(--text2)"};flex-shrink:0;">
-            ${(p.club || c.name).charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <div style="font-size:14px;font-weight:600;color:var(--text)">${p.club || "-"}</div>
-            <div style="font-size:12px;color:var(--text2)">${p.league || "-"} · ${c.name}</div>
-            <div style="font-size:11px;color:var(--text3)">${p.spec || "Head coach"} · ${p.exp || "-"} yrs exp</div>
+      <div style="display:flex;align-items:center;gap:var(--sp-md);">
+        <div style="width:52px;height:52px;background:${isApproved ? "var(--green)" : "var(--bg2)"};border:2px solid ${isApproved ? "var(--green)" : "var(--border)"};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:${isApproved ? "#fff" : "var(--text2)"};flex-shrink:0;">
+          ${(p.club || c.name).charAt(0).toUpperCase()}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:15px;font-weight:700;color:var(--text)">${p.club || "-"}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px;">
+            ${p.league ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text2);">${p.league}</span>` : ""}
+            <span style="font-size:10px;color:var(--text3);">Coach: ${c.name}</span>
+            ${p.exp ? `<span style="font-size:10px;color:var(--text3);">${p.exp} yrs exp</span>` : ""}
           </div>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+        <div style="text-align:right;flex-shrink:0;">
           ${
             isApproved
               ? `
-            <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">
               In network
             </span>`
               : isPending
                 ? `
-            <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;background:rgba(196,154,10,.15);color:var(--gold);">
-              Request pending
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;background:rgba(196,154,10,.15);color:var(--gold);">
+              Pending
             </span>`
                 : isDeclined
                   ? `
-            <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;background:rgba(200,16,46,.1);color:var(--red);">
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;background:rgba(200,16,46,.1);color:var(--red);">
               Declined
             </span>`
                   : ""
@@ -1352,33 +1353,35 @@ const HF_SCOUT = (() => {
         </div>
       </div>
 
-      ${
-        isApproved
-          ? `
-        <div style="margin-top:var(--sp-md);padding-top:var(--sp-md);border-top:0.5px solid var(--border);display:flex;gap:8px;align-items:center;">
-          <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.toggleClubDetail('${c.id}', '${safeClub}', '${p.league || ""}')">
-            <i class="ti ti-chart-bar"></i> View details
-          </button>
-          <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.messagePlayer('${c.id}', '${safeName}')">
-            <i class="ti ti-message"></i> Message coach
-          </button>
-        </div>`
-          : `
-        <div style="margin-top:var(--sp-md);padding-top:var(--sp-md);border-top:0.5px solid var(--border);display:flex;gap:8px;align-items:center;">
-          <div style="flex:1;font-size:12px;color:var(--text3);">
-            <i class="ti ti-lock" style="margin-right:4px"></i>
-            Request network access to see squad details, ratings, and wellness data.
-          </div>
-          ${
-            !isPending
-              ? `
-            <button class="btn btn-primary btn-sm" onclick="HF_SCOUT.requestNetwork('${c.id}', '${safeName}')">
-              <i class="ti ti-network"></i> Request access
-            </button>`
-              : ""
-          }
-        </div>`
-      }
+      <div style="margin-top:var(--sp-md);padding-top:var(--sp-md);border-top:0.5px solid var(--border);">
+        ${
+          isApproved
+            ? `
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.toggleClubDetail('${c.id}', '${safeClub}', '${p.league || ""}')">
+              <i class="ti ti-chart-bar"></i> View squad details
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.messagePlayer('${c.id}', '${safeName}')">
+              <i class="ti ti-message"></i> Message coach
+            </button>
+          </div>`
+            : `
+          <div style="display:flex;align-items:center;gap:var(--sp-md);">
+            <div style="flex:1;font-size:12px;color:var(--text3);">
+              <i class="ti ti-lock" style="margin-right:4px"></i>
+              Request access to see squad details, ratings, and wellness data.
+            </div>
+            ${
+              !isPending
+                ? `
+              <button class="btn btn-primary btn-sm" onclick="HF_SCOUT.requestNetwork('${c.id}', '${safeName}')">
+                <i class="ti ti-network"></i> Request access
+              </button>`
+                : ""
+            }
+          </div>`
+        }
+      </div>
     </div>`;
   };
 

@@ -1398,6 +1398,27 @@ const HF_COACH = (() => {
     const p = s.profile || {};
     const isVerified = s.squadStatus === "verified";
 
+    // analyze current squad positions
+    const { data: squadPlayers } = await HF_DB.getSquadPlayers(s.userId);
+    const squadPositions = (squadPlayers || [])
+      .map((sp) => sp.player?.profile?.pos)
+      .filter(Boolean);
+    const allPositions = [
+      "GK",
+      "CB",
+      "LB",
+      "RB",
+      "DM",
+      "CM",
+      "CAM",
+      "LW",
+      "RW",
+      "ST",
+    ];
+    const neededPositions = allPositions.filter(
+      (pos) => !squadPositions.includes(pos),
+    );
+
     setMain(`
     <div class="welcome-banner">
       <div>
@@ -1452,6 +1473,31 @@ const HF_COACH = (() => {
           Verify your squad to invite players and appear in player searches.
         </div>
       </div>`
+    }
+    ${
+      isVerified && neededPositions.length > 0
+        ? `
+  <div class="card">
+    <div class="card-title"><div class="card-dot"></div>Squad needs</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:var(--sp-sm);">
+      Positions not yet covered in your squad:
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      ${neededPositions
+        .map(
+          (pos) => `
+        <span style="font-size:11px;font-weight:700;padding:3px 10px;background:rgba(196,154,10,.1);border:0.5px solid var(--gold);color:var(--gold);cursor:pointer;"
+          onclick="document.getElementById('fmt-pos').value='${pos}';HF_COACH.filterPlayers()">
+          ${pos}
+        </span>`,
+        )
+        .join("")}
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:var(--sp-sm);">
+      Click a position to filter players
+    </div>
+  </div>`
+        : ""
     }
 
     <div class="card">
@@ -1585,15 +1631,27 @@ const HF_COACH = (() => {
       : null;
 
     return `
-    <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);margin-bottom:var(--sp-sm);">
+    <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:3px solid ${overall && overall >= 75 ? "var(--gold)" : "var(--border)"};margin-bottom:var(--sp-sm);">
       <div class="avatar avatar-md" style="background:var(--green)">${HF_UTILS.initials(p.name)}</div>
-      <div style="flex:1">
+      <div style="flex:1;min-width:0;">
         <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
-        <div style="font-size:11px;color:var(--text2)">${prof.pos || "-"} · ${prof.tier || "-"} · ${prof.hometown || "-"}</div>
-        <div style="font-size:11px;color:var(--green)">Unattached</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;">
-        ${overall !== null ? `<div style="font-size:16px;font-weight:700;color:var(--gold)">${overall}%</div>` : '<div style="font-size:13px;color:var(--text3)">Unrated</div>'}
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:2px;">
+          ${prof.pos ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;background:var(--bg);border:0.5px solid var(--border);color:var(--text2);">${prof.pos}</span>` : ""}
+          ${prof.tier ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;background:var(--bg);border:0.5px solid var(--border);color:var(--text2);">${prof.tier}</span>` : ""}
+          ${prof.hometown ? `<span style="font-size:10px;color:var(--text3);">${prof.hometown}</span>` : ""}
+        </div>
+        ${
+          overall !== null
+            ? `
+          <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+            <div style="flex:1;height:3px;background:var(--border);">
+              <div style="height:100%;width:${overall}%;background:${overall >= 75 ? "var(--gold)" : overall >= 60 ? "var(--blue)" : "var(--text3)"};"></div>
+            </div>
+            <span style="font-size:11px;font-weight:700;color:${overall >= 75 ? "var(--gold)" : "var(--text2)"};">${overall}%</span>
+          </div>`
+            : `
+          <div style="font-size:10px;color:var(--text3);margin-top:4px;">Not yet rated</div>`
+        }
       </div>
       ${
         isVerified
