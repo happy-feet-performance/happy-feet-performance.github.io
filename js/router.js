@@ -132,6 +132,8 @@ const HF_ROUTER = (() => {
   // ─── Alert for if admin made changes ────────────────────────────
 
   const _showVerificationAlert = (session) => {
+    if (!session || session.role !== "coach") return; // guard
+
     const existing = document.getElementById("verification-alert");
     if (existing) existing.remove();
 
@@ -172,12 +174,26 @@ const HF_ROUTER = (() => {
     shell.classList.add("visible");
     shell.className = `app-shell visible role-${session.role}`;
 
+    // reset any stuck overlays
+    document.getElementById("nav-overlay")?.classList.remove("open");
+    el("sidenav")?.classList.remove("open");
+
     const rolePill = el("topbar-role-pill");
     rolePill.textContent =
       session.role.charAt(0).toUpperCase() + session.role.slice(1);
 
     const nameDisplay = el("topbar-name-display");
     if (nameDisplay) nameDisplay.textContent = session.name;
+
+    // fetch team size for coach before building sidenav
+    if (session.role === "coach" && session.squadStatus === "verified") {
+      const { data: squadPlayers } = await HF_DB.getSquadPlayers(
+        session.userId,
+      );
+      const teamSize = squadPlayers?.length || 0;
+      session.profile = { ...session.profile, teamSize };
+      HF_DB.saveSession(session);
+    }
 
     // check unread messages
     let unreadCount = 0;
@@ -198,6 +214,7 @@ const HF_ROUTER = (() => {
 
     _buildSidenav(session, unreadCount, pendingVerifications);
     _routeTo("dashboard", session);
+    HF_AGENT.show();
 
     // show overlays
     if (
@@ -206,13 +223,17 @@ const HF_ROUTER = (() => {
     ) {
       setTimeout(() => _showVerificationAlert(session), 800);
     }
-    if (session.role === "admin" && pendingVerifications > 0) {
+    if (
+      session.role === "admin" &&
+      pendingVerifications > 0 &&
+      typeof HF_ADMIN !== "undefined"
+    ) {
       setTimeout(() => HF_ADMIN.showPendingAlert(pendingVerifications), 800);
     }
 
     // start real-time subscriptions after 1 second
     setTimeout(() => {
-      if (_subscriptionsActive) return; // prevent duplicate subscriptions
+      if (_subscriptionsActive) return;
       _subscriptionsActive = true;
 
       if (session.role !== "admin" && session.userId) {
@@ -225,7 +246,6 @@ const HF_ROUTER = (() => {
               "var(--red)",
             );
 
-            // always re-render messages view if currently on it
             const activeNav = document.querySelector(".nav-item.active");
             if (activeNav?.dataset.view === "messages") {
               const s = HF_DB.getSession();
@@ -234,7 +254,22 @@ const HF_ROUTER = (() => {
                 coach: window.HF_COACH,
                 scout: window.HF_SCOUT,
               };
-              handlers[s.role]?.messages?.(s);
+
+              // check if user is currently in a thread view
+              const threadMessages = document.getElementById("thread-messages");
+              if (threadMessages) {
+                // check if this message belongs to the same thread
+                if (newMessage.thread_id) {
+                  handlers[s.role]?.viewThread?.(
+                    newMessage.thread_id,
+                    newMessage.from_id,
+                    newMessage.subject,
+                  );
+                }
+              } else {
+                // user is on messages list so refresh it
+                handlers[s.role]?.messages?.(s);
+              }
             }
           });
 
@@ -257,7 +292,16 @@ const HF_ROUTER = (() => {
 
             const activeNav = document.querySelector(".nav-item.active");
             if (activeNav?.dataset.view === "messages") {
-              window.HF_ADMIN?.messages?.(HF_DB.getSession());
+              const threadMessages = document.getElementById("thread-messages");
+              if (threadMessages && newMessage.thread_id) {
+                window.HF_ADMIN?.viewThread?.(
+                  newMessage.thread_id,
+                  newMessage.from_id,
+                  newMessage.subject,
+                );
+              } else {
+                window.HF_ADMIN?.messages?.(HF_DB.getSession());
+              }
             }
           });
 
@@ -271,7 +315,6 @@ const HF_ROUTER = (() => {
           const { data: pending } = await HF_DB.getPendingVerifications();
           const { data: agencyPending } =
             await HF_DB.getPendingAgencyVerifications();
-
           HF_ROUTER.refreshSidenavBadge(
             "squad-verifications",
             pending?.length || 0,
@@ -282,11 +325,7 @@ const HF_ROUTER = (() => {
             agencyPending?.length || 0,
             "var(--gold)",
           );
-
-          // show toast first
           HF_UTILS.toast("New squad verification submitted.", "success");
-
-          // then re-render after a delay so toast has time to appear
           setTimeout(() => {
             const activeNav = document.querySelector(".nav-item.active");
             const currentView = activeNav?.dataset.view;
@@ -302,17 +341,12 @@ const HF_ROUTER = (() => {
         HF_DB.subscribeToAgencyVerifications(async (payload) => {
           const { data: agencyPending } =
             await HF_DB.getPendingAgencyVerifications();
-
           HF_ROUTER.refreshSidenavBadge(
             "agency-verifications",
             agencyPending?.length || 0,
             "var(--gold)",
           );
-
-          // show toast first
           HF_UTILS.toast("New agency verification submitted.", "success");
-
-          // then re-render after a delay
           setTimeout(() => {
             const activeNav = document.querySelector(".nav-item.active");
             const currentView = activeNav?.dataset.view;
@@ -327,14 +361,22 @@ const HF_ROUTER = (() => {
       }
 
       if (session.role === "coach") {
-        HF_DB.subscribeToUserStatus(session.userId, (updatedUser) => {
+        HF_DB.subscribeToUserStatus(session.userId, async (updatedUser) => {
           const newStatus = updatedUser.squad_status;
           if (newStatus && newStatus !== session.squadStatus) {
             session.squadStatus = newStatus;
-            HF_DB.saveSession(session);
 
-            // rebuild sidenav with new status and current team size
-            _buildSidenav(session, 0, 0, teamSize);
+            // fetch real team size when verified
+            if (newStatus === "verified") {
+              const { data: squadPlayers } = await HF_DB.getSquadPlayers(
+                session.userId,
+              );
+              const teamSize = squadPlayers?.length || 0;
+              session.profile = { ...session.profile, teamSize };
+            }
+
+            HF_DB.saveSession(session);
+            _buildSidenav(session, 0, 0);
 
             if (newStatus === "verified") {
               HF_UTILS.toast(
@@ -358,13 +400,16 @@ const HF_ROUTER = (() => {
       }
 
       if (session.role === "scout") {
-        HF_DB.subscribeToUserStatus(session.userId, (updatedUser) => {
+        HF_DB.subscribeToUserStatus(session.userId, async (updatedUser) => {
           const newStatus = updatedUser.agency_status;
           if (newStatus && newStatus !== session.agencyStatus) {
             session.agencyStatus = newStatus;
-            HF_DB.saveSession(session);
 
-            // rebuild sidenav with new agency status
+            // refresh full profile from db to get regions/leagues
+            const { data: freshUser } = await HF_DB.getUserById(session.userId);
+            if (freshUser) session.profile = freshUser.profile;
+
+            HF_DB.saveSession(session);
             _buildSidenav(session, 0, 0);
 
             if (newStatus === "verified") {
@@ -401,7 +446,7 @@ const HF_ROUTER = (() => {
     const teamSize =
       teamSizeOverride !== null
         ? teamSizeOverride
-        : session.profile?.teamSize || 0;
+        : session?.profile?.teamSize || 0; // safe fallback
 
     let items;
     if (session.role === "coach") {
@@ -473,6 +518,7 @@ const HF_ROUTER = (() => {
 
   // ─── Navigate to a view ─────────────────────────────────────
   const navTo = (view, el_) => {
+    if (window._stopConfetti) window._stopConfetti();
     const session = HF_DB.getSession();
     if (!session) {
       HF_AUTH.logout();
@@ -628,6 +674,8 @@ const HF_ROUTER = (() => {
 
   const resetSubscriptions = () => {
     _subscriptionsActive = false;
+    // remove all existing Supabase channels
+    HF_DB.removeAllChannels();
   };
 
   return {

@@ -10,6 +10,11 @@ const HF_DB = (() => {
     HF_CONFIG.SUPABASE_ANON_KEY,
   );
 
+  const _localDate = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  };
+
   // ─── Local session ─────────────────────────────────────────
   const getSession = () => {
     try {
@@ -165,6 +170,16 @@ const HF_DB = (() => {
     return { success: true };
   };
 
+  const checkContactExists = async (contact) => {
+    const normalised = contact.toLowerCase().replace(/\s/g, "");
+    const { data } = await _client
+      .from("users")
+      .select("id")
+      .eq("contact", normalised)
+      .maybeSingle();
+    return { data };
+  };
+
   // ─── Normalise DB row to app format ────────────────────────
   const _normaliseUser = (u) => ({
     id: u.id,
@@ -205,7 +220,7 @@ const HF_DB = (() => {
     if (existing) {
       await _client
         .from(table)
-        .update({ data: payload, updated_at: new Date().toISOString() })
+        .update({ data: payload, updated_at: _localDate() })
         .eq("user_id", userId);
     } else {
       await _client.from(table).insert({ user_id: userId, data: payload });
@@ -273,9 +288,17 @@ const HF_DB = (() => {
     });
     if (error) return { error: error.message };
 
+    // fetch coach name
+    const { data: coach } = await _client
+      .from("users")
+      .select("name")
+      .eq("id", data.coachId)
+      .single();
+    const coachName = coach?.name || "A coach";
+
     await _notifyAdmins(
       "New squad verification submitted",
-      `A coach has submitted "${data.teamName}" for squad verification.`,
+      `Coach ${coachName} has submitted "${data.teamName}" for squad verification.`,
     );
 
     return { success: true };
@@ -317,7 +340,7 @@ const HF_DB = (() => {
     // update verification status
     const { error: verError } = await _client
       .from("squad_verifications")
-      .update({ status: "verified", reviewed_at: new Date().toISOString() })
+      .update({ status: "verified", reviewed_at: _localDate() })
       .eq("id", verificationId);
     if (verError) return { error: verError.message };
 
@@ -338,9 +361,15 @@ const HF_DB = (() => {
     });
     if (msgError) return { error: msgError.message };
 
+    const { data: coach } = await _client
+      .from("users")
+      .select("name")
+      .eq("id", coachId)
+      .single();
+    const coachName = coach?.name || "The coach";
     await _notifyAdmins(
       "Squad approved",
-      `Squad "${teamName}" has been verified. Coach has been notified.`,
+      `Squad "${teamName}" has been verified. Coach ${coachName} has been notified.`,
     );
 
     return { success: true };
@@ -357,7 +386,7 @@ const HF_DB = (() => {
       .from("squad_verifications")
       .update({
         status: "rejected",
-        reviewed_at: new Date().toISOString(),
+        reviewed_at: _localDate(),
         rejection_reason: reason,
       })
       .eq("id", verificationId);
@@ -380,9 +409,15 @@ const HF_DB = (() => {
     });
     if (msgError) return { error: msgError.message };
 
+    const { data: coach } = await _client
+      .from("users")
+      .select("name")
+      .eq("id", coachId)
+      .single();
+    const coachName = coach?.name || "The coach";
     await _notifyAdmins(
       "Squad rejected",
-      `Squad "${teamName}" was rejected. Reason: ${reason}. Coach has been notified.`,
+      `Squad "${teamName}" was rejected. Reason: ${reason}. Coach ${coachName} has been notified.`,
     );
 
     return { success: true };
@@ -482,14 +517,32 @@ const HF_DB = (() => {
     // check if invite already exists
     const { data: existing } = await _client
       .from("squad_invites")
-      .select("id, status")
+      .select("id, status, declined_at")
       .eq("coach_id", coachId)
       .eq("player_id", playerId)
-      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-    if (existing)
-      return { error: "An invite has already been sent to this player." };
+    if (existing) {
+      if (existing.status === "pending") {
+        return { error: "An invite has already been sent to this player." };
+      }
+      if (existing.status === "accepted") {
+        return { error: "This player is already in your squad." };
+      }
+      if (existing.status === "declined" && existing.declined_at) {
+        const declinedAt = new Date(existing.declined_at);
+        const hoursPassed =
+          (Date.now() - declinedAt.getTime()) / (1000 * 60 * 60);
+        if (hoursPassed < 24) {
+          const hoursLeft = Math.ceil(24 - hoursPassed);
+          return {
+            error: `This player declined your invite. You can send another in ${hoursLeft} hour${hoursLeft > 1 ? "s" : ""}.`,
+          };
+        }
+      }
+    }
 
     const { error } = await _client.from("squad_invites").insert({
       coach_id: coachId,
@@ -499,12 +552,19 @@ const HF_DB = (() => {
     });
     if (error) return { error: error.message };
 
-    // send notification message to player
+    // fetch coach name
+    const { data: coach } = await _client
+      .from("users")
+      .select("name")
+      .eq("id", coachId)
+      .single();
+    const coachName = coach?.name || "A coach";
+
     await _client.from("messages").insert({
       from_id: coachId,
       to_id: playerId,
       subject: "Squad invite",
-      body: `You have been invited to join ${squadName}. Go to your messages to accept or decline.`,
+      body: `${coachName} has invited you to join ${squadName}. Go to your messages to accept or decline.`,
       read: false,
     });
 
@@ -532,33 +592,72 @@ const HF_DB = (() => {
 
     const { error } = await _client
       .from("squad_invites")
-      .update({ status, responded_at: new Date().toISOString() })
+      .update({
+        status,
+        responded_at: _localDate(),
+        declined_at: !accept ? _localDate() : null,
+      })
       .eq("id", inviteId);
     if (error) return { error: error.message };
 
+    // fetch player name
+    const { data: player } = await _client
+      .from("users")
+      .select("name")
+      .eq("id", playerId)
+      .single();
+    const playerName = player?.name || "A player";
+
     if (accept) {
-      const { data: player } = await _client
+      const { data: playerProfile } = await _client
         .from("users")
         .select("profile")
         .eq("id", playerId)
         .single();
 
       const updatedProfile = {
-        ...player.profile,
+        ...playerProfile.profile,
         club: squadName,
         status: "signed",
       };
-
       await _client
         .from("users")
         .update({ profile: updatedProfile })
         .eq("id", playerId);
 
+      // notify coach
       await _client.from("messages").insert({
         from_id: playerId,
         to_id: coachId,
         subject: "Invite accepted",
-        body: `A player has accepted your invite to join ${squadName}.`,
+        body: `${playerName} has accepted your invite to join ${squadName}.`,
+        read: false,
+      });
+
+      // confirm to player
+      await _client.from("messages").insert({
+        from_id: "system",
+        to_id: playerId,
+        subject: "Welcome to the squad!",
+        body: `You have successfully joined ${squadName}. Your coach will be in touch. Good luck!`,
+        read: false,
+      });
+    } else {
+      // notify coach
+      await _client.from("messages").insert({
+        from_id: playerId,
+        to_id: coachId,
+        subject: "Invite declined",
+        body: `${playerName} has declined your invite to join ${squadName}. You can send another invite after 24 hours.`,
+        read: false,
+      });
+
+      // confirm to player
+      await _client.from("messages").insert({
+        from_id: "system",
+        to_id: playerId,
+        subject: "Invite declined",
+        body: `You have declined the invite to join ${squadName}. You can still receive invites from other coaches.`,
         read: false,
       });
     }
@@ -633,7 +732,7 @@ const HF_DB = (() => {
         founding_year: ver.edited_founding_year || ver.founding_year,
         home_ground: ver.edited_home_ground || ver.home_ground,
         status: "verified",
-        reviewed_at: new Date().toISOString(),
+        reviewed_at: _localDate(),
         edited_team_name: null,
         edited_league: null,
         edited_founding_year: null,
@@ -684,7 +783,7 @@ const HF_DB = (() => {
         edited_founding_year: null,
         edited_home_ground: null,
         admin_notes: null,
-        reviewed_at: new Date().toISOString(),
+        reviewed_at: _localDate(),
       })
       .eq("id", verificationId);
 
@@ -750,21 +849,99 @@ const HF_DB = (() => {
   };
 
   const archiveMessage = async (messageId) => {
-    await _client
+    // get the thread_id for this message first
+    const { data: msg } = await _client
       .from("messages")
-      .update({ archived: true, read: true })
-      .eq("id", messageId);
+      .select("thread_id")
+      .eq("id", messageId)
+      .single();
+
+    if (msg?.thread_id) {
+      // archive all messages in the thread
+      await _client
+        .from("messages")
+        .update({ archived: true, read: true })
+        .eq("thread_id", msg.thread_id);
+    } else {
+      // fallback:archive just this message
+      await _client
+        .from("messages")
+        .update({ archived: true, read: true })
+        .eq("id", messageId);
+    }
+  };
+
+  const unarchiveMessage = async (messageId) => {
+    // get the thread_id for this message first
+    const { data: msg } = await _client
+      .from("messages")
+      .select("thread_id")
+      .eq("id", messageId)
+      .single();
+
+    if (msg?.thread_id) {
+      // unarchive all messages in the thread
+      await _client
+        .from("messages")
+        .update({ archived: false })
+        .eq("thread_id", msg.thread_id);
+    } else {
+      // fallback: unarchive just this message
+      await _client
+        .from("messages")
+        .update({ archived: false })
+        .eq("id", messageId);
+    }
   };
 
   const getMessages = async (userId) => {
-    const { data, error } = await _client
+    // get all messages where user is recipient
+    const { data: received, error: recvError } = await _client
       .from("messages")
       .select("*")
       .eq("to_id", userId)
       .eq("archived", false)
       .order("created_at", { ascending: false });
-    if (error) return { data: [] };
-    return { data };
+    if (recvError) return { data: [] };
+
+    // get thread IDs the user has participated in
+    const threadIds = [
+      ...new Set(received.map((m) => m.thread_id).filter(Boolean)),
+    ];
+
+    // get latest message per thread across all participants
+    let allThreadMessages = [];
+    if (threadIds.length > 0) {
+      const { data: threadMsgs } = await _client
+        .from("messages")
+        .select("*")
+        .in("thread_id", threadIds)
+        .order("created_at", { ascending: false });
+      allThreadMessages = threadMsgs || [];
+    }
+
+    // deduplicate by thread_id: keep only the latest per thread
+    const seen = new Set();
+    const deduped = [];
+
+    // combine and sort by created_at descending
+    const combined = [...received];
+    for (const tm of allThreadMessages) {
+      if (!combined.find((m) => m.id === tm.id)) combined.push(tm);
+    }
+    combined.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    for (const m of combined) {
+      const key = m.thread_id || m.id;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      // only include if user is a participant
+      if (m.to_id === userId || m.from_id === userId) {
+        deduped.push(m);
+      }
+    }
+
+    return { data: deduped };
   };
 
   const getArchivedMessages = async (userId) => {
@@ -790,9 +967,17 @@ const HF_DB = (() => {
     });
     if (error) return { error: error.message };
 
+    // fetch scout name
+    const { data: scout } = await _client
+      .from("users")
+      .select("name")
+      .eq("id", data.scoutId)
+      .single();
+    const scoutName = scout?.name || "A scout";
+
     await _notifyAdmins(
       "New agency verification submitted",
-      `A scout has submitted "${data.agencyName}" for agency verification.`,
+      `Scout ${scoutName} has submitted "${data.agencyName}" for agency verification.`,
     );
 
     return { success: true };
@@ -824,13 +1009,34 @@ const HF_DB = (() => {
   ) => {
     const { error: verError } = await _client
       .from("agency_verifications")
-      .update({ status: "verified", reviewed_at: new Date().toISOString() })
+      .update({ status: "verified", reviewed_at: _localDate() })
       .eq("id", verificationId);
     if (verError) return { error: verError.message };
 
+    // fetch verification details to copy to profile
+    const { data: ver } = await _client
+      .from("agency_verifications")
+      .select("*")
+      .eq("id", verificationId)
+      .single();
+
+    // update scout's profile with regions and leagues
+    const { data: scout } = await _client
+      .from("users")
+      .select("profile")
+      .eq("id", scoutId)
+      .single();
+
+    const updatedProfile = {
+      ...scout.profile,
+      regionsCovered: ver.regions_covered || [],
+      targetLeagues: ver.target_leagues || [],
+      website: ver.website || null,
+    };
+
     const { error: userError } = await _client
       .from("users")
-      .update({ agency_status: "verified" })
+      .update({ agency_status: "verified", profile: updatedProfile })
       .eq("id", scoutId);
     if (userError) return { error: userError.message };
 
@@ -842,9 +1048,10 @@ const HF_DB = (() => {
       read: false,
     });
 
+    const scoutName = scout?.name || "The scout";
     await _notifyAdmins(
       "Agency approved",
-      `Agency "${agencyName}" has been verified. Scout has been notified.`,
+      `Agency "${agencyName}" has been verified. Scout ${scoutName} has been notified.`,
     );
 
     return { success: true };
@@ -860,7 +1067,7 @@ const HF_DB = (() => {
       .from("agency_verifications")
       .update({
         status: "rejected",
-        reviewed_at: new Date().toISOString(),
+        reviewed_at: _localDate(),
         rejection_reason: reason,
       })
       .eq("id", verificationId);
@@ -882,9 +1089,15 @@ const HF_DB = (() => {
       read: false,
     });
 
+    const { data: scout } = await _client
+      .from("users")
+      .select("name")
+      .eq("id", scoutId)
+      .single();
+    const scoutName = scout?.name || "The scout";
     await _notifyAdmins(
       "Agency rejected",
-      `Agency "${agencyName}" was rejected. Reason: ${reason}. Scout has been notified.`,
+      `Agency "${agencyName}" was rejected. Reason: ${reason}. Scout ${scoutName} has been notified.`,
     );
 
     return { success: true };
@@ -1042,7 +1255,7 @@ const HF_DB = (() => {
   const updateProspectStatus = async (scoutId, playerId, updates) => {
     const { error } = await _client
       .from("scout_prospects")
-      .update({ ...updates, updated_at: new Date().toISOString() })
+      .update({ ...updates, updated_at: _localDate() })
       .eq("scout_id", scoutId)
       .eq("player_id", playerId);
     if (error) return { error: error.message };
@@ -1106,28 +1319,56 @@ const HF_DB = (() => {
     return { data };
   };
 
-  const _sendMessage = async (fromId, toId, subject, body) => {
-    const { error } = await _client.from("messages").insert({
-      from_id: fromId,
-      to_id: toId,
-      subject,
-      body,
-      read: false,
-    });
+  const _sendMessage = async (
+    fromId,
+    toId,
+    subject,
+    body,
+    threadId = null,
+    parentId = null,
+  ) => {
+    const newThreadId = threadId || crypto.randomUUID();
+    const { data, error } = await _client
+      .from("messages")
+      .insert({
+        from_id: fromId,
+        to_id: toId,
+        subject,
+        body,
+        read: false,
+        thread_id: newThreadId,
+        parent_id: parentId || null,
+      })
+      .select()
+      .single();
     if (error) return { error: error.message };
-    return { success: true };
+    return { success: true, threadId: newThreadId, messageId: data.id };
+  };
+
+  const getThread = async (threadId, userId) => {
+    const { data, error } = await _client
+      .from("messages")
+      .select("*")
+      .eq("thread_id", threadId)
+      .or(`to_id.eq.${userId},from_id.eq.${userId}`)
+      .order("created_at", { ascending: true });
+    if (error) return { data: [] };
+    return { data };
   };
 
   const getUserNameById = async (userId) => {
-    if (!userId || userId === "admin" || userId === "system")
-      return "HappyFeet Admin";
+    if (!userId) return "HappyFeet";
+    if (userId === "system") return "HappyFeet System";
+    if (userId === "admin") return "HappyFeet Admin";
+
     const { data, error } = await _client
       .from("users")
       .select("name, role")
       .eq("id", userId)
       .maybeSingle();
+
     if (error || !data) return "HappyFeet";
-    return data.role === "admin" ? `Admin: ${data.name}` : data.name;
+    return data.name;
   };
 
   const getSquadPlayers = async (coachId) => {
@@ -1163,7 +1404,7 @@ const HF_DB = (() => {
   const getCoachInvites = async (coachId) => {
     const { data, error } = await _client
       .from("squad_invites")
-      .select("player_id, status")
+      .select("player_id, status, declined_at")
       .eq("coach_id", coachId);
     if (error) return { data: [] };
     return { data };
@@ -1234,20 +1475,15 @@ const HF_DB = (() => {
       .single();
     if (error) return;
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = _localDate();
+    const yesterday = _localDateOffset(-1);
     const lastLogin = data?.last_login;
     const streak = data?.login_streak || 0;
 
-    // calculate new streak
     let newStreak = 1;
     if (lastLogin) {
-      const last = new Date(lastLogin);
-      const now = new Date(today);
-      const diffDays = Math.round((now - last) / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 0) return; // already logged in today, don't update
-      if (diffDays === 1) newStreak = streak + 1; // consecutive day
-      // if diffDays > 1, streak resets to 1
+      if (lastLogin === today) return; // already logged in today
+      if (lastLogin === yesterday) newStreak = streak + 1;
     }
 
     await _client
@@ -1258,6 +1494,12 @@ const HF_DB = (() => {
     return newStreak;
   };
 
+  const _localDateOffset = (days) => {
+    const now = new Date();
+    now.setDate(now.getDate() + days);
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  };
+
   const getLoginStreak = async (userId) => {
     const { data, error } = await _client
       .from("users")
@@ -1266,20 +1508,23 @@ const HF_DB = (() => {
       .single();
     if (error) return 0;
 
-    // check if streak is still valid (last login was yesterday or today)
-    const today = new Date().toISOString().split("T")[0];
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayKey = yesterday.toISOString().split("T")[0];
+    const today = _localDate();
+    const yesterday = _localDateOffset(-1);
 
     if (!data.last_login) return 0;
-    if (data.last_login === today || data.last_login === yesterdayKey) {
+    if (data.last_login === today || data.last_login === yesterday) {
       return data.login_streak || 0;
     }
-    return 0; // streak broken
+    return 0;
   };
 
-  const saveSessionRating = async (coachId, playerId, sessionType, ratings) => {
+  const saveSessionRating = async (
+    coachId,
+    playerId,
+    sessionType,
+    ratings,
+    notes = null,
+  ) => {
     const overall = Math.round(
       (ratings.speed +
         ratings.technical +
@@ -1287,19 +1532,26 @@ const HF_DB = (() => {
         ratings.physical) /
         4,
     );
-    const { error } = await _client.from("session_ratings").insert({
-      player_id: playerId,
-      coach_id: coachId,
-      session_type: sessionType,
-      speed: ratings.speed,
-      technical: ratings.technical,
-      tactical: ratings.tactical,
-      physical: ratings.physical,
-      overall,
-    });
+    const today = _localDate();
+
+    const { error } = await _client.from("session_ratings").upsert(
+      {
+        player_id: playerId,
+        coach_id: coachId,
+        session_type: sessionType,
+        speed: ratings.speed,
+        technical: ratings.technical,
+        tactical: ratings.tactical,
+        physical: ratings.physical,
+        overall,
+        date: today,
+        notes,
+      },
+      { onConflict: "coach_id,player_id,date" },
+    );
+
     if (error) return { error: error.message };
 
-    // update player's profile ratings with latest
     const { data: player } = await _client
       .from("users")
       .select("profile")
@@ -1347,6 +1599,123 @@ const HF_DB = (() => {
     return { data };
   };
 
+  const getAllUsersBasic = async () => {
+    const { data, error } = await _client
+      .from("users")
+      .select("id, name, role")
+      .order("name", { ascending: true });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const searchAllUsers = async (query, excludeId) => {
+    const { data, error } = await _client
+      .from("users")
+      .select("id, name, role, contact")
+      .or(`name.ilike.%${query}%,contact.ilike.%${query}%`)
+      .neq("id", excludeId)
+      .limit(8);
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getTodaySessionRating = async (coachId, playerId) => {
+    const today = _localDate();
+    const { data, error } = await _client
+      .from("session_ratings")
+      .select("*")
+      .eq("coach_id", coachId)
+      .eq("player_id", playerId)
+      .eq("date", today)
+      .maybeSingle();
+    if (error) return { data: null };
+    return { data };
+  };
+
+  const _updateSessionRating = async (
+    ratingId,
+    sessionType,
+    ratings,
+    overall,
+    notes = null,
+  ) => {
+    const { error } = await _client
+      .from("session_ratings")
+      .update({
+        session_type: sessionType,
+        speed: ratings.speed,
+        technical: ratings.technical,
+        tactical: ratings.tactical,
+        physical: ratings.physical,
+        overall,
+        notes,
+      })
+      .eq("id", ratingId);
+    return { error };
+  };
+
+  const saveHealthLog = async (playerId, data) => {
+    const today = _localDate();
+    const { data: existing } = await _client
+      .from("health_logs")
+      .select("id")
+      .eq("player_id", playerId)
+      .eq("date", today)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await _client
+        .from("health_logs")
+        .update({ ...data, date: today })
+        .eq("id", existing.id);
+      if (error) return { error: error.message };
+    } else {
+      const { error } = await _client
+        .from("health_logs")
+        .insert({ player_id: playerId, date: today, ...data });
+      if (error) return { error: error.message };
+    }
+    return { success: true };
+  };
+
+  const getHealthLogs = async (playerId, limit = 14) => {
+    const { data, error } = await _client
+      .from("health_logs")
+      .select("*")
+      .eq("player_id", playerId)
+      .order("date", { ascending: false })
+      .limit(limit);
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getTodayHealthLog = async (playerId) => {
+    const today = _localDate();
+    const { data, error } = await _client
+      .from("health_logs")
+      .select("*")
+      .eq("player_id", playerId)
+      .eq("date", today)
+      .maybeSingle();
+    if (error) return { data: null };
+    return { data };
+  };
+
+  const getPlayerHealthLogs = async (playerId, limit = 7) => {
+    const { data, error } = await _client
+      .from("health_logs")
+      .select("*")
+      .eq("player_id", playerId)
+      .order("date", { ascending: false })
+      .limit(limit);
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const removeAllChannels = () => {
+    _client.removeAllChannels();
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     createUser,
@@ -1381,6 +1750,7 @@ const HF_DB = (() => {
     getUserNameById,
     getCoachInvites,
     archiveMessage,
+    unarchiveMessage,
     getArchivedMessages,
     markMessageRead,
     getAllVerifications,
@@ -1389,6 +1759,8 @@ const HF_DB = (() => {
     banUser,
     unbanUser,
     removeUser,
+    getAllUsersBasic,
+    checkContactExists,
     checkUserStatus,
     searchPlayers,
     sendSquadInvite,
@@ -1416,14 +1788,23 @@ const HF_DB = (() => {
     addScoutClub,
     getAllPlayers,
     getUserById,
+    getThread,
     _sendMessage,
     removePlayerFromSquad,
     decrementTeamSize,
     updateLoginStreak,
     getLoginStreak,
     saveSessionRating,
+    getTodaySessionRating,
     getPlayerSessionRatings,
     getSquadSessionRatings,
+    searchAllUsers,
+    _updateSessionRating,
+    saveHealthLog,
+    getHealthLogs,
+    getTodayHealthLog,
+    getPlayerHealthLogs,
+    removeAllChannels,
   };
 })();
 

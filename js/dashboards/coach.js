@@ -17,6 +17,7 @@ const HF_COACH = (() => {
   } = HF_UTILS;
 
   const setMain = (html) => {
+    if (window._stopConfetti) window._stopConfetti();
     const mc = document.getElementById("main-content");
     if (mc) mc.innerHTML = html;
   };
@@ -107,26 +108,26 @@ const HF_COACH = (() => {
                     )
                   : null;
                 return `
-                <tr>
-                  <td style="font-weight:600">${name}</td>
-                  <td>${p.pos || "-"}</td>
-                  <td>${p.tier || "-"}</td>
-                  <td>
-                    <span style="font-size:10px;padding:1px 7px;font-weight:600;
-                      background:${p.status === "signed" ? "rgba(26,122,46,.1)" : "rgba(196,154,10,.1)"};
-                      color:${p.status === "signed" ? "var(--green)" : "var(--gold)"}">
-                      ${p.status === "signed" ? "Signed" : "Unattached"}
-                    </span>
-                  </td>
-                  <td style="font-weight:700;color:${overall ? "var(--gold)" : "var(--text3)"}">
-                    ${overall !== null ? overall + "%" : "-"}
-                  </td>
-                  <td>
-                    <button class="btn btn-danger btn-sm" onclick="HF_COACH.confirmKickPlayer('${sp.player_id}', '${safeName}')">
-                      <i class="ti ti-logout"></i> Remove
-                    </button>
-                  </td>
-                </tr>`;
+                  <tr style="cursor:pointer;" onclick="HF_COACH.trackPlayer('${sp.player_id}', '${safeName}')">
+                    <td style="font-weight:600">${name}</td>
+                    <td>${p.pos || "-"}</td>
+                    <td>${p.tier || "-"}</td>
+                    <td>
+                      <span style="font-size:10px;padding:1px 7px;font-weight:600;
+                        background:${p.status === "signed" ? "rgba(26,122,46,.1)" : "rgba(196,154,10,.1)"};
+                        color:${p.status === "signed" ? "var(--green)" : "var(--gold)"}">
+                        ${p.status === "signed" ? "Signed" : "Unattached"}
+                      </span>
+                    </td>
+                    <td style="font-weight:700;color:${overall ? "var(--gold)" : "var(--text3)"}">
+                      ${overall !== null ? overall + "%" : "-"}
+                    </td>
+                    <td onclick="event.stopPropagation()">
+                      <button class="btn btn-danger btn-sm" onclick="HF_COACH.confirmKickPlayer('${sp.player_id}', '${safeName}')">
+                        <i class="ti ti-logout"></i> Remove
+                      </button>
+                    </td>
+                  </tr>`;
               })
               .join("")}
           </tbody>
@@ -180,10 +181,10 @@ const HF_COACH = (() => {
             : `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:var(--bg3);color:var(--text2);">Unregistered</span>`;
 
     setMain(`
-    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
+    <div class="welcome-banner">
       <div>
-        <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${newUser ? "Welcome" : "Welcome back"}, Coach ${s.name.split(" ").pop()}!</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.spec || "Head coach"} · ${p.licence || "-"} licence</div>
+        <div class="welcome-title">${newUser ? "Welcome" : "Welcome back"}, Coach ${s.name.split(" ").pop()}!</div>
+        <div class="welcome-sub">${p.spec || "Head coach"} · ${p.licence || "-"} licence</div>
         <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
           ${badgeHTML("Coach", "gold")}
           <span style="font-size:11px;color:rgba(255,255,255,.4)">${p.club || "-"}</span>
@@ -411,10 +412,20 @@ const HF_COACH = (() => {
           <option ${p.spec === "Fitness & conditioning" ? "selected" : ""}>Fitness & conditioning</option>
         </select>
       </div>
-      <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--border);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
-        <i class="ti ti-info-circle" style="margin-right:6px"></i>
-        Club name is managed through squad verification.
-      </div>
+      ${
+        session.squadStatus === "verified"
+          ? `
+        <div style="padding:12px;background:rgba(26,122,46,.05);border-left:2px solid var(--green);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
+          <i class="ti ti-circle-check" style="margin-right:6px;color:var(--green)"></i>
+          Your squad <strong style="color:var(--green)">${session.profile?.club || ""}</strong> is verified. To change your club name please
+          <span onclick="HF_COACH.contactAdmin()" style="color:var(--gold);cursor:pointer;text-decoration:underline;">contact an administrator</span>.
+        </div>`
+          : `
+        <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--border);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
+          <i class="ti ti-info-circle" style="margin-right:6px"></i>
+          Club name is set during squad verification.
+        </div>`
+      }
       <div style="display:flex;gap:8px;margin-top:4px;">
         <button class="btn btn-primary" onclick="HF_COACH.saveProfile()">
           <i class="ti ti-circle-check"></i> Save changes
@@ -544,13 +555,13 @@ const HF_COACH = (() => {
       <div class="card-title"><div class="card-dot"></div>Log a session rating</div>
       <div class="form-row">
         <div class="fg"><label class="required">Player</label>
-          <select id="tr-player">
+          <select id="tr-player" onchange="HF_COACH.checkExistingRating()">
             <option value="">Select player</option>
             ${squadPlayers.map((sp) => `<option value="${sp.player_id}">${sp.player?.name || "Unknown"}</option>`).join("")}
           </select>
         </div>
         <div class="fg"><label class="required">Session type</label>
-          <select id="tr-type">
+          <select id="tr-type" onchange="HF_COACH.checkExistingRating()">
             <option value="">Select type</option>
             <option>Technical</option>
             <option>Tactical</option>
@@ -579,7 +590,7 @@ const HF_COACH = (() => {
         <input type="text" id="tr-notes" placeholder="e.g. Strong first touch, work on weak foot"
           style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
       </div>
-      <button class="btn btn-primary" style="margin-top:8px" onclick="HF_COACH.saveSessionRating()">
+      <button id="tr-save-btn" class="btn btn-primary" style="margin-top:8px" onclick="HF_COACH.saveSessionRatingFromTracking()">
         <i class="ti ti-circle-check"></i> Save rating
       </button>
     </div>
@@ -593,7 +604,15 @@ const HF_COACH = (() => {
           No ratings logged yet.
         </div>`
           : `<table class="table">
-          <thead><tr><th>Player</th><th>Type</th><th>Overall</th><th>Date</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Type</th>
+              <th>Overall</th>
+              <th>Notes</th>
+              <th>Date</th>
+            </tr>
+          </thead>
           <tbody>
             ${recentRatings
               .map(
@@ -601,10 +620,11 @@ const HF_COACH = (() => {
               <tr>
                 <td style="font-weight:600">${r.player?.name || "-"}</td>
                 <td>${r.session_type}</td>
-                <td style="font-weight:700;color:${r.overall >= 8 ? "var(--green)" : r.overall >= 6 ? "var(--gold)" : "var(--red)"}">
-                  ${r.overall}/10
+                <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
+                  ${r.overall}/100
                 </td>
-                <td style="color:var(--text2)">${HF_UTILS.timeAgo(r.created_at)}</td>
+                <td style="color:var(--text2);font-size:11px">${r.notes || "-"}</td>
+                <td style="color:var(--text2)">${new Date(r.created_at).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}</td>
               </tr>`,
               )
               .join("")}
@@ -624,59 +644,146 @@ const HF_COACH = (() => {
         <div style="text-align:center;padding:32px;color:var(--text2)">
           <i class="ti ti-stethoscope" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No players to monitor yet</div>
-          <div style="font-size:13px;margin-bottom:16px">Invite players to your squad to start tracking their health and wellness.</div>
+          <div style="font-size:13px;margin-bottom:16px">Invite players to your squad to start tracking their health.</div>
           <button class="btn btn-primary btn-sm" onclick="HF_ROUTER.navTo('squad')">
             <i class="ti ti-users"></i> Go to squad
           </button>
         </div>
       </div>`);
-
-      // show popup
-      setTimeout(() => {
-        HF_UTILS.toast(
-          "Invite players to your squad to unlock health tracking.",
-          "success",
-        );
-      }, 300);
+      setTimeout(
+        () =>
+          HF_UTILS.toast(
+            "Invite players to your squad to unlock health tracking.",
+            "success",
+          ),
+        300,
+      );
       return;
     }
 
+    // fetch today's health logs for all players
+    const playerHealth = await Promise.all(
+      squadPlayers.map(async (sp) => {
+        const { data: log } = await HF_DB.getTodayHealthLog(sp.player_id);
+        const { data: logs } = await HF_DB.getPlayerHealthLogs(sp.player_id, 3);
+        return { ...sp, todayLog: log, recentLogs: logs };
+      }),
+    );
+
     setMain(`
-      <div class="metrics-grid">
-        <div class="metric-card"><div class="metric-val" style="color:var(--green)">16</div><div class="metric-label">Fully fit</div></div>
-        <div class="metric-card"><div class="metric-val" style="color:var(--gold)">2</div><div class="metric-label">Monitoring</div></div>
-        <div class="metric-card"><div class="metric-val" style="color:var(--red)">0</div><div class="metric-label">Injured</div></div>
-        <div class="metric-card"><div class="metric-val" style="color:var(--green)">94%</div><div class="metric-label">Availability</div></div>
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Squad wellness
+        </div>
+        <span style="font-size:11px;color:var(--text3)">
+          ${new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+        </span>
       </div>
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Active health alerts</div>
-        <div style="padding:12px;background:rgba(200,16,46,.05);border:0.5px solid rgba(200,16,46,.2);border-radius:8px;margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-            <strong>Emmanuel Ofori</strong>${badgeHTML("High risk", "red")}
-          </div>
-          <div style="font-size:12px;color:var(--text2)">Right hamstring tightness. Sprint volume cut 40%. Physio 7am.</div>
-        </div>
-        <div style="padding:12px;background:rgba(201,150,26,.05);border:0.5px solid rgba(201,150,26,.2);border-radius:8px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-            <strong>Kwame Asante</strong>${badgeHTML("Monitor", "gold")}
-          </div>
-          <div style="font-size:12px;color:var(--text2)">High load 3 days running. Active recovery recommended.</div>
-        </div>
+
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th title="Energy"><i class="ti ti-bolt"></i></th>
+            <th title="Mood"><i class="ti ti-mood-smile"></i></th>
+            <th title="Sleep"><i class="ti ti-moon"></i></th>
+            <th title="Soreness"><i class="ti ti-activity"></i></th>
+            <th title="Hydration"><i class="ti ti-droplet"></i></th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${playerHealth
+            .map((ph) => {
+              const name = ph.player?.name || "Unknown";
+              const log = ph.todayLog;
+              const avg = log
+                ? Math.round(
+                    (log.energy +
+                      log.mood +
+                      log.sleep +
+                      (10 - log.soreness) +
+                      log.hydration) /
+                      5,
+                  )
+                : null;
+              const statusColor = !log
+                ? "var(--text3)"
+                : avg >= 8
+                  ? "var(--green)"
+                  : avg >= 6
+                    ? "var(--gold)"
+                    : "var(--red)";
+              const statusLabel = !log
+                ? "No check-in"
+                : avg >= 8
+                  ? "Ready"
+                  : avg >= 6
+                    ? "Monitor"
+                    : "At risk";
+
+              return `
+              <tr style="cursor:pointer;" onclick="HF_COACH.viewPlayerHealth('${ph.player_id}', '${name.replace(/'/g, "\\'")}')">
+                <td style="font-weight:600">${name}</td>
+                <td>${log?.energy || "-"}</td>
+                <td>${log?.mood || "-"}</td>
+                <td>${log?.sleep || "-"}</td>
+                <td>${log?.soreness || "-"}</td>
+                <td>${log?.hydration || "-"}</td>
+                <td>
+                  <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;color:${statusColor};background:${statusColor}22;">
+                    ${statusLabel}
+                  </span>
+                </td>
+              </tr>`;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Wellness key</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:var(--sp-sm);margin-bottom:var(--sp-lg);">
+        ${[
+          ["ti-bolt", "Energy", "var(--text)"],
+          ["ti-mood-smile", "Mood", "var(--text)"],
+          ["ti-moon", "Sleep", "var(--text)"],
+          ["ti-activity", "Soreness", "var(--text)"],
+          ["ti-droplet", "Hydration", "var(--text)"],
+        ]
+          .map(
+            ([icon, label, color]) => `
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:var(--sp-md);background:var(--bg2);border-top:2px solid var(--border);">
+    <i class="ti ${icon}" style="font-size:20px;color:${color}"></i>
+    <div style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">${label}</div>
+  </div>`,
+          )
+          .join("")}
       </div>
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Log a health check-in</div>
-        <div class="fg"><label>Player name</label>
-          <select>${verifiedSquad.map((p) => `<option>${p.name}</option>`).join("")}</select>
-        </div>
-        <div class="fg"><label>Availability</label>
-          <select>
-            <option>Full training</option><option>Modified: reduced load</option>
-            <option>Rehab only</option><option>Rest: not available</option>
-          </select>
-        </div>
-        <div class="fg"><label>Notes</label><input type="text" placeholder="e.g. Slight limp. Mentioned left knee discomfort."></div>
-        <button class="btn btn-primary" onclick="HF_UTILS.toast('Health check-in saved ✓','success')">Save check-in ✓</button>
-      </div>`);
+      <div style="display:flex;gap:var(--sp-md);flex-wrap:wrap;">
+        ${[
+          ["var(--green)", "Ready", "avg 8+"],
+          ["var(--gold)", "Monitor", "avg 6-7"],
+          ["var(--red)", "At risk", "avg below 6"],
+        ]
+          .map(
+            ([color, label, desc]) => `
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:${color}22;border-left:3px solid ${color};flex:1;min-width:100px;">
+            <div>
+              <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${color};">${label}</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px">${desc}</div>
+            </div>
+          </div>`,
+          )
+          .join("")}
+      </div>
+      <div style="margin-top:var(--sp-sm);font-size:11px;color:var(--text3);">
+        <i class="ti ti-info-circle" style="margin-right:4px"></i>
+            Note: soreness score is inverted (lower soreness = better readiness).
+      </div>
+    </div>`);
   };
 
   // RECRUITMENT
@@ -696,22 +803,19 @@ const HF_COACH = (() => {
   const messages = async (s) => {
     const { data: msgs } = await HF_DB.getMessages(s.userId);
     const { data: archived } = await HF_DB.getArchivedMessages(s.userId);
-    const isAwaitingReview = s.squadStatus === "awaiting_coach_approval";
-
-    // enrich messages with sender names
     const enriched = await Promise.all(
       (msgs || []).map(async (m) => ({
         ...m,
         senderName: await HF_DB.getUserNameById(m.from_id),
       })),
     );
-
     const enrichedArchived = await Promise.all(
       (archived || []).map(async (m) => ({
         ...m,
         senderName: await HF_DB.getUserNameById(m.from_id),
       })),
     );
+    const isAwaitingReview = s.squadStatus === "awaiting_coach_approval";
 
     setMain(`
     ${
@@ -732,46 +836,62 @@ const HF_COACH = (() => {
     }
 
     <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Messages</div>
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Messages
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-primary btn-sm" onclick="HF_COACH.composeMessage()">
+            <i class="ti ti-edit"></i> New message
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="HF_COACH.contactAdmin()">
+            <i class="ti ti-headset"></i> Contact admin
+          </button>
+        </div>
+      </div>
       ${
-        !msgs || msgs.length === 0
+        !enriched || enriched.length === 0
           ? `
         <div style="text-align:center;padding:32px;color:var(--text2)">
           <i class="ti ti-message" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No messages yet</div>
           <div style="font-size:13px">Messages from HappyFeet will appear here.</div>
         </div>`
-          : HF_UTILS.messageListHTML(msgs, "coach")
+          : HF_UTILS.messageListHTML(enriched, "coach")
       }
     </div>
 
     ${
-      archived?.length > 0
+      enrichedArchived?.length > 0
         ? `
       <div class="card">
         <div class="card-title" style="cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
           <div class="card-dot"></div>Archived
-          <span style="margin-left:auto;font-size:11px;color:var(--text3)">
-            ${archived.length} · click to expand
-          </span>
+          <span style="margin-left:auto;font-size:11px;color:var(--text3)">${enrichedArchived.length} · click to expand</span>
         </div>
         <div style="display:none">
           ${enrichedArchived
             .map(
               (m) => `
-              <div class="msg-item">
-                <div class="avatar avatar-md" style="background:#0f0f0d;display:flex;align-items:center;justify-content:center;">
-                  <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
-                </div>
-                <div style="flex:1;opacity:0.6">
-                  <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
-                    From: ${m.senderName || "HappyFeet Admin"}
-                  </div>
-                  <div class="msg-name">${m.subject || "Message"}</div>
-                  <div class="msg-preview">${m.body}</div>
-                  <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
-                </div>
-              </div>`,
+          <div class="msg-item" id="archived-msg-${m.id}" style="cursor:pointer;" 
+            onclick="HF_COACH.viewThread('${m.thread_id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')">
+            <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
+              <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
+            </div>
+            <div style="flex:1;opacity:0.6">
+              <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+                From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : "HappyFeet Admin")}
+              </div>
+              <div class="msg-name">${m.subject || "Message"}</div>
+              <div class="msg-preview">${m.body}</div>
+              <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
+            </div>
+            <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;flex-shrink:0;"
+              title="Move back to inbox"
+              onclick="event.stopPropagation();HF_COACH.unarchiveMessage('${m.id}')">
+              <i class="ti ti-inbox"></i>
+            </button>
+          </div>`,
             )
             .join("")}
         </div>
@@ -782,7 +902,7 @@ const HF_COACH = (() => {
 
   // FAITH
   const faith = async (s) => {
-    const todayKey = new Date().toISOString().split("T")[0];
+    const todayKey = _localDate();
     const storageKey = `hf_faith_checklist_coach_${s.userId}_${todayKey}`;
     const checked = JSON.parse(localStorage.getItem(storageKey) || "[]");
 
@@ -818,10 +938,9 @@ const HF_COACH = (() => {
       <div class="verse-ref">${HF_SCRIPTURE.getToday().ref}</div>
     </div>
 
-    <div class="card">
-      <div class="card-title" style="justify-content:space-between;">
-        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-          <div class="card-dot faith"></div>Daily devotion checklist
+    <div class="card faith-card">
+      <div class="card-title" style="justify-content:space-between;padding-top:var(--sp-md);">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">Daily devotion checklist
         </div>
         ${
           allChecked
@@ -857,16 +976,45 @@ const HF_COACH = (() => {
         .join("")}
     </div>
 
-    <div class="card">
-      <div class="card-title" style="border-top:2px solid var(--faith);padding-top:var(--sp-md)"><div class="card-dot faith"></div>How to run team devotion</div>
-      <div style="font-size:12px;color:var(--text2);line-height:2.2">
-        1. <strong style="color:var(--text)">Gather the squad</strong> before every session: 5-10 minutes.<br>
-        2. <strong style="color:var(--text)">Read a verse together</strong>: ${HF_SCRIPTURE.getToday().ref}.<br>
-        3. <strong style="color:var(--text)">One player leads prayer</strong>: rotate each session.<br>
-        4. <strong style="color:var(--text)">Set an intention</strong>: what does the squad play for today?<br>
-        5. <strong style="color:var(--text)">Hands in, one voice</strong>: close together as a team.
-      </div>
-    </div>`);
+    <div class="card faith-card">
+  <div class="card-title" style="padding-top:var(--sp-md);">How to run team devotion</div>
+  <div style="display:flex;flex-direction:column;gap:var(--sp-sm);">
+    ${[
+      [
+        "ti-users",
+        "Gather the squad",
+        "Before every session, 5 to 10 minutes together.",
+      ],
+      [
+        "ti-book",
+        "Read a verse together",
+        `Today: ${HF_SCRIPTURE.getToday().ref}.`,
+      ],
+      [
+        "ti-microphone",
+        "One player leads prayer",
+        "Rotate leadership each session.",
+      ],
+      ["ti-target", "Set an intention", "What does the squad play for today?"],
+      ["ti-hand-stop", "Hands in, one voice", "Close together as a team."],
+    ]
+      .map(
+        ([icon, title, desc], i) => `
+      <div style="display:flex;align-items:flex-start;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:3px solid var(--faith);">
+        <div style="width:32px;height:32px;background:var(--faith);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-size:15px;">
+          <i class="ti ${icon}"></i>
+        </div>
+        <div>
+          <div style="font-family:var(--font);font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;">
+            ${i + 1}. ${title}
+          </div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.5;">${desc}</div>
+        </div>
+      </div>`,
+      )
+      .join("")}
+  </div>
+</div>`);
   };
 
   const findmyteam = (s) => {
@@ -892,6 +1040,30 @@ const HF_COACH = (() => {
     const unreadCount = msgs?.filter((m) => !m.read).length || 0;
     HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
 
+    // find the message and show body in a modal
+    const msg = msgs?.find((m) => m.id === messageId);
+    if (msg) {
+      const overlay = document.createElement("div");
+      overlay.id = `msg-modal-${messageId}`;
+      overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:var(--sp-xl);`;
+      overlay.innerHTML = `
+      <div style="background:var(--bg);border-top:3px solid var(--gold);padding:var(--sp-2xl);max-width:480px;width:100%;">
+        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
+          HappyFeet ${msg.from_id === "system" ? "System" : "Admin"}
+        </div>
+        <div style="font-family:var(--font-head);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
+          ${msg.subject || "Message"}
+        </div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:var(--sp-xl);">
+          ${msg.body}
+        </div>
+        <button class="btn btn-primary" onclick="document.getElementById('msg-modal-${messageId}').remove();HF_ROUTER.navTo('messages');">
+          <i class="ti ti-circle-check"></i> Got it
+        </button>
+      </div>`;
+      document.body.appendChild(overlay);
+    }
+
     messages(session);
   };
 
@@ -912,15 +1084,17 @@ const HF_COACH = (() => {
     const session = HF_DB.getSession();
     const { data } = await HF_DB.searchPlayers(query);
 
-    // get all invites to check status
     const { data: existingInvites } = await HF_DB.getCoachInvites(
       session.userId,
     );
 
-    // map player IDs to their invite status
+    // map player IDs to their invite status and declined_at
     const inviteStatusMap = {};
     existingInvites?.forEach((i) => {
-      inviteStatusMap[i.player_id] = i.status;
+      inviteStatusMap[i.player_id] = {
+        status: i.status,
+        declined_at: i.declined_at,
+      };
     });
 
     if (!data || data.length === 0) {
@@ -930,16 +1104,31 @@ const HF_COACH = (() => {
 
     results.innerHTML = data
       .map((p) => {
-        const inviteStatus = inviteStatusMap[p.id];
-        const isPending = inviteStatus === "pending";
-        const isAccepted = inviteStatus === "accepted";
+        const invite = inviteStatusMap[p.id];
+        const isPending = invite?.status === "pending";
+        const isAccepted = invite?.status === "accepted";
         const safeName = p.name.replace(/'/g, "\\'");
+
+        // check 24 hour cooldown
+        let isCoolingDown = false;
+        let hoursLeft = 0;
+        if (invite?.status === "declined" && invite?.declined_at) {
+          const hoursPassed =
+            (Date.now() - new Date(invite.declined_at).getTime()) /
+            (1000 * 60 * 60);
+          if (hoursPassed < 24) {
+            isCoolingDown = true;
+            hoursLeft = Math.ceil(24 - hoursPassed);
+          }
+        }
 
         const statusBadge = isPending
           ? `<span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">Invite sent</span>`
           : isAccepted
             ? `<span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(26,122,46,.15);color:var(--green);">In squad</span>`
-            : "";
+            : isCoolingDown
+              ? `<span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(200,16,46,.15);color:var(--red);">Wait ${hoursLeft}h</span>`
+              : "";
 
         const inviteBtn = isPending
           ? `<button class="btn btn-outline btn-sm" disabled style="opacity:0.4;cursor:not-allowed;">
@@ -949,12 +1138,16 @@ const HF_COACH = (() => {
             ? `<button class="btn btn-outline btn-sm" disabled style="opacity:0.4;cursor:not-allowed;">
            <i class="ti ti-circle-check"></i> Signed
          </button>`
-            : `<button class="btn btn-primary btn-sm" onclick="HF_COACH.invitePlayer('${p.id}', '${safeName}')">
+            : isCoolingDown
+              ? `<button class="btn btn-outline btn-sm" disabled style="opacity:0.4;cursor:not-allowed;">
+           <i class="ti ti-clock"></i> ${hoursLeft}h cooldown
+         </button>`
+              : `<button class="btn btn-primary btn-sm" onclick="HF_COACH.invitePlayer('${p.id}', '${safeName}')">
            <i class="ti ti-send"></i> Invite
          </button>`;
 
         return `
-      <div style="display:flex;align-items:center;gap:var(--sp-md);padding:10px;background:var(--bg);border:0.5px solid var(--border);margin-bottom:4px;${isPending || isAccepted ? "opacity:0.7;" : ""}">
+      <div style="display:flex;align-items:center;gap:var(--sp-md);padding:10px;background:var(--bg);border:0.5px solid var(--border);margin-bottom:4px;${isPending || isAccepted || isCoolingDown ? "opacity:0.7;" : ""}">
         <div class="avatar avatar-sm" style="background:var(--green)">${HF_UTILS.initials(p.name)}</div>
         <div style="flex:1">
           <div style="display:flex;align-items:center;gap:6px;">
@@ -1219,6 +1412,12 @@ const HF_COACH = (() => {
     messages(session);
   };
 
+  const unarchiveMessage = async (messageId) => {
+    await HF_DB.unarchiveMessage(messageId);
+    HF_UTILS.toast("Message unarchived.", "success");
+    messages(HF_DB.getSession());
+  };
+
   const confirmKickPlayer = (playerId, playerName) => {
     // first confirmation
     if (
@@ -1281,10 +1480,1066 @@ const HF_COACH = (() => {
     faith(HF_DB.getSession());
   };
 
-  const saveSessionRating = async () => {
+  const saveSessionRating = async (
+    coachId,
+    playerId,
+    sessionType,
+    ratings,
+    notes = null,
+  ) => {
+    const overall = Math.round(
+      (ratings.speed +
+        ratings.technical +
+        ratings.tactical +
+        ratings.physical) /
+        4,
+    );
+    const today = _localDate();
+
+    // check if rating exists for today
+    const { data: existing } = await _client
+      .from("session_ratings")
+      .select("id")
+      .eq("coach_id", coachId)
+      .eq("player_id", playerId)
+      .eq("date", today)
+      .maybeSingle();
+
+    if (existing) {
+      // update existing
+      const { error } = await _client
+        .from("session_ratings")
+        .update({
+          session_type: sessionType,
+          speed: ratings.speed,
+          technical: ratings.technical,
+          tactical: ratings.tactical,
+          physical: ratings.physical,
+          overall,
+          notes,
+        })
+        .eq("id", existing.id);
+      if (error) return { error: error.message };
+    } else {
+      // insert new
+      const { error } = await _client.from("session_ratings").insert({
+        player_id: playerId,
+        coach_id: coachId,
+        session_type: sessionType,
+        speed: ratings.speed,
+        technical: ratings.technical,
+        tactical: ratings.tactical,
+        physical: ratings.physical,
+        overall,
+        date: today,
+        notes,
+      });
+      if (error) return { error: error.message };
+    }
+
+    // update player profile ratings
+    const { data: player } = await _client
+      .from("users")
+      .select("profile")
+      .eq("id", playerId)
+      .single();
+
+    if (player) {
+      const updatedProfile = {
+        ...player.profile,
+        ratings: {
+          speed: ratings.speed,
+          tech: ratings.technical,
+          tact: ratings.tactical,
+          phys: ratings.physical,
+        },
+      };
+      await _client
+        .from("users")
+        .update({ profile: updatedProfile })
+        .eq("id", playerId);
+    }
+
+    // send message to player
+    const subject = `Session rating — ${today}`;
+    const body = `Your ${sessionType} session has been rated.\n\nOverall: ${overall}/100\nSpeed: ${ratings.speed}/100 · Technical: ${ratings.technical}/100 · Tactical: ${ratings.tactical}/100 · Physical: ${ratings.physical}/100${notes ? `\n\nCoach notes: ${notes}` : ""}`;
+
+    const { data: existingMsg } = await _client
+      .from("messages")
+      .select("thread_id")
+      .eq("from_id", coachId)
+      .eq("to_id", playerId)
+      .eq("subject", subject)
+      .maybeSingle();
+
+    if (existingMsg?.thread_id) {
+      await _client.from("messages").insert({
+        from_id: coachId,
+        to_id: playerId,
+        subject,
+        body,
+        read: false,
+        thread_id: existingMsg.thread_id,
+      });
+    } else {
+      const threadId = _client.rpc
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2);
+      await _client.from("messages").insert({
+        from_id: coachId,
+        to_id: playerId,
+        subject,
+        body,
+        read: false,
+        thread_id: threadId,
+      });
+    }
+
+    return { success: true, overall };
+  };
+
+  const contactAdmin = () => {
+    const session = HF_DB.getSession();
+    const p = session.profile || {};
+    setMain(`
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Contact admin</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:var(--sp-lg)">
+        Send a message to the HappyFeet admin team. Common requests include updating your squad name, league, or other verified details.
+      </div>
+      <div class="fg">
+        <label class="required">Subject</label>
+        <select id="contact-subject" style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+          <option value="">Select a subject</option>
+          <option>Account issue</option>
+          <option>Change squad name</option>
+          <option>Change league / division</option>
+          <option>Update home ground</option>
+          <option>Update founding year</option>
+          <option>Appeal verification rejection</option>
+          <option value="custom">Other (custom reason)</option>
+        </select>
+      </div>
+      <div class="fg" id="custom-subject-field" style="display:none;">
+        <label class="required">Custom subject</label>
+        <input type="text" id="contact-custom-subject" placeholder="Enter your subject..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <div class="fg">
+        <label class="required">Message</label>
+        <textarea id="contact-body" rows="4" placeholder="Describe what you'd like to change and why..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="HF_COACH.sendAdminMessage()">
+          <i class="ti ti-send"></i> Send message
+        </button>
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')">Cancel</button>
+      </div>
+    </div>`);
+  };
+
+  const toggleCustomSubject = (value) => {
+    const field = document.getElementById("custom-subject-field");
+    if (field) field.style.display = value === "custom" ? "block" : "none";
+  };
+
+  const sendAdminMessage = async () => {
+    const session = HF_DB.getSession();
+    const subjectSelect = document.getElementById("contact-subject")?.value;
+    const customSubject = document
+      .getElementById("contact-custom-subject")
+      ?.value.trim();
+    const body = document.getElementById("contact-body")?.value.trim();
+
+    const subject = subjectSelect === "custom" ? customSubject : subjectSelect;
+
+    if (!subject) {
+      HF_UTILS.toast("Please enter a subject.", "error");
+      return;
+    }
+    if (!body) {
+      HF_UTILS.toast("Please enter your message.", "error");
+      return;
+    }
+
+    const adminIds = await HF_DB.getAdminIds();
+    for (const adminId of adminIds) {
+      await HF_DB._sendMessage(
+        session.userId,
+        adminId,
+        `[Coach] ${subject}`,
+        body,
+      );
+    }
+
+    HF_UTILS.toast("Message sent to admin!", "success");
+    HF_ROUTER.navTo("messages");
+  };
+
+  const composeMessage = () => {
+    const session = HF_DB.getSession();
+    setMain(`
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>New message</div>
+      <div class="fg">
+        <label class="required">To</label>
+        <div id="compose-to-container" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px;background:var(--bg2);border:0.5px solid var(--border);min-height:44px;cursor:text;" onclick="document.getElementById('compose-search').focus()">
+          <div id="compose-tags" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
+          <input type="text" id="compose-search" placeholder="Search by name or email..."
+            oninput="HF_${session.role.toUpperCase()}.searchRecipients(this.value)"
+            style="flex:1;min-width:150px;border:none;background:transparent;color:var(--text);font-size:13px;font-family:var(--font);outline:none;padding:2px 4px;">
+        </div>
+        <div id="compose-search-results" style="margin-top:2px;border:0.5px solid var(--border);background:var(--bg);display:none;"></div>
+        <input type="hidden" id="compose-to-ids">
+      </div>
+      <div class="fg">
+        <label class="required">Subject</label>
+        <input type="text" id="compose-subject" placeholder="Message subject"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <div class="fg">
+        <label class="required">Message</label>
+        <textarea id="compose-body" rows="5" placeholder="Write your message..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="HF_${session.role.toUpperCase()}.sendComposedMessage()">
+          <i class="ti ti-send"></i> Send
+        </button>
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')">Cancel</button>
+      </div>
+    </div>`);
+
+    // store selected recipients
+    window._composeRecipients = [];
+  };
+
+  const searchRecipients = async (query) => {
+    const results = document.getElementById("compose-search-results");
+    if (!results) return;
+    if (!query || query.length < 2) {
+      results.style.display = "none";
+      results.innerHTML = "";
+      return;
+    }
+
+    const session = HF_DB.getSession();
+    const { data } = await HF_DB.searchAllUsers(query, session.userId);
+    const existing = window._composeRecipients?.map((r) => r.id) || [];
+    const filtered = data?.filter((u) => !existing.includes(u.id)) || [];
+
+    if (!filtered || filtered.length === 0) {
+      results.style.display = "none";
+      return;
+    }
+
+    results.style.display = "block";
+    results.innerHTML = filtered
+      .map(
+        (u) => `
+    <div style="display:flex;align-items:center;gap:var(--sp-md);padding:10px;cursor:pointer;border-bottom:0.5px solid var(--border);"
+      onmousedown="event.preventDefault();HF_${session.role.toUpperCase()}.selectRecipient('${u.id}', '${u.name.replace(/'/g, "\\'")}', '${u.role}')">
+      <div class="avatar avatar-sm" style="background:${u.role === "player" ? "var(--green)" : u.role === "coach" ? "var(--gold)" : u.role === "admin" ? "var(--red)" : "var(--blue)"}">
+        ${HF_UTILS.initials(u.name)}
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${u.name}</div>
+        <div style="font-size:11px;color:var(--text2)">${u.role}</div>
+      </div>
+    </div>`,
+      )
+      .join("");
+  };
+
+  const selectRecipient = (userId, userName, userRole) => {
+    if (!window._composeRecipients) window._composeRecipients = [];
+
+    // don't add duplicates
+    if (window._composeRecipients.find((r) => r.id === userId)) return;
+
+    window._composeRecipients.push({
+      id: userId,
+      name: userName,
+      role: userRole,
+    });
+
+    // add tag chip
+    const tags = document.getElementById("compose-tags");
+    const tag = document.createElement("div");
+    tag.id = `tag-${userId}`;
+    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font-head);letter-spacing:0.04em;`;
+    tag.innerHTML = `
+    ${userName}
+    <span style="cursor:pointer;font-size:14px;font-weight:700;line-height:1;" 
+      onclick="HF_${HF_DB.getSession().role.toUpperCase()}.removeRecipient('${userId}')">×</span>`;
+    tags?.appendChild(tag);
+
+    const clearAll = document.getElementById("compose-clear-all");
+    if (!clearAll && window._composeRecipients.length > 1) {
+      const link = document.createElement("div");
+      link.id = "compose-clear-all";
+      link.style.cssText =
+        "font-size:11px;color:var(--text3);cursor:pointer;padding:2px 4px;text-decoration:underline;";
+      link.textContent = "Clear all";
+      link.onclick = () => {
+        window._composeRecipients = [];
+        document.getElementById("compose-tags").innerHTML = "";
+        link.remove();
+      };
+      document.getElementById("compose-to-container")?.appendChild(link);
+    }
+
+    // remove clear all if back to 0 or 1
+    if (window._composeRecipients.length <= 1) {
+      document.getElementById("compose-clear-all")?.remove();
+    }
+
+    // clear search
+    const search = document.getElementById("compose-search");
+    const results = document.getElementById("compose-search-results");
+    if (search) {
+      search.value = "";
+      search.focus();
+    }
+    if (results) {
+      results.style.display = "none";
+      results.innerHTML = "";
+    }
+  };
+
+  const removeRecipient = (userId) => {
+    window._composeRecipients =
+      window._composeRecipients?.filter((r) => r.id !== userId) || [];
+    document.getElementById(`tag-${userId}`)?.remove();
+    if (window._composeRecipients.length <= 1) {
+      document.getElementById("compose-clear-all")?.remove();
+    }
+  };
+
+  const sendComposedMessage = async () => {
+    const session = HF_DB.getSession();
+    const recipients = window._composeRecipients || [];
+    const subject = document.getElementById("compose-subject")?.value.trim();
+    const body = document.getElementById("compose-body")?.value.trim();
+
+    if (recipients.length === 0) {
+      HF_UTILS.toast("Please select at least one recipient.", "error");
+      return;
+    }
+    if (!subject) {
+      HF_UTILS.toast("Please enter a subject.", "error");
+      return;
+    }
+    if (!body) {
+      HF_UTILS.toast("Please enter a message.", "error");
+      return;
+    }
+
+    for (const recipient of recipients) {
+      await HF_DB._sendMessage(session.userId, recipient.id, subject, body);
+    }
+
+    window._composeRecipients = [];
+    HF_UTILS.toast(
+      `Message sent to ${recipients.length} recipient${recipients.length > 1 ? "s" : ""}!`,
+      "success",
+    );
+    HF_ROUTER.navTo("messages");
+  };
+
+  const toggleMsgActions = (messageId, fromId, senderName) => {
+    const actions = document.getElementById(`msg-actions-${messageId}`);
+    if (actions)
+      actions.style.display =
+        actions.style.display === "none" ? "block" : "none";
+  };
+
+  const replyToMessage = (messageId, fromId, senderName, subject) => {
+    if (!fromId || fromId === "admin" || fromId === "system") {
+      HF_UTILS.toast("You cannot reply to system messages.", "error");
+      return;
+    }
+    const session = HF_DB.getSession();
+    setMain(`
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Reply to ${senderName}</div>
+      <div style="padding:10px 12px;background:var(--bg2);border-left:2px solid var(--border);font-size:12px;color:var(--text2);margin-bottom:var(--sp-md);">
+        <i class="ti ti-arrow-back-up" style="margin-right:6px"></i>
+        Replying to: <strong style="color:var(--text)">${subject || "Message"}</strong>
+      </div>
+      <div class="fg">
+        <label class="required">Message</label>
+        <textarea id="reply-body" rows="4" placeholder="Write your reply..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="HF_${session.role.toUpperCase()}.sendReply('${fromId}', 'Re: ${(subject || "Message").replace(/'/g, "\\'")}')">
+          <i class="ti ti-send"></i> Send reply
+        </button>
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')">Cancel</button>
+      </div>
+    </div>`);
+  };
+
+  const sendReply = async (toId, subject, threadId) => {
+    const session = HF_DB.getSession();
+    const body = document.getElementById("reply-body")?.value.trim();
+    if (!body) {
+      HF_UTILS.toast("Please enter a reply.", "error");
+      return;
+    }
+
+    // detect emoji-only and launch confetti
+    const emojiOnly =
+      body
+        .replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, "")
+        .trim().length === 0;
+    if (emojiOnly) {
+      const firstEmoji = body.match(
+        /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu,
+      )?.[0];
+      if (firstEmoji) HF_UTILS.launchEmojiConfetti(firstEmoji);
+    }
+
+    const result = await HF_DB._sendMessage(
+      session.userId,
+      toId,
+      subject,
+      body,
+      threadId,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    document.getElementById("reply-body").value = "";
+    viewThread(threadId, toId, subject);
+  };
+
+  const viewThread = async (threadId, otherUserId, subject) => {
+    const session = HF_DB.getSession();
+    const { data: msgs } = await HF_DB.getThread(threadId, session.userId);
+
+    const isEmojiOnly = (text) => {
+      const stripped = text
+        .replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, "")
+        .trim();
+      return stripped.length === 0;
+    };
+
+    const renderMessageBody = (body) => {
+      return body.replace(
+        /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu,
+        `<span class="emoji-animate" style="font-size:1.3em;cursor:pointer;display:inline-block;"
+      onclick="HF_UTILS.launchEmojiConfetti('$1');this.style.transform='scale(1.8)';setTimeout(()=>this.style.transform='scale(1)',200)">$1</span>`,
+      );
+    };
+
+    // mark all unread messages in thread as read
+    const unread =
+      msgs?.filter((m) => !m.read && m.to_id === session.userId) || [];
+    for (const m of unread) await HF_DB.markMessageRead(m.id);
+
+    // enrich with sender names
+    const enriched = await Promise.all(
+      (msgs || []).map(async (m) => ({
+        ...m,
+        senderName: await HF_DB.getUserNameById(m.from_id),
+      })),
+    );
+
+    setMain(`
+    <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);">
+      <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('messages')">
+        <i class="ti ti-arrow-left"></i> Back
+      </button>
+      <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+        ${subject || "Conversation"}
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:var(--sp-lg);display:flex;flex-direction:column;gap:var(--sp-md);min-height:300px;max-height:60vh;overflow-y:auto;" id="thread-messages">
+        ${enriched
+          .map((m) => {
+            const isMine = m.from_id === session.userId;
+            const emojiOnly = isEmojiOnly(m.body);
+            return `
+            <div style="display:flex;flex-direction:column;align-items:${isMine ? "flex-end" : "flex-start"};">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font-head);letter-spacing:0.04em;">
+                ${isMine ? "You" : m.senderName} · ${HF_UTILS.timeAgo(m.created_at)}
+              </div>
+              <div style="
+                max-width:75%;
+                padding:${emojiOnly ? "4px" : "10px 14px"};
+                background:${emojiOnly ? "transparent" : isMine ? "var(--gold)" : "var(--bg2)"};
+                color:${isMine && !emojiOnly ? "#0f0f0d" : "var(--text)"};
+                font-size:${emojiOnly ? "32px" : "13px"};
+                line-height:1.5;">
+                ${renderMessageBody(m.body)}
+              </div>
+            </div>`;
+          })
+          .join("")}
+      </div>
+
+      <div style="padding:var(--sp-md);border-top:0.5px solid var(--border);background:var(--bg);">
+        <div id="emoji-picker" style="display:none;padding:var(--sp-sm);background:var(--bg2);border:0.5px solid var(--border);margin-bottom:8px;flex-wrap:wrap;gap:4px;">
+          ${[
+            "😀",
+            "😂",
+            "😍",
+            "🔥",
+            "👏",
+            "💪",
+            "⚽",
+            "🏆",
+            "🎯",
+            "👊",
+            "🙏",
+            "❤️",
+            "😤",
+            "😭",
+            "🤝",
+            "✅",
+            "💯",
+            "🚀",
+            "👋",
+            "😎",
+            "🤔",
+            "😅",
+            "🥅",
+            "🎉",
+            "👍",
+            "👎",
+            "❌",
+            "⚡",
+            "🌟",
+            "😴",
+          ]
+            .map(
+              (e) => `
+            <span style="font-size:24px;cursor:pointer;width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;transition:transform 0.15s ease;"
+              onmouseover="this.style.transform='scale(1.3)'"
+              onmouseout="this.style.transform='scale(1)'"
+              onclick="document.getElementById('reply-body').value += '${e}';this.style.transform='scale(1.5)';setTimeout(()=>this.style.transform='scale(1)',150)">
+              ${e}
+            </span>`,
+            )
+            .join("")}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="reply-body" placeholder="Write a reply..."
+            style="flex:1;padding:0 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;font-family:var(--font);outline:none;height:42px;box-sizing:border-box;">
+          <button class="btn btn-outline" style="height:42px;width:42px;min-height:42px;padding:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex-shrink:0;"
+            title="Emoji"
+            onclick="const p=document.getElementById('emoji-picker');p.style.display=p.style.display==='none'?'flex':'none'">
+            <i class="ti ti-mood-smile"></i>
+          </button>
+          <button class="btn btn-primary" style="height:42px;width:42px;min-height:42px;padding:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex-shrink:0;"
+            onclick="HF_${session.role.toUpperCase()}.sendReply('${otherUserId}', '${(subject || "").replace(/'/g, "\\'")}', '${threadId}')">
+            <i class="ti ti-send"></i>
+          </button>
+        </div>
+      </div>
+    </div>`);
+
+    setTimeout(() => {
+      const threadEl = document.getElementById("thread-messages");
+      if (threadEl) threadEl.scrollTop = threadEl.scrollHeight;
+
+      // enter key sends message
+      const replyInput = document.getElementById("reply-body");
+      if (replyInput) {
+        replyInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            HF_DB.getSession() &&
+              window[
+                `HF_${HF_DB.getSession().role.toUpperCase()}`
+              ]?.sendReply?.(otherUserId, subject, threadId);
+          }
+        });
+      }
+    }, 100);
+  };
+
+  const viewSenderProfile = async (userId) => {
+    const { data: user } = await HF_DB.getUserById(userId);
+    if (!user) {
+      HF_UTILS.toast("User not found.", "error");
+      return;
+    }
+    const p = user.profile || {};
+    const overall = p.ratings
+      ? Math.round(
+          (p.ratings.speed + p.ratings.tech + p.ratings.tact + p.ratings.phys) /
+            4,
+        )
+      : null;
+
+    setMain(`
+    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
+        <div style="width:72px;height:72px;background:var(--green);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
+          ${HF_UTILS.initials(user.name)}
+        </div>
+        <div>
+          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;color:#fff;">${user.name}</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.55)">${p.pos || p.org || "-"} · ${p.tier || p.exp + " yrs exp" || "-"}</div>
+          <div style="margin-top:8px">${HF_UTILS.badgeHTML(user.role, user.role === "player" ? "green" : user.role === "coach" ? "gold" : "blue")}</div>
+        </div>
+      </div>
+      ${
+        overall !== null
+          ? `
+        <div style="text-align:right">
+          <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold)">${overall}%</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.1em">Overall</div>
+        </div>`
+          : ""
+      }
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Details</div>
+      <div class="info-grid">
+        ${p.pos ? `<div class="info-cell"><div class="info-label">Position</div><div class="info-val">${p.pos}</div></div>` : ""}
+        ${p.tier ? `<div class="info-cell"><div class="info-label">Tier</div><div class="info-val">${p.tier}</div></div>` : ""}
+        ${p.hometown ? `<div class="info-cell"><div class="info-label">Hometown</div><div class="info-val">${p.hometown}</div></div>` : ""}
+        ${p.org ? `<div class="info-cell"><div class="info-label">Organisation</div><div class="info-val">${p.org}</div></div>` : ""}
+        ${p.exp ? `<div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp} years</div></div>` : ""}
+        ${p.club ? `<div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club}</div></div>` : ""}
+      </div>
+    </div>
+    <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')" style="margin-top:8px">
+      <i class="ti ti-arrow-left"></i> Back to messages
+    </button>`);
+  };
+
+  const reportToAdmin = async (fromId, senderName) => {
+    const session = HF_DB.getSession();
+    const reason = prompt(
+      `Report ${senderName} to admin?\n\nPlease describe the issue:`,
+    );
+    if (!reason) return;
+
+    const adminIds = await HF_DB.getAdminIds();
+    for (const adminId of adminIds) {
+      await HF_DB._sendMessage(
+        session.userId,
+        adminId,
+        `[Report] User: ${senderName}`,
+        `${session.name} has reported ${senderName}.\n\nReason: ${reason}`,
+      );
+    }
+
+    HF_UTILS.toast(`${senderName} has been reported to admin.`, "success");
+  };
+
+  const trackPlayer = async (playerId, playerName) => {
+    const session = HF_DB.getSession();
+    const { data: sessions } = await HF_DB.getPlayerSessionRatings(playerId);
+    const { data: todayRating } = await HF_DB.getTodaySessionRating(
+      session.userId,
+      playerId,
+    );
+
+    const trendData = sessions
+      ? [...sessions].reverse().map((s) => s.overall)
+      : [];
+    const latest = sessions?.[0];
+    let lastDate = null;
+
+    setMain(`
+    <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);">
+      <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('squad')">
+        <i class="ti ti-arrow-left"></i> Back to squad
+      </button>
+      <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+        ${playerName}
+      </div>
+    </div>
+
+    <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--gold)">${latest ? latest.overall + "/100" : "-"}</div>
+        <div class="metric-label">Last rating</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--green)">${sessions?.length || 0}</div>
+        <div class="metric-label">Sessions</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--blue)">
+          ${
+            sessions?.length > 1
+              ? sessions[0].overall > sessions[1].overall
+                ? "↑"
+                : sessions[0].overall < sessions[1].overall
+                  ? "↓"
+                  : "→"
+              : "-"
+          }
+        </div>
+        <div class="metric-label">Trend</div>
+      </div>
+    </div>
+
+    ${
+      trendData.length > 0
+        ? `
+      <div class="card">
+        <div class="card-title"><div class="card-dot"></div>Rating trend</div>
+        ${HF_UTILS.miniChartHTML(trendData)}
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-top:6px">
+          <span>Oldest</span><span>Latest</span>
+        </div>
+      </div>`
+        : ""
+    }
+
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Log session rating
+          <span style="font-size:11px;color:var(--text3);">
+            ${new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+          </span>
+        </div>
+        ${
+          todayRating
+            ? `
+          <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
+            Editing today's rating
+          </span>`
+            : ""
+        }
+      </div>
+      ${["Speed", "Technical", "Tactical", "Physical"]
+        .map(
+          (l) => `
+        <div class="bar-row">
+          <div class="bar-head">
+            <span>${l}</span>
+            <span id="cv-${l.toLowerCase()}" style="color:var(--gold);font-weight:600">7</span>
+          </div>
+          <input type="range" min="1" max="10" value="7" step="1"
+            style="width:100%;accent-color:var(--gold);margin-top:4px"
+            oninput="document.getElementById('cv-${l.toLowerCase()}').textContent=this.value">
+        </div>`,
+        )
+        .join("")}
+      <div class="fg" style="margin-top:8px">
+        <label>Notes</label>
+        <input type="text" id="tr-notes" placeholder="e.g. Strong first touch, work on weak foot"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <button class="btn btn-primary" style="margin-top:8px"
+        onclick="HF_COACH.savePlayerRating('${playerId}', '${playerName.replace(/'/g, "\\'")}')">
+        <i class="ti ti-circle-check"></i> ${todayRating ? "Update rating" : "Save rating"}
+      </button>
+    </div>
+
+    ${
+      sessions && sessions.length > 0
+        ? `
+  <div class="card">
+    <div class="card-title"><div class="card-dot"></div>Session calendar</div>
+    ${HF_UTILS.miniCalendarHTML(sessions, (date) => {
+      const session = sessions.find(
+        (s) => s.created_at?.split("T")[0] === date,
+      );
+      if (!session) return "var(--green)";
+      return session.overall >= 80
+        ? "var(--green)"
+        : session.overall >= 65
+          ? "var(--gold)"
+          : "var(--red)";
+    })}
+    <div style="display:flex;gap:var(--sp-md);margin-top:var(--sp-md);font-size:11px;color:var(--text2);">
+      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--green);"></div>80+</div>
+      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--gold);"></div>65-79</div>
+      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--red);"></div>Below 65</div>
+    </div>
+  </div>`
+        : ""
+    }
+  
+    ${
+      sessions && sessions.length > 0
+        ? `
+      <div class="card">
+        <div class="card-title"><div class="card-dot"></div>Session history</div>
+        <table class="table">
+          <thead><tr><th>Date</th><th>Type</th><th>Overall</th><th>Speed</th><th>Technical</th><th>Tactical</th><th>Physical</th></tr></thead>
+          <tbody>
+            ${sessions
+              .map((r) => {
+                const dateStr = new Date(r.created_at).toLocaleDateString(
+                  "en-GB",
+                  {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  },
+                );
+                const isToday =
+                  new Date(r.created_at).toISOString().split("T")[0] ===
+                  _localDate();
+                const showHeader = dateStr !== lastDate;
+                lastDate = dateStr;
+                return `
+                ${
+                  showHeader
+                    ? `
+                  <tr>
+                    <td colspan="7" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isToday ? "var(--gold)" : "var(--text3)"};padding:8px 0 4px;border-bottom:0.5px solid var(--border);">
+                      ${isToday ? "Today: " : ""}${dateStr}
+                    </td>
+                  </tr>`
+                    : ""
+                }
+                <tr>
+                  <td style="color:${isToday ? "var(--gold)" : "var(--text2)"}">
+                    ${isToday ? "Today" : new Date(r.created_at).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}
+                  </td>
+                  <td>${r.session_type}</td>
+                  <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
+                    ${r.overall}
+                  </td>
+                  <td>${r.speed}</td>
+                  <td>${r.technical}</td>
+                  <td>${r.tactical}</td>
+                  <td>${r.physical}</td>
+                </tr>`;
+              })
+              .join("")}
+                      </tbody>
+                    </table>
+                  </div>`
+        : ""
+    }
+  `);
+    setTimeout(() => {
+      if (todayRating) {
+        const fields = ["speed", "technical", "tactical", "physical"];
+        fields.forEach((f) => {
+          const slider = document.querySelector(`input[oninput*="cv-${f}"]`);
+          const display = document.getElementById(`cv-${f}`);
+          const val = Math.round((todayRating[f] || 70) / 10);
+          if (slider) slider.value = val;
+          if (display) display.textContent = val;
+        });
+        const typeSelect = document.getElementById("tr-type");
+        if (typeSelect) typeSelect.value = todayRating.session_type;
+      }
+    }, 100);
+  };
+
+  const savePlayerRating = async (playerId, playerName) => {
+    const session = HF_DB.getSession();
+    const sessionType = document.getElementById("tr-type")?.value;
+    if (!sessionType) {
+      HF_UTILS.toast("Please select a session type.", "error");
+      return;
+    }
+
+    const ratings = {
+      speed:
+        parseInt(document.getElementById("cv-speed")?.textContent || 7) * 10,
+      technical:
+        parseInt(document.getElementById("cv-technical")?.textContent || 7) *
+        10,
+      tactical:
+        parseInt(document.getElementById("cv-tactical")?.textContent || 7) * 10,
+      physical:
+        parseInt(document.getElementById("cv-physical")?.textContent || 7) * 10,
+    };
+
+    // check if rating already exists for today
+    const { data: existing } = await HF_DB.getTodaySessionRating(
+      session.userId,
+      playerId,
+    );
+
+    let result;
+    if (existing) {
+      const overall = Math.round(
+        (ratings.speed +
+          ratings.technical +
+          ratings.tactical +
+          ratings.physical) /
+          4,
+      );
+      const { error } = await HF_DB._updateSessionRating(
+        existing.id,
+        sessionType,
+        ratings,
+        overall,
+      );
+      result = error ? { error } : { success: true, overall };
+      HF_UTILS.toast(`Session updated! Overall: ${overall}/100`, "success");
+    } else {
+      result = await HF_DB.saveSessionRating(
+        session.userId,
+        playerId,
+        sessionType,
+        ratings,
+      );
+      if (!result.error)
+        HF_UTILS.toast(
+          `Session logged! Overall: ${result.overall}/100`,
+          "success",
+        );
+    }
+
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+    trackPlayer(playerId, playerName);
+  };
+
+  const viewPlayerHealth = async (playerId, playerName) => {
+    const { data: logs } = await HF_DB.getPlayerHealthLogs(playerId, 14);
+    const { data: todayLog } = await HF_DB.getTodayHealthLog(playerId);
+
+    setMain(`
+    <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);">
+      <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('health')">
+        <i class="ti ti-arrow-left"></i> Back to squad wellness
+      </button>
+      <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+        ${playerName} Health log
+      </div>
+    </div>
+
+    ${
+      todayLog
+        ? `
+      <div class="metrics-grid" style="grid-template-columns:repeat(5,1fr)">
+        <div class="metric-card">
+          <div class="metric-val" style="color:var(--gold)">${todayLog.energy}</div>
+          <div class="metric-label">Energy</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" style="color:var(--faith)">${todayLog.mood}</div>
+          <div class="metric-label">Mood</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" style="color:var(--blue)">${todayLog.sleep}</div>
+          <div class="metric-label">Sleep</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" style="color:var(--red)">${todayLog.soreness}</div>
+          <div class="metric-label">Soreness</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" style="color:var(--green)">${todayLog.hydration}</div>
+          <div class="metric-label">Hydration</div>
+        </div>
+      </div>
+      ${
+        todayLog.notes
+          ? `
+        <div style="padding:10px 12px;background:var(--bg2);border-left:2px solid var(--border);font-size:13px;color:var(--text2);margin-bottom:var(--sp-lg);">
+          <i class="ti ti-notes" style="margin-right:6px"></i>${todayLog.notes}
+        </div>`
+          : ""
+      }`
+        : `
+      <div style="padding:var(--sp-lg);background:var(--bg2);border-left:2px solid var(--border);margin-bottom:var(--sp-lg);font-size:13px;color:var(--text2);">
+        <i class="ti ti-info-circle" style="margin-right:6px"></i>
+        ${playerName} has not logged a check-in today.
+      </div>`
+    }
+
+    ${
+      logs && logs.length > 0
+        ? `
+  <div class="card">
+    <div class="card-title"><div class="card-dot"></div>Check-in calendar</div>
+    ${HF_UTILS.miniCalendarHTML(logs, (date) => {
+      const log = logs.find((l) => l.date === date);
+      if (!log) return "var(--green)";
+      const avg = Math.round(
+        (log.energy +
+          log.mood +
+          log.sleep +
+          (10 - log.soreness) +
+          log.hydration) /
+          5,
+      );
+      return avg >= 8
+        ? "var(--green)"
+        : avg >= 6
+          ? "var(--gold)"
+          : "var(--red)";
+    })}
+    <div style="display:flex;gap:var(--sp-md);margin-top:var(--sp-md);font-size:11px;color:var(--text2);">
+      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--green);"></div>Ready</div>
+      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--gold);"></div>Monitor</div>
+      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--red);"></div>At risk</div>
+      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--blue);border-radius:50%;"></div>Today</div>
+    </div>
+  </div>`
+        : ""
+    }
+
+    ${
+      logs && logs.length > 0
+        ? `
+      <div class="card">
+        <div class="card-title"><div class="card-dot"></div>Wellness history</div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th title="Energy"><i class="ti ti-bolt"></i></th>
+              <th title="Mood"><i class="ti ti-mood-smile"></i></th>
+              <th title="Sleep"><i class="ti ti-moon"></i></th>
+              <th title="Soreness"><i class="ti ti-activity"></i></th>
+              <th title="Hydration"><i class="ti ti-droplet"></i></th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${logs
+              .map((l) => {
+                const isToday = l.date === _localDate();
+                return `
+                <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
+                  <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
+                    ${isToday ? "Today" : new Date(l.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                  </td>
+                  <td>${l.energy || "-"}</td>
+                  <td>${l.mood || "-"}</td>
+                  <td>${l.sleep || "-"}</td>
+                  <td>${l.soreness || "-"}</td>
+                  <td>${l.hydration || "-"}</td>
+                  <td style="color:var(--text2);font-size:11px">${l.notes || "-"}</td>
+                </tr>`;
+              })
+              .join("")}
+          </tbody>
+        </table>
+      </div>`
+        : ""
+    }
+  `);
+  };
+
+  const saveSessionRatingFromTracking = async () => {
     const session = HF_DB.getSession();
     const playerId = document.getElementById("tr-player")?.value;
+    const playerName =
+      document.getElementById("tr-player")?.selectedOptions[0]?.text ||
+      "Player";
     const sessionType = document.getElementById("tr-type")?.value;
+    const notes = document.getElementById("tr-notes")?.value.trim() || null;
 
     if (!playerId) {
       HF_UTILS.toast("Please select a player.", "error");
@@ -1307,28 +2562,79 @@ const HF_COACH = (() => {
         parseInt(document.getElementById("cv-physical")?.textContent || 7) * 10,
     };
 
-    const result = await HF_DB.saveSessionRating(
+    const { data: existing } = await HF_DB.getTodaySessionRating(
       session.userId,
       playerId,
-      sessionType,
-      ratings,
     );
+
+    let result;
+    if (existing) {
+      const overall = Math.round(
+        (ratings.speed +
+          ratings.technical +
+          ratings.tactical +
+          ratings.physical) /
+          4,
+      );
+      const { error } = await HF_DB._updateSessionRating(
+        existing.id,
+        sessionType,
+        ratings,
+        overall,
+        notes,
+      );
+      result = error ? { error } : { success: true, overall };
+      HF_UTILS.toast(`Session updated! Overall: ${overall}/100`, "success");
+    } else {
+      result = await HF_DB.saveSessionRating(
+        session.userId,
+        playerId,
+        sessionType,
+        ratings,
+        notes,
+      );
+      if (!result.error)
+        HF_UTILS.toast(
+          `Session logged! Overall: ${result.overall}/100`,
+          "success",
+        );
+    }
+
     if (result.error) {
       HF_UTILS.toast(result.error, "error");
       return;
     }
-
-    HF_UTILS.toast(
-      `Session rating saved! Overall: ${result.overall}/100`,
-      "success",
-    );
     tracking(session);
+  };
+
+  const checkExistingRating = async () => {
+    const session = HF_DB.getSession();
+    const playerId = document.getElementById("tr-player")?.value;
+    const btn = document.getElementById("tr-save-btn");
+    if (!btn) return;
+
+    if (!playerId) {
+      btn.innerHTML = '<i class="ti ti-circle-check"></i> Save rating';
+      return;
+    }
+
+    const { data: existing } = await HF_DB.getTodaySessionRating(
+      session.userId,
+      playerId,
+    );
+
+    if (existing) {
+      btn.innerHTML = '<i class="ti ti-refresh"></i> Update rating';
+    } else {
+      btn.innerHTML = '<i class="ti ti-circle-check"></i> Save rating';
+    }
   };
 
   return {
     render,
     readMessage,
     archiveMessage,
+    unarchiveMessage,
     showInvitePanel,
     searchPlayers,
     invitePlayer,
@@ -1342,6 +2648,25 @@ const HF_COACH = (() => {
     editProfile,
     saveProfile,
     saveSessionRating,
+    contactAdmin,
+    sendAdminMessage,
+    composeMessage,
+    sendComposedMessage,
+    toggleCustomSubject,
+    searchRecipients,
+    selectRecipient,
+    removeRecipient,
+    toggleMsgActions,
+    replyToMessage,
+    sendReply,
+    viewSenderProfile,
+    reportToAdmin,
+    viewThread,
+    trackPlayer,
+    savePlayerRating,
+    viewPlayerHealth,
+    saveSessionRatingFromTracking,
+    checkExistingRating,
   };
 })();
 

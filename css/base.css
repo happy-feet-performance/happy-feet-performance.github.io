@@ -243,6 +243,7 @@ img {
 
 .card.faith-card {
   border-top: 2px solid var(--faith);
+  font-family: var(--font);
 }
 
 .card-title {
@@ -257,6 +258,15 @@ img {
   gap: var(--sp-sm);
   color: var(--text);
 }
+
+.faith-card .card-title {
+  font-family: var(--font);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  font-size: 14px;
+}
+
 .card-dot {
   width: 6px;
   height: 6px;
@@ -958,4 +968,35 @@ img {
     transform: translateY(100vh) rotate(720deg);
     opacity: 0;
   }
+}
+
+@keyframes emojiPop {
+  0% {
+    transform: scale(0) translateY(0);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.4) translateY(-8px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes emojiBurst {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-200px) scale(0.3);
+    opacity: 0;
+  }
+}
+
+.emoji-animate {
+  display: inline-block;
+  animation: emojiPop 0.4s ease forwards;
 }

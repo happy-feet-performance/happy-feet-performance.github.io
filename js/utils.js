@@ -22,7 +22,7 @@ const HF_UTILS = (() => {
     return a;
   };
 
-  const today = () => new Date().toISOString().split("T")[0];
+  const today = () => _localDate();
 
   const timeAgo = (isoStr) => {
     const diff = Date.now() - new Date(isoStr).getTime();
@@ -192,8 +192,8 @@ const HF_UTILS = (() => {
 
     const getSenderLabel = (m) => {
       if (m.senderName) return m.senderName;
-      if (!m.from_id || m.from_id === "admin" || m.from_id === "system")
-        return "HappyFeet Admin";
+      if (!m.from_id || m.from_id === "admin") return "HappyFeet Admin";
+      if (!m.from_id || m.from_id === "system") return "HappyFeet System";
       return "HappyFeet";
     };
 
@@ -204,13 +204,17 @@ const HF_UTILS = (() => {
     };
 
     const msgRow = (m) => `
-      <div class="msg-item" id="msg-${m.id}" onclick="HF_${role.toUpperCase()}.readMessage('${m.id}', document.getElementById('msg-${m.id}'))">
-        <div class="avatar avatar-md" style="background:#0f0f0d;display:flex;align-items:center;justify-content:center;">
-          <i class="ti ti-shield" style="font-size:16px;color:${m.from_id === "admin" || m.from_id === "system" ? "var(--gold)" : "var(--blue)"}"></i>
+      <div class="msg-item" id="msg-${m.id}" onclick="${
+        m.from_id === "admin" || m.from_id === "system"
+          ? `HF_${role.toUpperCase()}.readMessage('${m.id}', document.getElementById('msg-${m.id}'))`
+          : `HF_${role.toUpperCase()}.viewThread('${m.thread_id || m.id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')`
+      }">
+        <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
+          <i class="ti ti-shield" style="font-size:16px;color:${!m.read ? "var(--gold)" : "var(--text2)"}"></i>
         </div>
         <div style="flex:1">
           <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
-            From: ${getSenderLabel(m)}
+            From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : m.from_id === "admin" ? "HappyFeet Admin" : "HappyFeet")}
           </div>
           <div class="msg-name">${m.subject || "Message"}</div>
           <div class="msg-preview">${m.body}</div>
@@ -219,9 +223,37 @@ const HF_UTILS = (() => {
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
           ${!m.read ? `<div class="msg-unread" id="badge-${m.id}">1</div>` : ""}
           <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
+            title="Archive message"
             onclick="event.stopPropagation();HF_${role.toUpperCase()}.archiveMessage('${m.id}', this)">
             <i class="ti ti-archive"></i>
           </button>
+          <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
+            title="More options"
+            onclick="event.stopPropagation();HF_${role.toUpperCase()}.toggleMsgActions('${m.id}', '${m.from_id}', '${(m.senderName || "HappyFeet").replace(/'/g, "\\'")}')">
+            <i class="ti ti-dots-vertical"></i>
+          </button>
+        </div>
+      </div>
+      <div id="msg-actions-${m.id}" style="display:none;padding:var(--sp-sm);background:var(--bg2);border-left:2px solid var(--border);margin-bottom:4px;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${
+            m.from_id && m.from_id !== "admin" && m.from_id !== "system"
+              ? `
+            <button class="btn btn-outline btn-sm" onclick="HF_${role.toUpperCase()}.viewThread('${m.thread_id || m.id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')">
+              <i class="ti ti-arrow-back-up"></i> Reply
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="HF_${role.toUpperCase()}.viewSenderProfile('${m.from_id}')">
+              <i class="ti ti-user"></i> View profile
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="HF_${role.toUpperCase()}.reportToAdmin('${m.from_id}', '${(m.senderName || "").replace(/'/g, "\\'")}')">
+              <i class="ti ti-flag"></i> Report
+            </button>`
+              : `
+            <div style="font-size:12px;color:var(--text2);padding:4px">
+              <i class="ti ti-info-circle" style="margin-right:4px"></i>
+              System message: no actions available.
+            </div>`
+          }
         </div>
       </div>`;
 
@@ -255,10 +287,24 @@ const HF_UTILS = (() => {
     return now - created < 5 * 60 * 1000;
   };
 
+  const replyToMessage = (messageId, fromId, senderName, subject, threadId) => {
+    if (!fromId || fromId === "admin" || fromId === "system") {
+      HF_UTILS.toast(
+        "You cannot reply to system messages directly. Use Contact Admin instead.",
+        "error",
+      );
+      return;
+    }
+    viewThread(threadId, fromId, subject);
+  };
+
   const launchConfetti = () => {
     const colors = ["#C49A0A", "#1a7a2e", "#ffffff", "#185FA5", "#0f0f0d"];
+    const pieces = [];
+
     for (let i = 0; i < 120; i++) {
       const piece = document.createElement("div");
+      piece.className = "confetti-piece";
       piece.style.cssText = `
       position:fixed;top:-10px;
       left:${Math.random() * 100}vw;
@@ -271,8 +317,101 @@ const HF_UTILS = (() => {
       transform:rotate(${Math.random() * 360}deg);
     `;
       document.body.appendChild(piece);
+      pieces.push(piece);
       setTimeout(() => piece.remove(), 4000);
     }
+
+    // store cleanup function globally so navTo can call it
+    window._stopConfetti = () => {
+      document.querySelectorAll(".confetti-piece").forEach((p) => p.remove());
+      window._stopConfetti = null;
+    };
+  };
+
+  const launchEmojiConfetti = (emoji) => {
+    const count = 12;
+    for (let i = 0; i < count; i++) {
+      const piece = document.createElement("div");
+      const rotation = Math.random() * 60 - 30;
+      piece.style.cssText = `
+      position: fixed;
+      font-size: ${Math.random() * 16 + 14}px;
+      left: ${Math.random() * 100}vw;
+      bottom: 80px;
+      z-index: 9999;
+      pointer-events: none;
+      transform-origin: center;
+      animation: emojiBurst ${Math.random() * 0.8 + 0.6}s ease-out forwards;
+      animation-delay: ${Math.random() * 0.3}s;
+      opacity: 1;
+    `;
+      piece.textContent = emoji;
+      document.body.appendChild(piece);
+      setTimeout(() => piece.remove(), 1500);
+    }
+  };
+
+  const miniCalendarHTML = (logs, colorFn) => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+    const monthName = today.toLocaleDateString("en-GB", {
+      month: "long",
+      year: "numeric",
+    });
+
+    // build set of dates that have logs
+    const logDates = new Set(
+      (logs || []).map(
+        (l) => l.date?.split("T")[0] || l.created_at?.split("T")[0],
+      ),
+    );
+    const todayStr = today.toISOString().split("T")[0];
+
+    const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+    let cells = "";
+
+    // empty cells for first day offset
+    for (let i = 0; i < firstDay; i++) {
+      cells += `<div></div>`;
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const hasLog = logDates.has(dateStr);
+      const isToday = dateStr === todayStr;
+      const isFuture = dateStr > todayStr;
+      const color = hasLog
+        ? colorFn
+          ? colorFn(dateStr)
+          : "var(--green)"
+        : "transparent";
+
+      cells += `
+      <div title="${dateStr}" style="
+        width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+        font-size:11px;font-weight:${isToday ? "700" : "400"};
+        color:${isFuture ? "var(--text3)" : isToday ? "#0f0f0d" : hasLog ? "#fff" : "var(--text2)"};
+        background:${isToday ? "var(--gold)" : hasLog ? color : "transparent"};
+        border:${isToday ? "none" : hasLog ? "none" : "0.5px solid transparent"};
+        opacity:${isFuture ? 0.3 : 1};
+        cursor:${hasLog ? "pointer" : "default"};
+      ">${d}</div>`;
+    }
+
+    return `
+    <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);margin-bottom:var(--sp-sm);">
+      ${monthName}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,28px);gap:2px;margin-bottom:4px;">
+      ${days.map((d) => `<div style="width:28px;text-align:center;font-size:9px;font-weight:700;color:var(--text3);font-family:var(--font-head);letter-spacing:0.06em;text-transform:uppercase;">${d}</div>`).join("")}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,28px);gap:2px;">
+      ${cells}
+    </div>`;
   };
 
   return {
@@ -294,6 +433,7 @@ const HF_UTILS = (() => {
     avatarHTML,
     barHTML,
     miniChartHTML,
+    miniCalendarHTML,
     badgeHTML,
     activityHTML,
     toast,
@@ -303,6 +443,7 @@ const HF_UTILS = (() => {
     messageListHTML,
     isNewUser,
     launchConfetti,
+    launchEmojiConfetti,
   };
 })();
 

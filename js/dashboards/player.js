@@ -17,6 +17,7 @@ const HF_PLAYER = (() => {
   } = HF_UTILS;
 
   const setMain = (html) => {
+    if (window._stopConfetti) window._stopConfetti();
     const mc = document.getElementById("main-content");
     if (mc) mc.innerHTML = html;
   };
@@ -289,6 +290,20 @@ const HF_PLAYER = (() => {
       }
     </div>
 
+    ${
+      hasStats
+        ? `
+      <div class="card">
+        <div class="card-title"><div class="card-dot"></div>Session calendar</div>
+        ${HF_UTILS.miniCalendarHTML(sessions, () => "var(--blue)")}
+        <div style="display:flex;gap:var(--sp-md);margin-top:var(--sp-md);font-size:11px;color:var(--text2);">
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--blue);"></div>Session logged</div>
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--gold);border-radius:50%;"></div>Today</div>
+        </div>
+      </div>`
+        : ""
+    }
+
     <div class="card">
       <div class="card-title"><div class="card-dot"></div>Session history</div>
       ${
@@ -301,23 +316,40 @@ const HF_PLAYER = (() => {
         </div>`
           : `
         <table class="table">
-          <thead><tr><th>Date</th><th>Type</th><th>Overall</th><th>Speed</th><th>Technical</th><th>Tactical</th><th>Physical</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Overall</th>
+              <th>Speed</th>
+              <th>Technical</th>
+              <th>Tactical</th>
+              <th>Physical</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
           <tbody>
             ${sessions
-              .map(
-                (r) => `
-              <tr>
-                <td style="color:var(--text2)">${HF_UTILS.timeAgo(r.created_at)}</td>
-                <td>${r.session_type}</td>
-                <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
-                  ${r.overall}
-                </td>
-                <td>${r.speed}</td>
-                <td>${r.technical}</td>
-                <td>${r.tactical}</td>
-                <td>${r.physical}</td>
-              </tr>`,
-              )
+              .map((r) => {
+                const isToday =
+                  r.created_at?.split("T")[0] ===
+                  _localDate();
+                return `
+                <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
+                  <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
+                    ${isToday ? "Today" : HF_UTILS.timeAgo(r.created_at)}
+                  </td>
+                  <td>${r.session_type}</td>
+                  <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
+                    ${r.overall}
+                  </td>
+                  <td>${r.speed}</td>
+                  <td>${r.technical}</td>
+                  <td>${r.tactical}</td>
+                  <td>${r.physical}</td>
+                  <td>${r.notes}</td>
+                </tr>`;
+              })
               .join("")}
           </tbody>
         </table>`
@@ -530,83 +562,211 @@ const HF_PLAYER = (() => {
 
   // ── HEALTH ─────────────────────────────────────────────────
   const health = async (s) => {
-    const healthData = (await HF_DB.getHealth(s.userId)) || {
-      checkins: {},
-      injuries: [],
-    };
-    const checkins = healthData.checkins || {};
-    const todayKey = new Date().toISOString().split("T")[0];
-    const todayCheckin = checkins[todayKey]?.values || {};
-    const hasCheckedInToday = !!checkins[todayKey];
-    const lastCheckin = Object.keys(checkins).sort().pop();
+    const { data: todayLog } = await HF_DB.getTodayHealthLog(s.userId);
+    const { data: logs } = await HF_DB.getHealthLogs(s.userId);
 
-    const sliders = [
-      ["sleep", "Sleep quality last night"],
-      ["energy", "Energy level today"],
-      ["sore", "Muscle soreness (10 = none)"],
-      ["focus", "Mental focus & mood"],
-      ["hydrate", "Hydration level"],
+    const metrics = [
+      {
+        id: "energy",
+        label: "Energy",
+        icon: "ti-bolt",
+        desc: "Physical energy level",
+      },
+      {
+        id: "mood",
+        label: "Mood",
+        icon: "ti-mood-smile",
+        desc: "Mental state",
+      },
+      { id: "sleep", label: "Sleep", icon: "ti-moon", desc: "Quality of rest" },
+      {
+        id: "soreness",
+        label: "Soreness",
+        icon: "ti-activity",
+        desc: "Muscle soreness",
+      },
+      {
+        id: "hydration",
+        label: "Hydration",
+        icon: "ti-droplet",
+        desc: "Water intake",
+      },
     ];
 
-    setMain(`
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Daily wellness check-in</div>
-        ${
-          hasCheckedInToday
-            ? `
-          <div style="padding:12px;background:rgba(26,122,46,.05);border-left:2px solid var(--green);margin-bottom:16px">
-            <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:4px">
-              <i class="ti ti-circle-check" style="margin-right:6px"></i>Checked in today
+    const today = new Date().toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    });
+
+    const loggedView = todayLog
+      ? `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-lg);">
+      <div style="font-size:13px;color:var(--text2);">
+        <i class="ti ti-circle-check" style="color:var(--green);margin-right:6px"></i>
+        Logged today
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="HF_PLAYER.showHealthSliders()">
+        <i class="ti ti-edit"></i> Update
+      </button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:var(--sp-sm);">
+      ${metrics
+        .map((m) => {
+          const val = todayLog[m.id] || 0;
+          const pct = (val / 10) * 100;
+          return `
+          <div style="padding:var(--sp-md);background:var(--bg2);border-top:2px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+              <i class="ti ${m.icon}" style="color:var(--text2)"></i>
+              <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">${m.label}</span>
             </div>
-            <div style="font-size:12px;color:var(--text2)">You have already logged your wellness for today. Come back tomorrow.</div>
-          </div>`
-            : `
-          <div style="font-size:13px;color:var(--text2);margin-bottom:14px">How are you feeling today, ${s.name.split(" ")[0]}?</div>`
-        }
-        ${sliders
-          .map(([id, label]) => {
-            const savedVal = todayCheckin[id] || 7;
-            return `
-            <div class="bar-row">
-              <div class="bar-head">
-                <span>${label}</span>
-                <span id="hv-${id}" style="color:var(--gold);font-weight:600">${savedVal}</span>
-              </div>
-              <input type="range" min="1" max="10" value="${savedVal}"
-                style="width:100%;accent-color:var(--gold);margin-top:4px;${hasCheckedInToday ? "opacity:0.4;pointer-events:none;" : ""}"
-                oninput="document.getElementById('hv-${id}').textContent=this.value">
-            </div>`;
-          })
-          .join("")}
+            <div style="font-family:var(--font-head);font-size:28px;font-weight:700;color:var(--text);line-height:1;">${val}</div>
+            <div style="height:3px;background:var(--border);margin-top:8px;">
+              <div style="height:100%;width:${pct}%;background:var(--gold);"></div>
+            </div>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px">${m.desc}</div>
+          </div>`;
+        })
+        .join("")}
+    </div>
+    ${
+      todayLog.notes
+        ? `
+      <div style="padding:10px 12px;background:var(--bg2);border-left:2px solid var(--border);font-size:13px;color:var(--text2);margin-top:var(--sp-md);">
+        <i class="ti ti-notes" style="margin-right:6px"></i>${todayLog.notes}
+      </div>`
+        : ""
+    }`
+      : "";
+
+    const sliderView = `
+    <div id="health-sliders">
+      ${metrics
+        .map(
+          (m) => `
+        <div style="margin-bottom:var(--sp-md);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <i class="ti ${m.icon}" style="color:var(--text2)"></i>
+              <span style="font-size:13px;font-weight:600;color:var(--text)">${m.label}</span>
+            </div>
+            <span id="hv-${m.id}" style="font-family:var(--font-head);font-size:14px;font-weight:700;color:var(--gold)">
+              ${todayLog?.[m.id] || 5}
+            </span>
+          </div>
+          <input type="range" min="1" max="10" value="${todayLog?.[m.id] || 5}" step="1"
+            style="width:100%;accent-color:var(--gold)"
+            oninput="document.getElementById('hv-${m.id}').textContent=this.value">
+        </div>`,
+        )
+        .join("")}
+      <div class="fg">
+        <label>Notes</label>
+        <input type="text" id="health-notes" value="${todayLog?.notes || ""}" placeholder="Any injuries, illness, or notes..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="btn btn-primary" onclick="HF_PLAYER.logHealthCheckin()">
+          <i class="ti ti-circle-check"></i> ${todayLog ? "Update check-in" : "Log check-in"}
+        </button>
         ${
-          !hasCheckedInToday
+          todayLog
             ? `
-          <button class="btn btn-outline btn-sm" style="margin-top:12px"
-            onclick="HF_PLAYER.logCheckin('${todayKey}')">
-            <i class="ti ti-circle-check"></i> Log check-in
+          <button class="btn btn-outline" onclick="HF_PLAYER.showHealthCards()">
+            Cancel
           </button>`
             : ""
         }
       </div>
+    </div>`;
+
+    setMain(`
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Daily wellness check
+        </div>
+        <span style="font-size:11px;color:var(--text3)">${today}</span>
+      </div>
+
+      <div id="health-logged-view">
+        ${todayLog ? loggedView : ""}
+      </div>
+      <div id="health-slider-view" style="${todayLog ? "display:none" : ""}">
+        ${sliderView}
+      </div>
+    </div>
+
+    ${
+      logs && logs.length > 0
+        ? `
+      <div class="card">
+        <div class="card-title"><div class="card-dot"></div>Check-in calendar</div>
+        ${HF_UTILS.miniCalendarHTML(logs, (date) => {
+          const log = logs.find((l) => l.date === date);
+          if (!log) return "var(--green)";
+          const avg = Math.round(
+            (log.energy +
+              log.mood +
+              log.sleep +
+              (10 - log.soreness) +
+              log.hydration) /
+              5,
+          );
+          return avg >= 8
+            ? "var(--green)"
+            : avg >= 6
+              ? "var(--gold)"
+              : "var(--red)";
+        })}
+        <div style="display:flex;gap:var(--sp-md);margin-top:var(--sp-md);font-size:11px;color:var(--text2);">
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--green);"></div>Ready</div>
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--gold);"></div>Monitor</div>
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--red);"></div>At risk</div>
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--blue);border-radius:50%;"></div>Today</div>
+        </div>
+      </div>
 
       <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Health status</div>
-        ${
-          !lastCheckin
-            ? `
-          <div style="text-align:center;padding:32px;color:var(--text2)">
-            <i class="ti ti-heart-rate-monitor" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No check-ins yet</div>
-            <div style="font-size:13px">Log your first wellness check-in above to see your health status.</div>
-          </div>`
-            : `
-          <div style="padding:12px;background:rgba(26,122,46,.05);border-left:2px solid var(--green);">
-            <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:4px">All clear</div>
-            <div style="font-size:12px;color:var(--text2)">No injury flags. Cleared for full training.</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:6px">Last check-in: ${lastCheckin}</div>
-          </div>`
-        }
-      </div>`);
+        <div class="card-title"><div class="card-dot"></div>Recent wellness history</div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th title="Energy"><i class="ti ti-bolt"></i></th>
+              <th title="Mood"><i class="ti ti-mood-smile"></i></th>
+              <th title="Sleep"><i class="ti ti-moon"></i></th>
+              <th title="Soreness"><i class="ti ti-activity"></i></th>
+              <th title="Hydration"><i class="ti ti-droplet"></i></th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${logs
+              .map((l) => {
+                const isToday =
+                  l.date === _localDate();
+                return `
+                <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
+                  <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
+                    ${isToday ? "Today" : new Date(l.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                  </td>
+                  <td>${l.energy || "-"}</td>
+                  <td>${l.mood || "-"}</td>
+                  <td>${l.sleep || "-"}</td>
+                  <td>${l.soreness || "-"}</td>
+                  <td>${l.hydration || "-"}</td>
+                  <td style="color:var(--text2);font-size:11px">${l.notes || "-"}</td>
+                </tr>`;
+              })
+              .join("")}
+          </tbody>
+        </table>
+      </div>`
+        : ""
+    }
+  `);
   };
 
   // ── HIGHLIGHTS ───────────────────────────────────────────────
@@ -678,7 +838,19 @@ const HF_PLAYER = (() => {
     }
 
     <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Messages</div>
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Messages
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-primary btn-sm" onclick="HF_PLAYER.composeMessage()">
+            <i class="ti ti-edit"></i> New message
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="HF_PLAYER.contactAdmin()">
+            <i class="ti ti-headset"></i> Contact admin
+          </button>
+        </div>
+      </div>
       ${
         !msgs || msgs.length === 0
           ? `
@@ -687,7 +859,7 @@ const HF_PLAYER = (() => {
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No messages yet</div>
           <div style="font-size:13px">Messages will appear here.</div>
         </div>`
-          : HF_UTILS.messageListHTML(msgs, "player")
+          : HF_UTILS.messageListHTML(enriched, "player")
       }
     </div>
 
@@ -705,19 +877,25 @@ const HF_PLAYER = (() => {
           ${enrichedArchived
             .map(
               (m) => `
-              <div class="msg-item">
-                <div class="avatar avatar-md" style="background:#0f0f0d;display:flex;align-items:center;justify-content:center;">
-                  <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
+            <div class="msg-item" id="archived-msg-${m.id}" style="cursor:pointer;" 
+              onclick="HF_PLAYER.viewThread('${m.thread_id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')">
+              <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
+                <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
+              </div>
+              <div style="flex:1;opacity:0.6">
+                <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+                  From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : "HappyFeet Admin")}
                 </div>
-                <div style="flex:1;opacity:0.6">
-                  <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
-                    From: ${m.senderName || "HappyFeet Admin"}
-                  </div>
-                  <div class="msg-name">${m.subject || "Message"}</div>
-                  <div class="msg-preview">${m.body}</div>
-                  <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
-                </div>
-              </div>`,
+                <div class="msg-name">${m.subject || "Message"}</div>
+                <div class="msg-preview">${m.body}</div>
+                <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
+              </div>
+              <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;flex-shrink:0;"
+                title="Move back to inbox"
+                onclick="event.stopPropagation();HF_PLAYER.unarchiveMessage('${m.id}')">
+                <i class="ti ti-inbox"></i>
+              </button>
+            </div>`,
             )
             .join("")}
         </div>
@@ -728,7 +906,7 @@ const HF_PLAYER = (() => {
 
   // ── FAITH ────────────────────────────────────────────────────
   const faith = async (s) => {
-    const todayKey = new Date().toISOString().split("T")[0];
+    const todayKey = _localDate();
     const storageKey = `hf_faith_checklist_${s.userId}_${todayKey}`;
     const checked = JSON.parse(localStorage.getItem(storageKey) || "[]");
 
@@ -764,10 +942,10 @@ const HF_PLAYER = (() => {
       <div class="verse-ref">${HF_SCRIPTURE.getToday().ref}</div>
     </div>
 
-    <div class="card">
-      <div class="card-title" style="justify-content:space-between;">
+    <div class="card faith-card">
+      <div class="card-title" style="justify-content:space-between;padding-top:var(--sp-md);">
         <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-          <div class="card-dot faith"></div>Daily prayers
+          Daily prayers
         </div>
         ${
           allChecked
@@ -792,7 +970,7 @@ const HF_PLAYER = (() => {
               ${isChecked ? '<i class="ti ti-check" style="font-size:12px;color:#fff;"></i>' : ""}
             </div>
             <div>
-              <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${isChecked ? "var(--green)" : "var(--faith)"};margin-bottom:4px;${isChecked ? "text-decoration:line-through;" : ""}">
+              <div style="font-family:var(--font);font-size:13px;font-weight:600;color:${isChecked ? "var(--green)" : "var(--faith)"};margin-bottom:4px;${isChecked ? "text-decoration:line-through;" : ""}">
                 ${p.title}
               </div>
               <div style="font-size:12px;color:var(--text2);font-style:italic;line-height:1.5;${isChecked ? "opacity:0.5;" : ""}">
@@ -814,8 +992,9 @@ const HF_PLAYER = (() => {
       }
     </div>
 
-    <div class="card">
-      <div class="card-title" style="border-top:2px solid var(--faith);padding-top:var(--sp-md)"><div class="card-dot faith"></div>Scripture for every moment</div>
+    <div class="card faith-card">
+      <div class="card-title" style="justify-content:space-between;padding-top:var(--sp-md);">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">Scripture for every moment</div>
       ${[
         [
           "When you doubt yourself",
@@ -823,13 +1002,13 @@ const HF_PLAYER = (() => {
         ],
         [
           "Before a big match",
-          '"Have I not commanded you? Be strong and courageous." ~ Joshua 1:9',
+          "Have I not commanded you? Be strong and courageous. ~ Joshua 1:9",
         ],
         [
           "On hard work",
-          '"Whatever you do, work at it with all your heart." ~ Colossians 3:23',
+          "Whatever you do, work at it with all your heart. ~ Colossians 3:23",
         ],
-        ["When injured", '"He gives strength to the weary." ~ Isaiah 40:29'],
+        ["When injured", "He gives strength to the weary. ~ Isaiah 40:29"],
       ]
         .map(
           ([title, verse]) => `
@@ -862,27 +1041,29 @@ const HF_PLAYER = (() => {
     training(session);
   };
 
-  const logCheckin = async (dateKey) => {
+  const logHealthCheckin = async () => {
     const session = HF_DB.getSession();
-    const healthData = (await HF_DB.getHealth(session.userId)) || {
-      checkins: {},
-      injuries: [],
+
+    const data = {
+      energy: parseInt(document.getElementById("hv-energy")?.textContent || 5),
+      mood: parseInt(document.getElementById("hv-mood")?.textContent || 5),
+      sleep: parseInt(document.getElementById("hv-sleep")?.textContent || 5),
+      soreness: parseInt(
+        document.getElementById("hv-soreness")?.textContent || 5,
+      ),
+      hydration: parseInt(
+        document.getElementById("hv-hydration")?.textContent || 5,
+      ),
+      notes: document.getElementById("health-notes")?.value.trim() || null,
     };
 
-    const sliders = ["sleep", "energy", "sore", "focus", "hydrate"];
-    const values = {};
-    sliders.forEach((id) => {
-      const el = document.getElementById(`hv-${id}`);
-      values[id] = el ? parseInt(el.textContent) : 7;
-    });
+    const result = await HF_DB.saveHealthLog(session.userId, data);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
 
-    healthData.checkins[dateKey] = {
-      values,
-      timestamp: new Date().toISOString(),
-    };
-
-    await HF_DB.saveHealth(session.userId, healthData);
-    HF_UTILS.toast("Wellness logged! Great job checking in.", "success");
+    HF_UTILS.toast("Health check-in logged!", "success");
     health(session);
   };
 
@@ -1072,6 +1253,30 @@ const HF_PLAYER = (() => {
     const unreadCount = msgs?.filter((m) => !m.read).length || 0;
     HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
 
+    // find the message and show body in a modal
+    const msg = msgs?.find((m) => m.id === messageId);
+    if (msg) {
+      const overlay = document.createElement("div");
+      overlay.id = `msg-modal-${messageId}`;
+      overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:var(--sp-xl);`;
+      overlay.innerHTML = `
+      <div style="background:var(--bg);border-top:3px solid var(--gold);padding:var(--sp-2xl);max-width:480px;width:100%;">
+        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
+          HappyFeet ${msg.from_id === "system" ? "System" : "Admin"}
+        </div>
+        <div style="font-family:var(--font-head);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
+          ${msg.subject || "Message"}
+        </div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:var(--sp-xl);">
+          ${msg.body}
+        </div>
+        <button class="btn btn-primary" onclick="document.getElementById('msg-modal-${messageId}').remove();HF_ROUTER.navTo('messages');">
+          <i class="ti ti-circle-check"></i> Got it
+        </button>
+      </div>`;
+      document.body.appendChild(overlay);
+    }
+
     messages(session);
   };
 
@@ -1085,6 +1290,12 @@ const HF_PLAYER = (() => {
 
     HF_UTILS.toast("Message archived.", "success");
     messages(session);
+  };
+
+  const unarchiveMessage = async (messageId) => {
+    await HF_DB.unarchiveMessage(messageId);
+    HF_UTILS.toast("Message unarchived.", "success");
+    messages(HF_DB.getSession());
   };
 
   const togglePrayer = (prayerId, dateKey, userId) => {
@@ -1128,16 +1339,580 @@ const HF_PLAYER = (() => {
     faith(HF_DB.getSession());
   };
 
+  const contactAdmin = () => {
+    setMain(`
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Contact admin</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:var(--sp-lg)">
+        Send a message to the HappyFeet admin team for any account or platform related issues.
+      </div>
+      <div class="fg">
+        <label class="required">Subject</label>
+        <select id="contact-subject" onchange="HF_PLAYER.toggleCustomSubject(this.value)"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+          <option value="">Select a subject</option>
+          <option>Account issue</option>
+          <option>Report a problem</option>
+          <option>Squad dispute</option>
+          <option>Appeal a ban or kick</option>
+          <option value="custom">Other (custom reason)</option>
+        </select>
+      </div>
+      <div class="fg" id="custom-subject-field" style="display:none;">
+        <label class="required">Custom subject</label>
+        <input type="text" id="contact-custom-subject" placeholder="Enter your subject..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <div class="fg">
+        <label class="required">Message</label>
+        <textarea id="contact-body" rows="4" placeholder="Describe your issue..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="HF_PLAYER.sendAdminMessage()">
+          <i class="ti ti-send"></i> Send message
+        </button>
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')">Cancel</button>
+      </div>
+    </div>`);
+  };
+
+  const toggleCustomSubject = (value) => {
+    const field = document.getElementById("custom-subject-field");
+    if (field) field.style.display = value === "custom" ? "block" : "none";
+  };
+
+  const sendAdminMessage = async () => {
+    const session = HF_DB.getSession();
+    const subjectSelect = document.getElementById("contact-subject")?.value;
+    const customSubject = document
+      .getElementById("contact-custom-subject")
+      ?.value.trim();
+    const body = document.getElementById("contact-body")?.value.trim();
+
+    const subject = subjectSelect === "custom" ? customSubject : subjectSelect;
+
+    if (!subject) {
+      HF_UTILS.toast("Please enter a subject.", "error");
+      return;
+    }
+    if (!body) {
+      HF_UTILS.toast("Please enter your message.", "error");
+      return;
+    }
+
+    const adminIds = await HF_DB.getAdminIds();
+    for (const adminId of adminIds) {
+      await HF_DB._sendMessage(
+        session.userId,
+        adminId,
+        `[Player] ${subject}`,
+        body,
+      );
+    }
+
+    HF_UTILS.toast("Message sent to admin!", "success");
+    HF_ROUTER.navTo("messages");
+  };
+
+  const composeMessage = () => {
+    const session = HF_DB.getSession();
+    setMain(`
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>New message</div>
+      <div class="fg">
+        <label class="required">To</label>
+        <div id="compose-to-container" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px;background:var(--bg2);border:0.5px solid var(--border);min-height:44px;cursor:text;" onclick="document.getElementById('compose-search').focus()">
+          <div id="compose-tags" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
+          <input type="text" id="compose-search" placeholder="Search by name or email..."
+            oninput="HF_${session.role.toUpperCase()}.searchRecipients(this.value)"
+            style="flex:1;min-width:150px;border:none;background:transparent;color:var(--text);font-size:13px;font-family:var(--font);outline:none;padding:2px 4px;">
+        </div>
+        <div id="compose-search-results" style="margin-top:2px;border:0.5px solid var(--border);background:var(--bg);display:none;"></div>
+        <input type="hidden" id="compose-to-ids">
+      </div>
+      <div class="fg">
+        <label class="required">Subject</label>
+        <input type="text" id="compose-subject" placeholder="Message subject"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <div class="fg">
+        <label class="required">Message</label>
+        <textarea id="compose-body" rows="5" placeholder="Write your message..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="HF_${session.role.toUpperCase()}.sendComposedMessage()">
+          <i class="ti ti-send"></i> Send
+        </button>
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')">Cancel</button>
+      </div>
+    </div>`);
+
+    // store selected recipients
+    window._composeRecipients = [];
+  };
+
+  const searchRecipients = async (query) => {
+    const results = document.getElementById("compose-search-results");
+    if (!results) return;
+    if (!query || query.length < 2) {
+      results.style.display = "none";
+      results.innerHTML = "";
+      return;
+    }
+
+    const session = HF_DB.getSession();
+    const { data } = await HF_DB.searchAllUsers(query, session.userId);
+    const existing = window._composeRecipients?.map((r) => r.id) || [];
+    const filtered = data?.filter((u) => !existing.includes(u.id)) || [];
+
+    if (!filtered || filtered.length === 0) {
+      results.style.display = "none";
+      return;
+    }
+
+    results.style.display = "block";
+    results.innerHTML = filtered
+      .map(
+        (u) => `
+    <div style="display:flex;align-items:center;gap:var(--sp-md);padding:10px;cursor:pointer;border-bottom:0.5px solid var(--border);"
+      onmousedown="event.preventDefault();HF_${session.role.toUpperCase()}.selectRecipient('${u.id}', '${u.name.replace(/'/g, "\\'")}', '${u.role}')">
+      <div class="avatar avatar-sm" style="background:${u.role === "player" ? "var(--green)" : u.role === "coach" ? "var(--gold)" : u.role === "admin" ? "var(--red)" : "var(--blue)"}">
+        ${HF_UTILS.initials(u.name)}
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${u.name}</div>
+        <div style="font-size:11px;color:var(--text2)">${u.role}</div>
+      </div>
+    </div>`,
+      )
+      .join("");
+  };
+
+  const selectRecipient = (userId, userName, userRole) => {
+    if (!window._composeRecipients) window._composeRecipients = [];
+
+    // don't add duplicates
+    if (window._composeRecipients.find((r) => r.id === userId)) return;
+
+    window._composeRecipients.push({
+      id: userId,
+      name: userName,
+      role: userRole,
+    });
+
+    // add tag chip
+    const tags = document.getElementById("compose-tags");
+    const tag = document.createElement("div");
+    tag.id = `tag-${userId}`;
+    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font-head);letter-spacing:0.04em;`;
+    tag.innerHTML = `
+    ${userName}
+    <span style="cursor:pointer;font-size:14px;font-weight:700;line-height:1;" 
+      onclick="HF_${HF_DB.getSession().role.toUpperCase()}.removeRecipient('${userId}')">×</span>`;
+    tags?.appendChild(tag);
+
+    const clearAll = document.getElementById("compose-clear-all");
+    if (!clearAll && window._composeRecipients.length > 1) {
+      const link = document.createElement("div");
+      link.id = "compose-clear-all";
+      link.style.cssText =
+        "font-size:11px;color:var(--text3);cursor:pointer;padding:2px 4px;text-decoration:underline;";
+      link.textContent = "Clear all";
+      link.onclick = () => {
+        window._composeRecipients = [];
+        document.getElementById("compose-tags").innerHTML = "";
+        link.remove();
+      };
+      document.getElementById("compose-to-container")?.appendChild(link);
+    }
+
+    // remove clear all if back to 0 or 1
+    if (window._composeRecipients.length <= 1) {
+      document.getElementById("compose-clear-all")?.remove();
+    }
+
+    // clear search
+    const search = document.getElementById("compose-search");
+    const results = document.getElementById("compose-search-results");
+    if (search) {
+      search.value = "";
+      search.focus();
+    }
+    if (results) {
+      results.style.display = "none";
+      results.innerHTML = "";
+    }
+  };
+
+  const removeRecipient = (userId) => {
+    window._composeRecipients =
+      window._composeRecipients?.filter((r) => r.id !== userId) || [];
+    document.getElementById(`tag-${userId}`)?.remove();
+    if (window._composeRecipients.length <= 1) {
+      document.getElementById("compose-clear-all")?.remove();
+    }
+  };
+
+  const sendComposedMessage = async () => {
+    const session = HF_DB.getSession();
+    const recipients = window._composeRecipients || [];
+    const subject = document.getElementById("compose-subject")?.value.trim();
+    const body = document.getElementById("compose-body")?.value.trim();
+
+    if (recipients.length === 0) {
+      HF_UTILS.toast("Please select at least one recipient.", "error");
+      return;
+    }
+    if (!subject) {
+      HF_UTILS.toast("Please enter a subject.", "error");
+      return;
+    }
+    if (!body) {
+      HF_UTILS.toast("Please enter a message.", "error");
+      return;
+    }
+
+    for (const recipient of recipients) {
+      await HF_DB._sendMessage(session.userId, recipient.id, subject, body);
+    }
+
+    window._composeRecipients = [];
+    HF_UTILS.toast(
+      `Message sent to ${recipients.length} recipient${recipients.length > 1 ? "s" : ""}!`,
+      "success",
+    );
+    HF_ROUTER.navTo("messages");
+  };
+
+  const toggleMsgActions = (messageId, fromId, senderName) => {
+    const actions = document.getElementById(`msg-actions-${messageId}`);
+    if (actions)
+      actions.style.display =
+        actions.style.display === "none" ? "block" : "none";
+  };
+
+  const replyToMessage = (messageId, fromId, senderName, subject) => {
+    if (!fromId || fromId === "admin" || fromId === "system") {
+      HF_UTILS.toast("You cannot reply to system messages.", "error");
+      return;
+    }
+    const session = HF_DB.getSession();
+    setMain(`
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Reply to ${senderName}</div>
+      <div style="padding:10px 12px;background:var(--bg2);border-left:2px solid var(--border);font-size:12px;color:var(--text2);margin-bottom:var(--sp-md);">
+        <i class="ti ti-arrow-back-up" style="margin-right:6px"></i>
+        Replying to: <strong style="color:var(--text)">${subject || "Message"}</strong>
+      </div>
+      <div class="fg">
+        <label class="required">Message</label>
+        <textarea id="reply-body" rows="4" placeholder="Write your reply..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="HF_${session.role.toUpperCase()}.sendReply('${fromId}', 'Re: ${(subject || "Message").replace(/'/g, "\\'")}')">
+          <i class="ti ti-send"></i> Send reply
+        </button>
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')">Cancel</button>
+      </div>
+    </div>`);
+  };
+
+  const sendReply = async (toId, subject, threadId) => {
+    const session = HF_DB.getSession();
+    const body = document.getElementById("reply-body")?.value.trim();
+    if (!body) {
+      HF_UTILS.toast("Please enter a reply.", "error");
+      return;
+    }
+
+    // detect emoji-only and launch confetti
+    const emojiOnly =
+      body
+        .replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, "")
+        .trim().length === 0;
+    if (emojiOnly) {
+      const firstEmoji = body.match(
+        /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu,
+      )?.[0];
+      if (firstEmoji) HF_UTILS.launchEmojiConfetti(firstEmoji);
+    }
+
+    const result = await HF_DB._sendMessage(
+      session.userId,
+      toId,
+      subject,
+      body,
+      threadId,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    document.getElementById("reply-body").value = "";
+    viewThread(threadId, toId, subject);
+  };
+
+  const viewThread = async (threadId, otherUserId, subject) => {
+    const session = HF_DB.getSession();
+    const { data: msgs } = await HF_DB.getThread(threadId, session.userId);
+
+    const isEmojiOnly = (text) => {
+      const stripped = text
+        .replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, "")
+        .trim();
+      return stripped.length === 0;
+    };
+
+    const renderMessageBody = (body) => {
+      return body.replace(
+        /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu,
+        `<span class="emoji-animate" style="font-size:1.3em;cursor:pointer;display:inline-block;"
+      onclick="HF_UTILS.launchEmojiConfetti('$1');this.style.transform='scale(1.8)';setTimeout(()=>this.style.transform='scale(1)',200)">$1</span>`,
+      );
+    };
+
+    // mark all unread messages in thread as read
+    const unread =
+      msgs?.filter((m) => !m.read && m.to_id === session.userId) || [];
+    for (const m of unread) await HF_DB.markMessageRead(m.id);
+
+    // enrich with sender names
+    const enriched = await Promise.all(
+      (msgs || []).map(async (m) => ({
+        ...m,
+        senderName: await HF_DB.getUserNameById(m.from_id),
+      })),
+    );
+
+    setMain(`
+    <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);">
+      <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('messages')">
+        <i class="ti ti-arrow-left"></i> Back
+      </button>
+      <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+        ${subject || "Conversation"}
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:var(--sp-lg);display:flex;flex-direction:column;gap:var(--sp-md);min-height:300px;max-height:60vh;overflow-y:auto;" id="thread-messages">
+        ${enriched
+          .map((m) => {
+            const isMine = m.from_id === session.userId;
+            const emojiOnly = isEmojiOnly(m.body);
+            return `
+            <div style="display:flex;flex-direction:column;align-items:${isMine ? "flex-end" : "flex-start"};">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font-head);letter-spacing:0.04em;">
+                ${isMine ? "You" : m.senderName} · ${HF_UTILS.timeAgo(m.created_at)}
+              </div>
+              <div style="
+                max-width:75%;
+                padding:${emojiOnly ? "4px" : "10px 14px"};
+                background:${emojiOnly ? "transparent" : isMine ? "var(--gold)" : "var(--bg2)"};
+                color:${isMine && !emojiOnly ? "#0f0f0d" : "var(--text)"};
+                font-size:${emojiOnly ? "32px" : "13px"};
+                line-height:1.5;">
+                ${renderMessageBody(m.body)}
+              </div>
+            </div>`;
+          })
+          .join("")}
+      </div>
+
+      <div style="padding:var(--sp-md);border-top:0.5px solid var(--border);background:var(--bg);">
+        <div id="emoji-picker" style="display:none;padding:var(--sp-sm);background:var(--bg2);border:0.5px solid var(--border);margin-bottom:8px;flex-wrap:wrap;gap:4px;">
+          ${[
+            "😀",
+            "😂",
+            "😍",
+            "🔥",
+            "👏",
+            "💪",
+            "⚽",
+            "🏆",
+            "🎯",
+            "👊",
+            "🙏",
+            "❤️",
+            "😤",
+            "😭",
+            "🤝",
+            "✅",
+            "💯",
+            "🚀",
+            "👋",
+            "😎",
+            "🤔",
+            "😅",
+            "🥅",
+            "🎉",
+            "👍",
+            "👎",
+            "❌",
+            "⚡",
+            "🌟",
+            "😴",
+          ]
+            .map(
+              (e) => `
+            <span style="font-size:24px;cursor:pointer;width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;transition:transform 0.15s ease;"
+              onmouseover="this.style.transform='scale(1.3)'"
+              onmouseout="this.style.transform='scale(1)'"
+              onclick="document.getElementById('reply-body').value += '${e}';this.style.transform='scale(1.5)';setTimeout(()=>this.style.transform='scale(1)',150)">
+              ${e}
+            </span>`,
+            )
+            .join("")}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="reply-body" placeholder="Write a reply..."
+            style="flex:1;padding:0 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;font-family:var(--font);outline:none;height:42px;box-sizing:border-box;">
+          <button class="btn btn-outline" style="height:42px;width:42px;min-height:42px;padding:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex-shrink:0;"
+            title="Emoji"
+            onclick="const p=document.getElementById('emoji-picker');p.style.display=p.style.display==='none'?'flex':'none'">
+            <i class="ti ti-mood-smile"></i>
+          </button>
+          <button class="btn btn-primary" style="height:42px;width:42px;min-height:42px;padding:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex-shrink:0;"
+            onclick="HF_${session.role.toUpperCase()}.sendReply('${otherUserId}', '${(subject || "").replace(/'/g, "\\'")}', '${threadId}')">
+            <i class="ti ti-send"></i>
+          </button>
+        </div>
+      </div>
+    </div>`);
+
+    setTimeout(() => {
+      const threadEl = document.getElementById("thread-messages");
+      if (threadEl) threadEl.scrollTop = threadEl.scrollHeight;
+
+      // enter key sends message
+      const replyInput = document.getElementById("reply-body");
+      if (replyInput) {
+        replyInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            HF_DB.getSession() &&
+              window[
+                `HF_${HF_DB.getSession().role.toUpperCase()}`
+              ]?.sendReply?.(otherUserId, subject, threadId);
+          }
+        });
+      }
+    }, 100);
+  };
+
+  const viewSenderProfile = async (userId) => {
+    const { data: user } = await HF_DB.getUserById(userId);
+    if (!user) {
+      HF_UTILS.toast("User not found.", "error");
+      return;
+    }
+    const p = user.profile || {};
+    const overall = p.ratings
+      ? Math.round(
+          (p.ratings.speed + p.ratings.tech + p.ratings.tact + p.ratings.phys) /
+            4,
+        )
+      : null;
+
+    setMain(`
+    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
+        <div style="width:72px;height:72px;background:var(--green);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
+          ${HF_UTILS.initials(user.name)}
+        </div>
+        <div>
+          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;color:#fff;">${user.name}</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.55)">${p.pos || p.org || "-"} · ${p.tier || p.exp + " yrs exp" || "-"}</div>
+          <div style="margin-top:8px">${HF_UTILS.badgeHTML(user.role, user.role === "player" ? "green" : user.role === "coach" ? "gold" : "blue")}</div>
+        </div>
+      </div>
+      ${
+        overall !== null
+          ? `
+        <div style="text-align:right">
+          <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold)">${overall}%</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.1em">Overall</div>
+        </div>`
+          : ""
+      }
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Details</div>
+      <div class="info-grid">
+        ${p.pos ? `<div class="info-cell"><div class="info-label">Position</div><div class="info-val">${p.pos}</div></div>` : ""}
+        ${p.tier ? `<div class="info-cell"><div class="info-label">Tier</div><div class="info-val">${p.tier}</div></div>` : ""}
+        ${p.hometown ? `<div class="info-cell"><div class="info-label">Hometown</div><div class="info-val">${p.hometown}</div></div>` : ""}
+        ${p.org ? `<div class="info-cell"><div class="info-label">Organisation</div><div class="info-val">${p.org}</div></div>` : ""}
+        ${p.exp ? `<div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp} years</div></div>` : ""}
+        ${p.club ? `<div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club}</div></div>` : ""}
+      </div>
+    </div>
+    <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')" style="margin-top:8px">
+      <i class="ti ti-arrow-left"></i> Back to messages
+    </button>`);
+  };
+
+  const reportToAdmin = async (fromId, senderName) => {
+    const session = HF_DB.getSession();
+    const reason = prompt(
+      `Report ${senderName} to admin?\n\nPlease describe the issue:`,
+    );
+    if (!reason) return;
+
+    const adminIds = await HF_DB.getAdminIds();
+    for (const adminId of adminIds) {
+      await HF_DB._sendMessage(
+        session.userId,
+        adminId,
+        `[Report] User: ${senderName}`,
+        `${session.name} has reported ${senderName}.\n\nReason: ${reason}`,
+      );
+    }
+
+    HF_UTILS.toast(`${senderName} has been reported to admin.`, "success");
+  };
+
+  const showHealthSliders = () => {
+    document.getElementById("health-logged-view").style.display = "none";
+    document.getElementById("health-slider-view").style.display = "block";
+  };
+
+  const showHealthCards = () => {
+    document.getElementById("health-logged-view").style.display = "block";
+    document.getElementById("health-slider-view").style.display = "none";
+  };
+
   return {
     render,
     updateTrainingDay,
-    logCheckin,
+    logHealthCheckin,
     editProfile,
     saveProfile,
     respondInvite,
     readMessage,
     archiveMessage,
+    unarchiveMessage,
     togglePrayer,
+    contactAdmin,
+    toggleCustomSubject,
+    sendAdminMessage,
+    composeMessage,
+    sendComposedMessage,
+    searchRecipients,
+    selectRecipient,
+    removeRecipient,
+    toggleMsgActions,
+    replyToMessage,
+    sendReply,
+    viewSenderProfile,
+    reportToAdmin,
+    viewThread,
+    showHealthCards,
+    showHealthSliders,
   };
 })();
 
