@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Oswald:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="css/base.css" />
@@ -26,6 +26,7 @@
       href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"
     />
     <script src="js/theme.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   </head>
   <body>
     <div
@@ -130,7 +131,7 @@
               onclick="HF_AUTH.showScreen('screen-admin-login')"
               style="
                 font-size: 10px;
-                font-family: var(--font-head);
+                font-family: var(--font);
                 letter-spacing: 0.1em;
                 text-transform: uppercase;
                 color: var(--text3);
@@ -303,7 +304,7 @@
               id="password-strength-label"
               style="
                 font-size: 10px;
-                font-family: var(--font-head);
+                font-family: var(--font);
                 letter-spacing: 0.08em;
                 text-transform: uppercase;
                 margin-top: 4px;
@@ -556,7 +557,7 @@
                 data-value="Ghana"
                 onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -576,7 +577,7 @@
                 data-value="Nigeria"
                 onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -596,7 +597,7 @@
                 data-value="Senegal"
                 onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -616,7 +617,7 @@
                 data-value="Ivory Coast"
                 onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -636,7 +637,7 @@
                 data-value="Cameroon"
                 onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -656,7 +657,7 @@
                 data-value="Kenya"
                 onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -676,7 +677,7 @@
                 data-value="South Africa"
                 onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -696,7 +697,7 @@
                 data-value="Egypt"
                 onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -716,7 +717,7 @@
                 data-value="Morocco"
                 onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -736,7 +737,7 @@
                 data-value="West Africa"
                 onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -756,7 +757,7 @@
                 data-value="East Africa"
                 onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -776,7 +777,7 @@
                 data-value="North Africa"
                 onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -796,7 +797,7 @@
                 data-value="All Africa"
                 onclick="HF_AUTH.toggleTag(this, 'ag-regions-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -837,7 +838,7 @@
                 data-value="Ghana Premier League"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -857,7 +858,7 @@
                 data-value="Nigeria Premier League"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -877,7 +878,7 @@
                 data-value="CAF Champions League"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -897,7 +898,7 @@
                 data-value="MLS"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -917,7 +918,7 @@
                 data-value="USL"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -937,7 +938,7 @@
                 data-value="Bundesliga"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -957,7 +958,7 @@
                 data-value="Premier League"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -977,7 +978,7 @@
                 data-value="La Liga"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -997,7 +998,7 @@
                 data-value="Serie A"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -1017,7 +1018,7 @@
                 data-value="Ligue 1"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -1037,7 +1038,7 @@
                 data-value="Eredivisie"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -1057,7 +1058,7 @@
                 data-value="Saudi Pro League"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -1077,7 +1078,7 @@
                 data-value="UAE League"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -1097,7 +1098,7 @@
                 data-value="Qatar Stars League"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -1117,7 +1118,7 @@
                 data-value="Europe"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -1137,7 +1138,7 @@
                 data-value="USA"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -1157,7 +1158,7 @@
                 data-value="Gulf"
                 onclick="HF_AUTH.toggleTag(this, 'ag-leagues-container')"
                 style="
-                  font-family: var(--font-head);
+                  font-family: var(--font);
                   font-size: 10px;
                   font-weight: 700;
                   letter-spacing: 0.06em;
@@ -1308,7 +1309,7 @@
           <div
             class="topbar-hex"
             style="
-              font-family: var(--font-head);
+              font-family: var(--font);
               font-size: 13px;
               letter-spacing: 0.05em;
             "
@@ -1328,7 +1329,7 @@
             <div
               style="
                 font-size: 10px;
-                font-family: var(--font-head);
+                font-family: var(--font);
                 letter-spacing: 0.1em;
                 text-transform: uppercase;
                 color: rgba(255, 255, 255, 0.45);
@@ -1413,7 +1414,7 @@
           <div>
             <div
               style="
-                font-family: var(--font-head);
+                font-family: var(--font);
                 font-size: 12px;
                 font-weight: 700;
                 letter-spacing: 0.06em;

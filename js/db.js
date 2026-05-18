@@ -30,6 +30,8 @@ const HF_DB = (() => {
 
   const clearSession = () => sessionStorage.removeItem("hf_session");
 
+  const _nameCache = {};
+
   // ─── Users ─────────────────────────────────────────────────
   const createUser = async (data) => {
     const normalised = data.contact.toLowerCase().replace(/\s/g, "");
@@ -241,7 +243,12 @@ const HF_DB = (() => {
 
   // ─── Training ──────────────────────────────────────────────
   const getTraining = async (userId) =>
-    (await _getData("training", userId)) || { sessions: [], schedule: {} };
+    (await _getData("training", userId)) || {
+      sessions: [],
+      schedule: {},
+      currentPlan: null,
+    };
+
   const saveTraining = async (userId, data) =>
     await _saveData("training", userId, data);
 
@@ -561,7 +568,7 @@ const HF_DB = (() => {
     const coachName = coach?.name || "A coach";
 
     await _client.from("messages").insert({
-      from_id: coachId,
+      from_id: "system",
       to_id: playerId,
       subject: "Squad invite",
       body: `${coachName} has invited you to join ${squadName}. Go to your messages to accept or decline.`,
@@ -627,7 +634,7 @@ const HF_DB = (() => {
 
       // notify coach
       await _client.from("messages").insert({
-        from_id: playerId,
+        from_id: "system",
         to_id: coachId,
         subject: "Invite accepted",
         body: `${playerName} has accepted your invite to join ${squadName}.`,
@@ -895,48 +902,22 @@ const HF_DB = (() => {
   };
 
   const getMessages = async (userId) => {
-    // get all messages where user is recipient
-    const { data: received, error: recvError } = await _client
+    const { data, error } = await _client
       .from("messages")
       .select("*")
-      .eq("to_id", userId)
+      .or(`to_id.eq.${userId},from_id.eq.${userId}`)
       .eq("archived", false)
       .order("created_at", { ascending: false });
-    if (recvError) return { data: [] };
 
-    // get thread IDs the user has participated in
-    const threadIds = [
-      ...new Set(received.map((m) => m.thread_id).filter(Boolean)),
-    ];
+    if (error) return { data: [] };
 
-    // get latest message per thread across all participants
-    let allThreadMessages = [];
-    if (threadIds.length > 0) {
-      const { data: threadMsgs } = await _client
-        .from("messages")
-        .select("*")
-        .in("thread_id", threadIds)
-        .order("created_at", { ascending: false });
-      allThreadMessages = threadMsgs || [];
-    }
-
-    // deduplicate by thread_id: keep only the latest per thread
+    // deduplicate by thread_id: keep latest per thread in JS
     const seen = new Set();
     const deduped = [];
-
-    // combine and sort by created_at descending
-    const combined = [...received];
-    for (const tm of allThreadMessages) {
-      if (!combined.find((m) => m.id === tm.id)) combined.push(tm);
-    }
-    combined.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-    for (const m of combined) {
+    for (const m of data) {
       const key = m.thread_id || m.id;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      // only include if user is a participant
-      if (m.to_id === userId || m.from_id === userId) {
+      if (!seen.has(key)) {
+        seen.add(key);
         deduped.push(m);
       }
     }
@@ -1312,7 +1293,7 @@ const HF_DB = (() => {
   const getUserById = async (userId) => {
     const { data, error } = await _client
       .from("users")
-      .select("id, name, profile")
+      .select("id, name, role, profile, squad_status, agency_status")
       .eq("id", userId)
       .single();
     if (error) return { data: null };
@@ -1350,7 +1331,6 @@ const HF_DB = (() => {
       .from("messages")
       .select("*")
       .eq("thread_id", threadId)
-      .or(`to_id.eq.${userId},from_id.eq.${userId}`)
       .order("created_at", { ascending: true });
     if (error) return { data: [] };
     return { data };
@@ -1361,13 +1341,19 @@ const HF_DB = (() => {
     if (userId === "system") return "HappyFeet System";
     if (userId === "admin") return "HappyFeet Admin";
 
+    // return cached result if available
+    if (_nameCache[userId]) return _nameCache[userId];
+
     const { data, error } = await _client
       .from("users")
-      .select("name, role")
+      .select("name")
       .eq("id", userId)
       .maybeSingle();
 
     if (error || !data) return "HappyFeet";
+
+    // cache the result
+    _nameCache[userId] = data.name;
     return data.name;
   };
 
@@ -1518,6 +1504,116 @@ const HF_DB = (() => {
     return 0;
   };
 
+  const checkAndUnlockAchievements = async (userId) => {
+    const [
+      { data: unlockedRaw },
+      { data: sessions },
+      { data: healthLogs },
+      { data: trainingLogs },
+      { data: user },
+      { data: prospects },
+    ] = await Promise.all([
+      _client
+        .from("users")
+        .select("achievements, profile, login_streak")
+        .eq("id", userId)
+        .single()
+        .then((r) => ({ data: r.data })),
+      _client
+        .from("session_ratings")
+        .select("overall")
+        .eq("player_id", userId)
+        .then((r) => ({ data: r.data || [] })),
+      _client
+        .from("health_logs")
+        .select("id, energy, mood, sleep, soreness, hydration")
+        .eq("player_id", userId)
+        .then((r) => ({ data: r.data || [] })),
+      _client
+        .from("training_logs")
+        .select("id")
+        .eq("player_id", userId)
+        .eq("completed", true)
+        .then((r) => ({ data: r.data || [] })),
+      _client
+        .from("squad_invites")
+        .select("status")
+        .eq("player_id", userId)
+        .eq("status", "accepted")
+        .then((r) => ({ data: r.data || [] })),
+      _client
+        .from("scout_prospects")
+        .select("flagged, placed, report_shared")
+        .eq("player_id", userId)
+        .then((r) => ({ data: r.data || [] })),
+    ]);
+
+    const unlocked = unlockedRaw?.achievements || [];
+    const profile = unlockedRaw?.profile || {};
+    const streak = unlockedRaw?.login_streak || 0;
+    const unlockedIds = new Set(unlocked.map((a) => a.id));
+    const newlyUnlocked = [];
+
+    const check = async (id, condition) => {
+      if (condition && !unlockedIds.has(id)) {
+        await unlockAchievement(userId, id);
+        newlyUnlocked.push(id);
+      }
+    };
+
+    const avgOverall = sessions.length
+      ? Math.round(
+          sessions.reduce((sum, s) => sum + s.overall, 0) / sessions.length,
+        )
+      : 0;
+    const maxWellness = healthLogs.some(
+      (l) =>
+        l.energy >= 8 &&
+        l.mood >= 8 &&
+        l.sleep >= 8 &&
+        l.soreness <= 3 &&
+        l.hydration >= 8,
+    );
+    const inSquad = (user?.length || 0) > 0;
+    const flagged = prospects?.some((p) => p.flagged);
+    const placed = prospects?.some((p) => p.placed);
+    const reportShared = prospects?.some((p) => p.report_shared);
+
+    // Performance
+    await check("first_session", sessions.length >= 1);
+    await check("sessions_5", sessions.length >= 5);
+    await check("sessions_25", sessions.length >= 25);
+    await check("rating_60", avgOverall >= 60);
+    await check("rating_75", avgOverall >= 75);
+    await check("rating_90", avgOverall >= 90);
+
+    // Consistency
+    await check("streak_3", streak >= 3);
+    await check("streak_7", streak >= 7);
+    await check("streak_30", streak >= 30);
+    await check("training_5", trainingLogs.length >= 5);
+    await check("training_20", trainingLogs.length >= 20);
+
+    // Wellness
+    await check("first_checkin", healthLogs.length >= 1);
+    await check("checkins_7", healthLogs.length >= 7);
+    await check("checkins_30", healthLogs.length >= 30);
+    await check("wellness_perfect", maxWellness);
+
+    // Faith
+    await check("first_prayer", (profile.faithStreak || 0) >= 1);
+    await check("faith_7", (profile.faithStreak || 0) >= 7);
+    await check("faith_30", (profile.faithStreak || 0) >= 30);
+
+    // Community
+    await check("join_squad", inSquad);
+    await check("scout_flagged", flagged);
+    await check("scout_placed", placed);
+    await check("report_shared", reportShared);
+
+    return { newlyUnlocked };
+  };
+
   const saveSessionRating = async (
     coachId,
     playerId,
@@ -1574,6 +1670,7 @@ const HF_DB = (() => {
         .eq("id", playerId);
     }
 
+    await checkAndUnlockAchievements(playerId);
     return { success: true, overall };
   };
 
@@ -1713,11 +1810,528 @@ const HF_DB = (() => {
   };
 
   const removeAllChannels = () => {
-    _client.removeAllChannels();
+    try {
+      _client.removeAllChannels();
+    } catch (e) {
+      console.log("channel cleanup:", e.message);
+    }
+  };
+
+  const saveProspectReport = async (scoutId, playerId, report) => {
+    const { error } = await _client
+      .from("scout_prospects")
+      .update({
+        report,
+        report_generated_at: new Date().toISOString(),
+      })
+      .eq("scout_id", scoutId)
+      .eq("player_id", playerId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const getProspectReport = async (scoutId, playerId) => {
+    const { data, error } = await _client
+      .from("scout_prospects")
+      .select("report, report_generated_at")
+      .eq("scout_id", scoutId)
+      .eq("player_id", playerId)
+      .single();
+    if (error) return { data: null };
+    return { data };
+  };
+
+  const getVerifiedCoaches = async () => {
+    const { data, error } = await _client
+      .from("users")
+      .select("id, name, profile, squad_status")
+      .eq("role", "coach")
+      .eq("squad_status", "verified")
+      .order("name", { ascending: true });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getUnattachedPlayers = async (filters = {}) => {
+    let query = _client
+      .from("users")
+      .select("id, name, profile")
+      .eq("role", "player");
+
+    if (filters.pos) query = query.eq("profile->>pos", filters.pos);
+    if (filters.tier) query = query.eq("profile->>tier", filters.tier);
+    if (filters.search) query = query.ilike("name", `%${filters.search}%`);
+
+    const { data, error } = await query.order("name", { ascending: true });
+    if (error) return { data: [] };
+
+    // filter unattached in JS since profile is JSON
+    const unattached =
+      data?.filter(
+        (u) => !u.profile?.club || u.profile?.status === "unattached",
+      ) || [];
+    return { data: unattached };
+  };
+
+  const toggleRecruitment = async (userId, value) => {
+    const { error } = await _client
+      .from("users")
+      .update({ open_for_recruitment: value })
+      .eq("id", userId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const getOpenCoaches = async () => {
+    const { data, error } = await _client
+      .from("users")
+      .select("id, name, profile, squad_status")
+      .eq("role", "coach")
+      .eq("squad_status", "verified")
+      .eq("open_for_recruitment", true)
+      .order("name", { ascending: true });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const logTrainingSession = async (
+    playerId,
+    sessionType,
+    notes = null,
+    date = null,
+    completed = true,
+  ) => {
+    const targetDate = date || _localDate();
+    const { data: existing } = await _client
+      .from("training_logs")
+      .select("id, completed")
+      .eq("player_id", playerId)
+      .eq("date", targetDate)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await _client
+        .from("training_logs")
+        .update({ session_type: sessionType, completed, notes })
+        .eq("id", existing.id);
+      if (error) return { error: error.message };
+    } else {
+      const { error } = await _client.from("training_logs").insert({
+        player_id: playerId,
+        date: targetDate,
+        session_type: sessionType,
+        completed,
+        notes,
+      });
+      if (error) return { error: error.message };
+    }
+    return { success: true };
+  };
+
+  const getTrainingLogs = async (playerId, limit = 30) => {
+    const { data, error } = await _client
+      .from("training_logs")
+      .select("*")
+      .eq("player_id", playerId)
+      .eq("completed", true)
+      .order("date", { ascending: false })
+      .limit(limit);
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getTodayTrainingLog = async (playerId) => {
+    const today = _localDate();
+    const { data, error } = await _client
+      .from("training_logs")
+      .select("*")
+      .eq("player_id", playerId)
+      .eq("date", today)
+      .maybeSingle();
+    if (error) return { data: null };
+    return { data };
+  };
+
+  const getAchievements = async (userId) => {
+    const { data, error } = await _client
+      .from("users")
+      .select("achievements")
+      .eq("id", userId)
+      .single();
+    if (error) return { data: [] };
+    return { data: data.achievements || [] };
+  };
+
+  const unlockAchievement = async (userId, achievementId) => {
+    const { data: user } = await _client
+      .from("users")
+      .select("achievements")
+      .eq("id", userId)
+      .single();
+
+    const current = user?.achievements || [];
+    if (current.find((a) => a.id === achievementId))
+      return { alreadyUnlocked: true };
+
+    const updated = [
+      ...current,
+      { id: achievementId, unlockedAt: new Date().toISOString() },
+    ];
+    const { error } = await _client
+      .from("users")
+      .update({ achievements: updated })
+      .eq("id", userId);
+
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const getFlaggedProspects = async () => {
+    const { data, error } = await _client
+      .from("scout_prospects")
+      .select(
+        `
+      *,
+      player:users!scout_prospects_player_id_fkey(id, name, profile),
+      scout:users!scout_prospects_scout_id_fkey(id, name, profile)
+    `,
+      )
+      .eq("flagged", true)
+      .order("created_at", { ascending: false });
+    if (error) return { data: [] };
+
+    // add scout agency from profile
+    const enriched =
+      data?.map((sp) => ({
+        ...sp,
+        scout_agency: sp.scout?.profile?.org || "",
+        scout_id: sp.scout_id,
+      })) || [];
+
+    return { data: enriched };
+  };
+
+  const saveAgentConversation = async (userId, message, response) => {
+    const { error } = await _client
+      .from("agent_conversations")
+      .insert({ user_id: userId, message, response });
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const getAgentConversations = async (userId, limit = 5) => {
+    const { data, error } = await _client
+      .from("agent_conversations")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const requestTrial = async (playerId, coachId) => {
+    // check for existing request within 24 hours
+    const yesterday = new Date();
+    yesterday.setHours(yesterday.getHours() - 24);
+
+    const { data: existing } = await _client
+      .from("trial_requests")
+      .select("*")
+      .eq("player_id", playerId)
+      .eq("coach_id", coachId)
+      .maybeSingle();
+
+    if (existing) {
+      if (existing.status === "pending")
+        return { error: "Trial request already pending." };
+      if (existing.status === "declined") {
+        const declinedAt = new Date(existing.responded_at);
+        if (declinedAt > yesterday) {
+          const hoursLeft = Math.ceil(
+            (declinedAt - yesterday) / (1000 * 60 * 60),
+          );
+          return {
+            error: `You can resend this request in ${hoursLeft} hour${hoursLeft !== 1 ? "s" : ""}.`,
+          };
+        }
+        // 24 hours passed: update to pending again
+        const { error } = await _client
+          .from("trial_requests")
+          .update({
+            status: "pending",
+            responded_at: null,
+            created_at: new Date().toISOString(),
+          })
+          .eq("id", existing.id);
+        if (error) return { error: error.message };
+        return { success: true, requestId: existing.id };
+      }
+    }
+
+    const { data, error } = await _client
+      .from("trial_requests")
+      .insert({ player_id: playerId, coach_id: coachId, status: "pending" })
+      .select()
+      .single();
+    if (error) return { error: error.message };
+    return { success: true, requestId: data.id };
+  };
+
+  const respondToTrialRequest = async (requestId, status) => {
+    const { error } = await _client
+      .from("trial_requests")
+      .update({ status, responded_at: new Date().toISOString() })
+      .eq("id", requestId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const getTrialRequestStatus = async (playerId, coachId) => {
+    const { data, error } = await _client
+      .from("trial_requests")
+      .select("*")
+      .eq("player_id", playerId)
+      .eq("coach_id", coachId)
+      .maybeSingle();
+    if (error) return { data: null };
+    return { data };
+  };
+
+  const getPendingTrialRequests = async (coachId) => {
+    const { data, error } = await _client
+      .from("trial_requests")
+      .select(
+        "*, player:users!trial_requests_player_id_fkey(id, name, profile)",
+      )
+      .eq("coach_id", coachId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getTrialPlayers = async (coachId) => {
+    const { data, error } = await _client
+      .from("trial_requests")
+      .select(
+        "*, player:users!trial_requests_player_id_fkey(id, name, profile)",
+      )
+      .eq("coach_id", coachId)
+      .eq("status", "trial")
+      .order("responded_at", { ascending: false });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getSquadReadiness = async (coachId) => {
+    const { data: squadPlayers } = await _client
+      .from("squad_invites")
+      .select(
+        "player_id, player:users!squad_invites_player_id_fkey(id, name, profile)",
+      )
+      .eq("coach_id", coachId)
+      .eq("status", "accepted");
+
+    if (!squadPlayers || squadPlayers.length === 0)
+      return { data: { score: 0, breakdown: {} } };
+
+    const today = _localDate();
+    let totalRating = 0,
+      ratedCount = 0;
+    let checkedInCount = 0,
+      readyCount = 0;
+
+    for (const sp of squadPlayers) {
+      // get latest session rating
+      const { data: rating } = await _client
+        .from("session_ratings")
+        .select("overall")
+        .eq("player_id", sp.player_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (rating) {
+        totalRating += rating.overall;
+        ratedCount++;
+      }
+
+      // get today's health log
+      const { data: health } = await _client
+        .from("health_logs")
+        .select("energy, mood, sleep, soreness, hydration")
+        .eq("player_id", sp.player_id)
+        .eq("date", today)
+        .maybeSingle();
+
+      if (health) {
+        checkedInCount++;
+        const avg = Math.round(
+          (health.energy +
+            health.mood +
+            health.sleep +
+            (10 - health.soreness) +
+            health.hydration) /
+            5,
+        );
+        if (avg >= 8) readyCount++;
+      }
+    }
+
+    const total = squadPlayers.length;
+    const avgRating = ratedCount ? Math.round(totalRating / ratedCount) : 0;
+    const wellnessRate = total ? Math.round((checkedInCount / total) * 100) : 0;
+    const readyRate = checkedInCount
+      ? Math.round((readyCount / checkedInCount) * 100)
+      : 0;
+
+    // weighted score: 40% performance, 30% wellness participation, 30% readiness
+    const score = Math.round(
+      avgRating * 0.4 + wellnessRate * 0.3 + readyRate * 0.3,
+    );
+
+    return {
+      data: {
+        score,
+        total,
+        avgRating,
+        wellnessRate,
+        readyRate,
+        checkedInCount,
+        readyCount,
+        ratedCount,
+      },
+    };
+  };
+
+  const getCoachSquadDetails = async (coachId) => {
+    const { data: squadPlayers, error } = await _client
+      .from("squad_invites")
+      .select(
+        "player_id, player:users!squad_invites_player_id_fkey(id, name, profile)",
+      )
+      .eq("coach_id", coachId)
+      .eq("status", "accepted");
+    if (error) return { data: [] };
+    return { data: squadPlayers || [] };
+  };
+
+  const requestClubNetwork = async (scoutId, coachId) => {
+    const { data: existing } = await _client
+      .from("scout_club_requests")
+      .select("*")
+      .eq("scout_id", scoutId)
+      .eq("coach_id", coachId)
+      .maybeSingle();
+
+    if (existing) {
+      if (existing.status === "pending")
+        return { error: "Request already pending." };
+      if (existing.status === "approved")
+        return { error: "Already in your network." };
+    }
+
+    const { error } = await _client.from("scout_club_requests").upsert(
+      {
+        scout_id: scoutId,
+        coach_id: coachId,
+        status: "pending",
+        responded_at: null,
+      },
+      { onConflict: "scout_id,coach_id" },
+    );
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const respondClubRequest = async (requestId, status) => {
+    const { error } = await _client
+      .from("scout_club_requests")
+      .update({ status, responded_at: new Date().toISOString() })
+      .eq("id", requestId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const getClubNetworkStatus = async (scoutId, coachId) => {
+    const { data, error } = await _client
+      .from("scout_club_requests")
+      .select("*")
+      .eq("scout_id", scoutId)
+      .eq("coach_id", coachId)
+      .maybeSingle();
+    if (error) return { data: null };
+    return { data };
+  };
+
+  const getPendingClubRequests = async (coachId) => {
+    const { data, error } = await _client
+      .from("scout_club_requests")
+      .select(
+        "*, scout:users!scout_club_requests_scout_id_fkey(id, name, profile)",
+      )
+      .eq("coach_id", coachId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getApprovedClubNetwork = async (scoutId) => {
+    const { data, error } = await _client
+      .from("scout_club_requests")
+      .select(
+        "*, coach:users!scout_club_requests_coach_id_fkey(id, name, profile)",
+      )
+      .eq("scout_id", scoutId)
+      .eq("status", "approved")
+      .order("created_at", { ascending: false });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getUnreadCount = async (userId) => {
+    const { data, error } = await _client
+      .from("messages")
+      .select("id")
+      .eq("to_id", userId)
+      .eq("read", false)
+      .eq("archived", false);
+    if (error) return 0;
+    return data?.length || 0;
+  };
+
+  const getUserNamesByIds = async (ids) => {
+    const uniqueIds = [
+      ...new Set(ids.filter((id) => id && id !== "system" && id !== "admin")),
+    ];
+
+    // return cached ones immediately
+    const result = { system: "HappyFeet System", admin: "HappyFeet Admin" };
+    const uncached = uniqueIds.filter((id) => !_nameCache[id]);
+
+    if (uncached.length > 0) {
+      const { data } = await _client
+        .from("users")
+        .select("id, name")
+        .in("id", uncached);
+
+      (data || []).forEach((u) => {
+        _nameCache[u.id] = u.name;
+      });
+    }
+
+    uniqueIds.forEach((id) => {
+      result[id] = _nameCache[id] || "HappyFeet";
+    });
+
+    return result;
   };
 
   // ─── Public API ────────────────────────────────────────────
   return {
+    localDate: _localDate,
     createUser,
     findUser,
     updateUserProfile,
@@ -1764,8 +2378,10 @@ const HF_DB = (() => {
     checkUserStatus,
     searchPlayers,
     sendSquadInvite,
+    getUserNamesByIds,
     getSquadInvites,
     getSquadPlayers,
+    getFlaggedProspects,
     respondToInvite,
     incrementTeamSize,
     getLatestSquadStatus,
@@ -1789,6 +2405,7 @@ const HF_DB = (() => {
     getAllPlayers,
     getUserById,
     getThread,
+    getUnreadCount,
     _sendMessage,
     removePlayerFromSquad,
     decrementTeamSize,
@@ -1798,6 +2415,7 @@ const HF_DB = (() => {
     getTodaySessionRating,
     getPlayerSessionRatings,
     getSquadSessionRatings,
+    getCoachSquadDetails,
     searchAllUsers,
     _updateSessionRating,
     saveHealthLog,
@@ -1805,6 +2423,31 @@ const HF_DB = (() => {
     getTodayHealthLog,
     getPlayerHealthLogs,
     removeAllChannels,
+    saveProspectReport,
+    getProspectReport,
+    getVerifiedCoaches,
+    getUnattachedPlayers,
+    toggleRecruitment,
+    getOpenCoaches,
+    logTrainingSession,
+    getTrainingLogs,
+    getTodayTrainingLog,
+    getAchievements,
+    unlockAchievement,
+    checkAndUnlockAchievements,
+    saveAgentConversation,
+    getAgentConversations,
+    requestTrial,
+    respondToTrialRequest,
+    getTrialRequestStatus,
+    getPendingTrialRequests,
+    getTrialPlayers,
+    getSquadReadiness,
+    requestClubNetwork,
+    respondClubRequest,
+    getClubNetworkStatus,
+    getPendingClubRequests,
+    getApprovedClubNetwork,
   };
 })();
 

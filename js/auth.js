@@ -23,6 +23,11 @@ const HF_AUTH = (() => {
     document.getElementById("nav-overlay")?.classList.remove("open");
     document.getElementById("sidenav")?.classList.remove("open");
 
+    // reset subscriptions if going back to auth
+    if (id === "screen-login" || id === "screen-signup-role") {
+      if (window.HF_ROUTER) HF_ROUTER.resetSubscriptions();
+    }
+
     document
       .querySelectorAll(".auth-screen")
       .forEach((s) => s.classList.remove("active"));
@@ -390,6 +395,8 @@ const HF_AUTH = (() => {
 
   // ─── Complete signup ────────────────────────────────────────
   const completeSignup = async () => {
+    if (window.HF_ROUTER) HF_ROUTER.resetSubscriptions();
+
     const result = await HF_DB.createUser(state.signup);
     if (result.error) {
       toast(result.error, "error");
@@ -671,7 +678,7 @@ const HF_AUTH = (() => {
       btn.style.display = "none";
 
       const tag = document.createElement("span");
-      tag.style.cssText = `font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:var(--gold);color:#0f0f0d;display:inline-flex;align-items:center;gap:4px;`;
+      tag.style.cssText = `font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:var(--gold);color:#0f0f0d;display:inline-flex;align-items:center;gap:4px;`;
       tag.dataset.value = btn.dataset.value;
       tag.innerHTML = `${btn.dataset.value} <span 
       style="cursor:pointer;font-size:12px;font-weight:700;" 

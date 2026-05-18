@@ -67,7 +67,6 @@ const HF_ROUTER = (() => {
             icon: "ti-heart-rate-monitor",
             label: "Health & wellness",
           },
-          { view: "recruitment", icon: "ti-search", label: "Recruitment" },
         );
       }
       nav.push(
@@ -98,7 +97,6 @@ const HF_ROUTER = (() => {
           { view: "pipeline", icon: "ti-chart-line", label: "Pipeline" },
           { section: "Reports" },
           { view: "reports", icon: "ti-file-text", label: "Scout reports" },
-          { view: "clubs", icon: "ti-building", label: "Club network" },
           { view: "placements", icon: "ti-circle-check", label: "Placements" },
         );
       }
@@ -143,7 +141,7 @@ const HF_ROUTER = (() => {
     overlay.innerHTML = `
     <div class="verification-alert-card">
       <i class="ti ti-bell" style="font-size:36px;color:var(--gold);margin-bottom:var(--sp-lg);display:block;"></i>
-      <div style="font-family:var(--font-head);font-size:18px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-sm);">
+      <div style="font-family:var(--font);font-size:18px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-sm);">
         Squad verification update
       </div>
       <div style="font-size:14px;color:var(--text2);margin-bottom:var(--sp-xl);line-height:1.6;">
@@ -237,41 +235,43 @@ const HF_ROUTER = (() => {
       _subscriptionsActive = true;
 
       if (session.role !== "admin" && session.userId) {
-        HF_DB.subscribeToMessages(session.userId, (newMessage) => {
-          HF_DB.getMessages(session.userId).then(({ data: msgs }) => {
-            const unreadCount = msgs?.filter((m) => !m.read).length || 0;
-            HF_ROUTER.refreshSidenavBadge(
-              "messages",
-              unreadCount,
-              "var(--red)",
+        HF_DB.subscribeToMessages(session.userId, async (newMessage) => {
+          const { data: msgs } = await HF_DB.getMessages(session.userId);
+          const unreadCount = msgs?.filter((m) => !m.read).length || 0;
+          HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
+
+          const activeNav = document.querySelector(".nav-item.active");
+          const s = HF_DB.getSession();
+          const handlers = {
+            player: window.HF_PLAYER,
+            coach: window.HF_COACH,
+            scout: window.HF_SCOUT,
+          };
+
+          if (activeNav?.dataset.view === "dashboard") {
+            // update just the message metric card without full re-render
+            const metricEl = document.querySelector(
+              '.metric-card[data-type="messages"]',
             );
-
-            const activeNav = document.querySelector(".nav-item.active");
-            if (activeNav?.dataset.view === "messages") {
-              const s = HF_DB.getSession();
-              const handlers = {
-                player: window.HF_PLAYER,
-                coach: window.HF_COACH,
-                scout: window.HF_SCOUT,
-              };
-
-              // check if user is currently in a thread view
-              const threadMessages = document.getElementById("thread-messages");
-              if (threadMessages) {
-                // check if this message belongs to the same thread
-                if (newMessage.thread_id) {
-                  handlers[s.role]?.viewThread?.(
-                    newMessage.thread_id,
-                    newMessage.from_id,
-                    newMessage.subject,
-                  );
-                }
-              } else {
-                // user is on messages list so refresh it
-                handlers[s.role]?.messages?.(s);
-              }
+            if (metricEl) {
+              metricEl.querySelector(".metric-val").textContent = unreadCount;
+              metricEl.querySelector(".metric-sub").textContent =
+                unreadCount > 0 ? `${unreadCount} unread` : "All caught up";
+            } else {
+              handlers[s.role]?.render?.(s);
             }
-          });
+          } else if (activeNav?.dataset.view === "messages") {
+            const threadMessages = document.getElementById("thread-messages");
+            if (threadMessages && newMessage.thread_id) {
+              handlers[s.role]?.viewThread?.(
+                newMessage.thread_id,
+                newMessage.from_id,
+                newMessage.subject,
+              );
+            } else {
+              handlers[s.role]?.messages?.(s);
+            }
+          }
 
           HF_UTILS.toast(
             `New message: ${newMessage.subject || "You have a new message"}`,
@@ -363,22 +363,21 @@ const HF_ROUTER = (() => {
       if (session.role === "coach") {
         HF_DB.subscribeToUserStatus(session.userId, async (updatedUser) => {
           const newStatus = updatedUser.squad_status;
+          const newProfile = updatedUser.profile;
+          let changed = false;
+
           if (newStatus && newStatus !== session.squadStatus) {
             session.squadStatus = newStatus;
+            changed = true;
 
-            // fetch real team size when verified
             if (newStatus === "verified") {
               const { data: squadPlayers } = await HF_DB.getSquadPlayers(
                 session.userId,
               );
-              const teamSize = squadPlayers?.length || 0;
-              session.profile = { ...session.profile, teamSize };
-            }
-
-            HF_DB.saveSession(session);
-            _buildSidenav(session, 0, 0);
-
-            if (newStatus === "verified") {
+              session.profile = {
+                ...session.profile,
+                teamSize: squadPlayers?.length || 0,
+              };
               HF_UTILS.toast(
                 "Your squad has been verified! Full access unlocked.",
                 "success",
@@ -391,7 +390,20 @@ const HF_ROUTER = (() => {
                 "error",
               );
             }
+          }
 
+          // check if team size changed
+          if (newProfile?.teamSize !== session.profile?.teamSize) {
+            session.profile = {
+              ...session.profile,
+              teamSize: newProfile.teamSize,
+            };
+            changed = true;
+          }
+
+          if (changed) {
+            HF_DB.saveSession(session);
+            _buildSidenav(session, 0, 0);
             const activeNav = document.querySelector(".nav-item.active");
             const currentView = activeNav?.dataset.view || "dashboard";
             _routeTo(currentView, session);

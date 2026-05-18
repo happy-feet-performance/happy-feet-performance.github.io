@@ -48,17 +48,226 @@ const HF_PLAYER = (() => {
     fn(session);
   };
 
-  const findmyteam = (s) => {
+  // ── FIND MY TEAM ───────────────────────────────────────
+  const findmyteam = async (s) => {
+    const { data: coaches } = await HF_DB.getOpenCoaches();
+
+    // fetch trial request status for each coach
+    const coachesWithStatus = await Promise.all(
+      (coaches || []).map(async (c) => {
+        const { data: req } = await HF_DB.getTrialRequestStatus(s.userId, c.id);
+        return { ...c, trialRequest: req };
+      }),
+    );
+
+    setMain(`
+    <div class="welcome-banner">
+      <div>
+        <div class="welcome-title">Find my team</div>
+        <div class="welcome-sub">Browse verified coaches looking for players</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:var(--sp-lg);flex-wrap:wrap;">
+      <select id="fmt-league" onchange="HF_PLAYER.filterCoaches()"
+        style="padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
+        <option value="">All leagues</option>
+        <option>Ghana Premier League</option>
+        <option>Division One League</option>
+        <option>MTN FA Cup</option>
+        <option>CAF Champions League</option>
+        <option>Other</option>
+      </select>
+      <input type="text" id="fmt-search" placeholder="Search by coach or club name..."
+        oninput="HF_PLAYER.filterCoaches()"
+        style="flex:1;min-width:150px;padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
+    </div>
+
+    <div id="coaches-list">
+      ${
+        !coachesWithStatus || coachesWithStatus.length === 0
+          ? `
+        <div class="card">
+          <div style="text-align:center;padding:32px;color:var(--text2)">
+            <i class="ti ti-map-search" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No coaches recruiting yet</div>
+            <div style="font-size:13px">Verified coaches who are open for recruitment will appear here.</div>
+          </div>
+        </div>`
+          : coachesWithStatus.map((c) => _coachCard(c, s.userId)).join("")
+      }
+    </div>`);
+
+    window._fmtAllCoaches = coachesWithStatus;
+    window._fmtUserId = s.userId;
+  };
+
+  const _coachCard = (c, playerId) => {
+    const p = c.profile || {};
+    const safeName = c.name.replace(/'/g, "\\'");
+    const req = c.trialRequest;
+    const isPending = req?.status === "pending";
+    const isAccepted = req?.status === "accepted";
+    const isDeclined = req?.status === "declined";
+
+    // check if declined within 24 hours
+    const declinedRecently =
+      isDeclined &&
+      req?.responded_at &&
+      new Date() - new Date(req.responded_at) < 24 * 60 * 60 * 1000;
+
+    return `
+    <div class="card" style="margin-bottom:var(--sp-md);">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-md);">
+        <div style="display:flex;align-items:center;gap:var(--sp-md);">
+          <div class="avatar avatar-lg" style="background:var(--gold);width:48px;height:48px;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:18px;font-weight:700;color:#0f0f0d;">
+            ${HF_UTILS.initials(c.name)}
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text)">${c.name}</div>
+            <div style="font-size:12px;color:var(--text2)">${p.club || "-"}</div>
+            <div style="font-size:11px;color:var(--text3)">${p.spec || "Head coach"} · ${p.exp || "-"} yrs exp · ${p.licence || "-"}</div>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:var(--font);font-size:20px;font-weight:700;color:var(--gold)">${p.teamSize || 0}</div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--font);text-transform:uppercase;letter-spacing:0.08em">Players</div>
+        </div>
+      </div>
+      <div style="margin-top:var(--sp-md);padding-top:var(--sp-md);border-top:0.5px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        ${
+          isAccepted
+            ? `
+          <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(26,122,46,.15);color:var(--green);">
+            <i class="ti ti-circle-check"></i> Trial accepted
+          </span>`
+            : isPending
+              ? `
+          <span id="trial-btn-${c.id}" style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(196,154,10,.15);color:var(--gold);">
+            <i class="ti ti-clock"></i> Trial request pending
+          </span>`
+              : declinedRecently
+                ? `
+          <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(200,16,46,.1);color:var(--red);">
+            <i class="ti ti-x"></i> Declined: resend in 24hrs
+          </span>`
+                : `
+          <button id="trial-btn-${c.id}" class="btn btn-primary btn-sm"
+            onclick="HF_PLAYER.requestTrial('${c.id}', '${safeName}')">
+            <i class="ti ti-send"></i> Request trial
+          </button>`
+        }
+        <button class="btn btn-outline btn-sm" onclick="HF_PLAYER.messageCoach('${c.id}', '${safeName}')">
+          <i class="ti ti-message"></i> Message
+        </button>
+      </div>
+    </div>`;
+  };
+
+  const filterCoaches = () => {
+    const league = document.getElementById("fmt-league")?.value;
+    const search = document.getElementById("fmt-search")?.value.toLowerCase();
+    const list = document.getElementById("coaches-list");
+    if (!list || !window._fmtAllCoaches) return;
+
+    const filtered = window._fmtAllCoaches.filter((c) => {
+      const p = c.profile || {};
+      const matchLeague = !league || p.league === league;
+      const matchSearch =
+        !search ||
+        c.name.toLowerCase().includes(search) ||
+        (p.club || "").toLowerCase().includes(search);
+      return matchLeague && matchSearch;
+    });
+
+    list.innerHTML =
+      filtered.length === 0
+        ? `<div class="card"><div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No coaches match your filters.</div></div>`
+        : filtered.map((c) => _coachCard(c, window._fmtUserId)).join("");
+  };
+
+  const requestTrial = async (coachId, coachName) => {
+    const session = HF_DB.getSession();
+
+    // update button immediately
+    const btn = document.getElementById(`trial-btn-${coachId}`);
+    if (btn) {
+      btn.outerHTML = `
+      <span id="trial-btn-${coachId}" style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(196,154,10,.15);color:var(--gold);">
+        <i class="ti ti-clock"></i> Trial request pending
+      </span>`;
+    }
+
+    const result = await HF_DB.requestTrial(session.userId, coachId);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      // revert button if error
+      findmyteam(session);
+      return;
+    }
+
+    // notify coach via system message
+    const p = session.profile || {};
+    await HF_DB._sendMessage(
+      "system",
+      coachId,
+      "New trial request",
+      `${session.name} (${p.pos || "Player"} · ${p.tier || "-"} · ${p.hometown || "-"}) has requested a trial with your squad.\n\nGo to your squad page to accept or decline.`,
+    );
+
+    // save request ID for coach to reference
+    await HF_DB._sendMessage(
+      "system",
+      session.userId,
+      `Trial request sent to ${coachName}`,
+      `Your trial request to ${coachName} has been sent. You will be notified when they respond.`,
+    );
+
+    HF_UTILS.toast(`Trial request sent to ${coachName}!`, "success");
+  };
+
+  const messageCoach = async (coachId, coachName) => {
+    const session = HF_DB.getSession();
     setMain(`
     <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Find my team</div>
-      <div style="text-align:center;padding:32px;color:var(--text2)">
-        <i class="ti ti-map-search" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Coming soon</div>
-        <div style="font-size:13px">Team listings and player discovery coming in the next update.</div>
+      <div class="card-title"><div class="card-dot"></div>Message ${coachName}</div>
+      <div class="fg">
+        <label class="required">Message</label>
+        <textarea id="fmt-msg-body" rows="4" placeholder="Introduce yourself..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="HF_PLAYER.sendCoachMessage('${coachId}', '${coachName.replace(/'/g, "\\'")}')">
+          <i class="ti ti-send"></i> Send
+        </button>
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('findmyteam')">Cancel</button>
       </div>
     </div>`);
   };
+
+  const sendCoachMessage = async (coachId, coachName) => {
+    const session = HF_DB.getSession();
+    const body = document.getElementById("fmt-msg-body")?.value.trim();
+    if (!body) {
+      HF_UTILS.toast("Please enter a message.", "error");
+      return;
+    }
+
+    const result = await HF_DB._sendMessage(
+      session.userId,
+      coachId,
+      `Message from ${session.name}`,
+      body,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    HF_UTILS.toast(`Message sent to ${coachName}!`, "success");
+    HF_ROUTER.navTo("findmyteam");
+  };
+
   // ── DASHBOARD ───────────────────────────────────────────────
   const dashboard = async (s) => {
     const p = s.profile || {};
@@ -66,16 +275,16 @@ const HF_PLAYER = (() => {
     const overall = calcRating(r);
     const tracker = await HF_DB.getTracker(s.userId);
     const sessionsThisMonth = tracker?.sessionsThisMonth || 0;
-    const faithStreak = p.faithStreak || 0;
     const loginStreak = await HF_DB.getLoginStreak(s.userId);
-    const messagesUnread = 0;
     const newUser = HF_UTILS.isNewUser(s);
+    const { data: agentConvos } = await HF_DB.getAgentConversations(s.userId);
+    const unreadCount = await HF_DB.getUnreadCount(s.userId);
 
     setMain(`
     <div class="welcome-banner">
       <div>
-        <div class="welcome-title" id="welcome-title">${newUser ? "Welcome" : "Welcome back"}, ${s.name.split(" ")[0]}!</div>
-        <div class="welcome-sub">${p.pos || "Player"} · ${p.tier || "U21"} · ${p.status === "unattached" ? "Free Agent" : p.club || "unattached"}</div>
+        <div class="welcome-title">${newUser ? "Welcome" : "Welcome back"}, ${s.name.split(" ")[0]}!</div>
+        <div class="welcome-sub">${p.pos || "Player"} · ${p.tier || "U21"} · ${p.status === "unattached" ? "Free Agent" : p.club || "Unattached"}</div>
       </div>
       <div style="text-align:right">
         <div style="font-size:32px;font-weight:700;color:var(--gold)">${overall !== null ? overall + "%" : "-"}</div>
@@ -101,10 +310,10 @@ const HF_PLAYER = (() => {
         <div class="metric-label">Faith streak</div>
         <div class="metric-sub" style="color:var(--text2)">Days in a row</div>
       </div>
-      <div class="metric-card">
-        <div class="metric-val" style="color:var(--red)">${messagesUnread}</div>
+      <div class="metric-card" style="cursor:pointer;" onclick="HF_ROUTER.navTo('messages')">
+        <div class="metric-val" style="color:var(--red)">${unreadCount}</div>
         <div class="metric-label">Messages</div>
-        <div class="metric-sub" style="color:var(--text2)">${messagesUnread > 0 ? "Unread" : "All caught up"}</div>
+        <div class="metric-sub" style="color:var(--text2)">${unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}</div>
       </div>
     </div>
 
@@ -137,7 +346,42 @@ const HF_PLAYER = (() => {
         </div>`
           : ""
       }
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;align-items:center;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Recent AI conversations
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="HF_AGENT.toggle()">
+          <i class="ti ti-ball-football"></i> Ask AI
+        </button>
+      </div>
+      ${
+        !agentConvos || agentConvos.length === 0
+          ? `
+        <div style="text-align:center;padding:24px;color:var(--text2)">
+          <i class="ti ti-ball-football" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No conversations yet</div>
+          <div style="font-size:13px">Ask the AI agent anything about football.</div>
+        </div>`
+          : agentConvos
+              .map(
+                (c) => `
+          <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
+            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">
+              <i class="ti ti-message" style="color:var(--gold);margin-right:4px"></i>${c.message}
+            </div>
+            <div style="font-size:11px;color:var(--text2);line-height:1.5;">
+              ${c.response.slice(0, 120)}${c.response.length > 120 ? "..." : ""}
+            </div>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px;">${HF_UTILS.timeAgo(c.created_at)}</div>
+          </div>`,
+              )
+              .join("")
+      }
     </div>`);
+
     if (newUser) setTimeout(() => HF_UTILS.launchConfetti(), 300);
   };
 
@@ -155,7 +399,7 @@ const HF_PLAYER = (() => {
       <!-- Left: avatar + name -->
       <div style="display:flex;align-items:center;gap:var(--sp-lg);">
         <div style="position:relative;">
-          <div style="width:72px;height:72px;background:#1a7a2e;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
+          <div style="width:72px;height:72px;background:#1a7a2e;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#fff;">
             ${HF_UTILS.initials(s.name)}
           </div>
           ${
@@ -169,14 +413,14 @@ const HF_PLAYER = (() => {
           }
         </div>
         <div>
-          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${s.name}</div>
+          <div style="font-family:var(--font);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${s.name}</div>
           <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.pos || "-"} · ${p.tier || "-"}</div>
           <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
             ${badgeHTML("Player", "green")}
             ${
               p.status === "unattached" || !p.club
-                ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:var(--bg3);color:var(--text2);">Free Agent</span>`
-                : `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">${p.club} <i class="ti ti-circle-check"></i></span>`
+                ? `<span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:var(--bg3);color:var(--text2);">Free Agent</span>`
+                : `<span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">${p.club} <i class="ti ti-circle-check"></i></span>`
             }
             <span style="font-size:11px;color:rgba(255,255,255,.4)">${p.hometown || "Ghana"}</span>
           </div>
@@ -185,10 +429,10 @@ const HF_PLAYER = (() => {
 
       <!-- Right: overall rating -->
       <div style="text-align:right;flex-shrink:0;">
-        <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:${unrated ? "var(--text3)" : "var(--gold)"};">
+        <div style="font-family:var(--font);font-size:42px;font-weight:700;color:${unrated ? "var(--text3)" : "var(--gold)"};">
           ${unrated ? "-" : overall + "%"}
         </div>
-        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,.4);">
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,.4);">
           ${unrated ? "Not yet rated" : "Overall rating"}
         </div>
       </div>
@@ -236,6 +480,24 @@ const HF_PLAYER = (() => {
         ${barHTML("Tactical", r.tact || 0, "var(--blue)")}
         ${barHTML("Physical", r.phys || 0, "var(--green)")}`
       }
+    </div>
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Highlight reel
+        </div>
+        <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
+          Coming soon
+        </span>
+      </div>
+      <div style="text-align:center;padding:32px;background:var(--bg2);border:0.5px dashed var(--border);">
+        <i class="ti ti-video" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No highlights yet</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Upload your best moments to showcase your talent to scouts and coaches.</div>
+        <button class="btn btn-outline btn-sm" disabled style="opacity:0.5;cursor:not-allowed;">
+          <i class="ti ti-upload"></i> Upload highlight (coming soon)
+        </button>
+      </div>
     </div>`);
   };
 
@@ -253,7 +515,14 @@ const HF_PLAYER = (() => {
 
     setMain(`
     <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Performance overview</div>
+      <div class="card-title" style="flex-direction:column;align-items:flex-start;gap:2px;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Performance overview
+        </div>
+        <div style="font-size:11px;color:var(--text3);font-family:var(--font);text-transform:none;letter-spacing:0;font-weight:400;padding-left:calc(var(--sp-sm) + 8px);">
+          Ratings are based on sessions logged by your coach
+        </div>
+      </div>
       <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr)">
         <div class="metric-card">
           <div class="metric-val" style="color:var(--gold)">${overall !== null ? overall + "%" : "-"}</div>
@@ -297,8 +566,7 @@ const HF_PLAYER = (() => {
         <div class="card-title"><div class="card-dot"></div>Session calendar</div>
         ${HF_UTILS.miniCalendarHTML(sessions, () => "var(--blue)")}
         <div style="display:flex;gap:var(--sp-md);margin-top:var(--sp-md);font-size:11px;color:var(--text2);">
-          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--blue);"></div>Session logged</div>
-          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--gold);border-radius:50%;"></div>Today</div>
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--blue);"></div>Check-in logged</div>
         </div>
       </div>`
         : ""
@@ -332,8 +600,7 @@ const HF_PLAYER = (() => {
             ${sessions
               .map((r) => {
                 const isToday =
-                  r.created_at?.split("T")[0] ===
-                  _localDate();
+                  r.created_at?.split("T")[0] === HF_DB.localDate();
                 return `
                 <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
                   <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
@@ -358,206 +625,650 @@ const HF_PLAYER = (() => {
   };
 
   // ── TRAINING ─────────────────────────────────────────────────
+
+  const getDateForDay = (dayIndex) => {
+    const now = new Date();
+    const today = now.getDay();
+    const diff = dayIndex - today;
+    const date = new Date(now);
+    date.setDate(now.getDate() + diff);
+    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  };
+
   const training = async (s) => {
+    const selectedDate = window._trainingSelectedDate || HF_DB.localDate();
+    const saved = await HF_DB.getTraining(s.userId);
+    const schedule = saved?.schedule || {};
+    const { data: logs } = await HF_DB.getTrainingLogs(s.userId);
+    const { data: todayLog } = await HF_DB.getTodayTrainingLog(s.userId);
+    const today = new Date().getDay();
+    const todayType = schedule[today];
+
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const types = [
-      "rest",
-      "recovery",
-      "technical",
-      "tactical",
-      "match",
-      "analysis",
-      "match prep",
+      "Rest",
+      "Technical",
+      "Tactical",
+      "Physical",
+      "Recovery",
+      "Match",
     ];
     const typeColors = {
-      rest: "var(--text3)",
-      recovery: "var(--green)",
-      technical: "var(--gold)",
-      tactical: "var(--blue)",
-      match: "var(--red)",
-      analysis: "var(--purple)",
-      "match prep": "var(--faith)",
-    };
-    const typeLabels = {
-      rest: "Rest",
-      recovery: "Recovery",
-      technical: "Technical",
-      tactical: "Tactical",
-      match: "Match",
-      analysis: "Analysis",
-      "match prep": "Match Prep",
+      Rest: "var(--text3)",
+      Technical: "var(--gold)",
+      Tactical: "var(--blue)",
+      Physical: "var(--red)",
+      Recovery: "var(--green)",
+      Match: "var(--faith)",
     };
 
-    const key = `hf_training_plan_${s.userId}`;
-    const saved = await HF_DB.getTraining(s.userId);
-    const plan =
-      saved?.weeklyPlan || JSON.parse(localStorage.getItem(key) || "{}");
-    const today = new Date().getDay();
+    window._trainingSchedule = schedule;
+    window._trainingLogs = logs;
+    window._trainingTypeColors = typeColors;
 
-    const dayCards = days
-      .map((day, i) => {
-        const isToday = i === today;
-        const selectedType = plan[i] || "rest";
-        const color = typeColors[selectedType];
-        return `
-      <div style="
-        padding:10px 8px;
-        background:var(--bg);
-        border:0.5px solid var(--border);
-        border-top:2px solid ${isToday ? "var(--gold)" : color};
-        text-align:center;
-        ${isToday ? "background:rgba(196,154,10,.06);" : ""}
-      ">
-        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${isToday ? "var(--gold)" : "var(--text2)"}">
-          ${day}${isToday ? " · Today" : ""}
+    // get current view from window state or default to week
+    const view = window._trainingView || "week";
+
+    const weekView = () => `
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:var(--sp-lg);">
+        ${days
+          .map((day, i) => {
+            const isToday = i === today;
+            const selected = schedule[i];
+            const color = selected ? typeColors[selected] : null;
+            const logDate = getDateForDayISO(i);
+            const hasLog = logs?.find((l) => l.date === logDate);
+
+            return `
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+              <div style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isToday ? "var(--text)" : "var(--text3)"};">
+                ${day}
+              </div>
+              <div style="font-size:9px;color:var(--text3);">${getDateForDay(i)}</div>
+              <div style="width:100%;padding:8px 4px;
+                background:${selected ? color + "33" : "transparent"};
+                border:${isToday ? "2px solid var(--text)" : selected ? "0.5px solid " + color : "0.5px solid var(--border)"};
+                text-align:center;cursor:pointer;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;"
+                onclick="HF_PLAYER.selectTrainingDay('${getDateForDayISO(i)}', ${i})">
+                <span style="font-size:9px;font-weight:600;color:${selected ? color : "var(--text3)"};font-family:var(--font);letter-spacing:0.04em;text-transform:uppercase;">
+                  ${selected || "+"}
+                </span>
+                ${hasLog ? `<i class="ti ti-circle-check" style="font-size:10px;color:var(--green);"></i>` : ""}
+              </div>
+            </div>
+            `;
+          })
+          .join("")}
+      </div>
+      ${completionSection()}`;
+
+    const getDateForDayISO = (dayIndex) => {
+      const now = new Date();
+      const today = now.getDay();
+      const diff = dayIndex - today;
+      const date = new Date(now);
+      date.setDate(now.getDate() + diff);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    };
+
+    const monthView = () => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const firstDay = new Date(year, month, 1).getDay();
+
+      let cells = "";
+      for (let i = 0; i < firstDay; i++) cells += "<div></div>";
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const date = new Date(year, month, d);
+        const dayOfWeek = date.getDay();
+        const isToday = d === now.getDate();
+        const isFuture = date > now;
+        const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+        // check specific date first, fall back to weekday
+        const selected = schedule[dateStr] || schedule[dayOfWeek];
+        const color = selected ? typeColors[selected] : null;
+        const hasLog = logs?.find((l) => l.date === dateStr);
+
+        cells += `
+          <div style="
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            height:40px;
+            background:${isToday ? "var(--text)" : selected ? color + "33" : "transparent"};
+            border:${isToday ? "none" : selected ? "0.5px solid " + color : "0.5px solid transparent"};
+            opacity:${isFuture ? 0.4 : 1};
+            cursor:${!isFuture ? "pointer" : "default"};
+            font-size:11px;
+            color:${isToday ? "var(--bg)" : selected ? color : "var(--text2)"};
+            font-weight:${isToday ? "700" : "400"};
+            position:relative;
+          " onclick="${!isFuture ? `HF_PLAYER.selectTrainingDay('${dateStr}', ${dayOfWeek})` : ""}">
+            ${d}
+            ${
+              hasLog
+                ? `<div style="width:4px;height:4px;background:var(--green);border-radius:50%;position:absolute;bottom:4px;"></div>`
+                : selected && !isToday
+                  ? `<div style="width:4px;height:4px;background:${color};position:absolute;bottom:4px;"></div>`
+                  : ""
+            }
+          </div>`;
+      }
+
+      return `
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:8px;">
+          ${days.map((d) => `<div style="text-align:center;font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);padding:4px 0;">${d}</div>`).join("")}
         </div>
-        <div style="font-size:10px;font-weight:600;color:${color};margin-top:4px;text-transform:uppercase;letter-spacing:0.05em">
-          ${typeLabels[selectedType]}
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:var(--sp-md);">
+          ${cells}
         </div>
-        <select
-          style="margin-top:6px;width:100%;padding:4px 2px;background:var(--bg2);border:0.5px solid var(--border);border-radius:0;color:var(--text);font-size:9px;font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.04em;outline:none;"
-          onchange="HF_PLAYER.updateTrainingDay(${i}, this.value)">
-          ${types
-            .map(
-              (t) => `
-            <option value="${t}" ${selectedType === t ? "selected" : ""}>${typeLabels[t]}</option>
-          `,
-            )
-            .join("")}
-        </select>
-      </div>`;
-      })
-      .join("");
+        ${completionSection()}`;
+    };
+
+    const dayView = () => {
+      const selected = schedule[today];
+      const color = selected ? typeColors[selected] : "var(--border)";
+
+      return `
+      <div style="padding:var(--sp-xl);background:${selected ? color + "22" : "var(--bg2)"};border:${selected ? "2px solid " + color : "0.5px solid var(--border)"};text-align:center;margin-bottom:var(--sp-md);cursor:pointer;"
+        onclick="HF_PLAYER.showDayPicker(${today})">
+        <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
+          ${new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        </div>
+        <div style="font-family:var(--font);font-size:32px;font-weight:700;color:${selected ? color : "var(--text3)"};">
+          ${selected || "No session planned"}
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px;">
+          <i class="ti ti-edit" style="margin-right:4px"></i>${selected ? "Click to change session" : "Click to set session"}
+        </div>
+      </div>
+      ${completionSection()}`;
+    };
 
     setMain(`
     <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Weekly training plan</div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:var(--sp-lg)">
-        ${dayCards}
-      </div>
-      <div style="font-size:11px;color:var(--text2);text-align:center">
-        <i class="ti ti-info-circle"></i> Select a session type for each day. Changes save automatically.
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Today's focus: ${typeLabels[plan[today] || "rest"]}</div>
-      ${
-        plan[today] === "rest" || !plan[today]
-          ? `
-        <div style="text-align:center;padding:32px;color:var(--text2)">
-          <i class="ti ti-zzz" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Rest day</div>
-          <div style="font-size:13px">Recovery is part of the process. Rest well.</div>
-        </div>`
-          : `
-        <div style="font-size:13px;color:var(--text2);margin-bottom:12px">
-          Your coach will assign drills for today's ${typeLabels[plan[today]]} session.
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+            <div class="card-dot"></div>Training plan
+            <span style="font-size:11px;color:var(--text3);">
+              ${new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+            </span>
+          </div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--font);text-transform:none;letter-spacing:0;font-weight:400;">
+            Click on each cell to update the session for that day
+          </div>
         </div>
-        <div style="padding:12px;background:var(--bg2);border-left:2px solid ${typeColors[plan[today]]};font-size:13px;color:var(--text2)">
-          <i class="ti ti-clock" style="margin-right:6px"></i>
-          Session details will appear here once your coach builds today's plan.
-        </div>`
-      }
+        <div style="display:flex;gap:4px;">
+          ${["day", "week", "month"]
+            .map(
+              (v) => `
+            <button class="btn ${view === v ? "btn-primary" : "btn-outline"} btn-sm"
+              onclick="window._trainingView='${v}';HF_PLAYER.training(HF_DB.getSession())">
+              ${v.charAt(0).toUpperCase() + v.slice(1)}
+            </button>`,
+            )
+            .join("")}
+        </div>
+      </div>
+
+      ${view === "day" ? dayView() : view === "month" ? monthView() : weekView()}
+
+      <div id="day-picker" style="display:none;padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-md);">
+        <div id="day-picker-label" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;"></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;" id="day-picker-options"></div>
+      </div>
+
+      <div style="padding:var(--sp-md);background:var(--bg2);">
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">Legend</div>
+        <div style="display:flex;gap:var(--sp-md);flex-wrap:wrap;">
+          ${types
+            .map(
+              (t) => `
+            <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);">
+              <div style="width:10px;height:10px;background:${typeColors[t]};"></div>
+              ${t}
+            </div>`,
+            )
+            .join("")}
+        </div>
+      </div>
     </div>`);
   };
 
   // ── ACHIEVEMENTS ─────────────────────────────────────────────
-  const achievements = (s) => {
-    const overall = calcRating(s.profile?.ratings || {});
-    const hasStats =
-      s.profile?.ratings?.speed > 0 || s.profile?.ratings?.tech > 0;
 
-    const earned = [
-      {
-        icon: '<i class="ti ti-star"></i>',
-        title: "First session logged",
-        sub: "You started your HappyFeet journey",
-        date: "Day 1",
-        earned: true,
-      },
-      {
-        icon: '<i class="ti ti-cross"></i>',
-        title: "5-day faith streak",
-        sub: "Complete 5 consecutive devotions",
-        date: null,
-        earned: (s.profile?.faithStreak || 0) >= 5,
-      },
-      {
-        icon: '<i class="ti ti-trending-up"></i>',
-        title: "First rating improvement",
-        sub: "Get your first session rating from a coach",
-        date: null,
-        earned: hasStats,
-      },
-      {
-        icon: '<i class="ti ti-run"></i>',
-        title: "10 sessions completed",
-        sub: "Log 10 training sessions",
-        date: null,
-        earned: false,
-      },
-      {
-        icon: '<i class="ti ti-ball-football"></i>',
-        title: "First clean sheet",
-        sub: "Record a 90-min shutout",
-        date: null,
-        earned: false,
-      },
-      {
-        icon: '<i class="ti ti-chart-bar"></i>',
-        title: "Reach 80+ overall rating",
-        sub: "Get your overall rating above 80",
-        date: null,
-        earned: overall !== null && overall >= 80,
-      },
-    ];
+  const ACHIEVEMENTS = {
+    performance: {
+      label: "Performance",
+      icon: "ti-ball-football",
+      color: "var(--gold)",
+      items: [
+        {
+          id: "first_session",
+          label: "First touch",
+          desc: "Have your first session rated by a coach",
+          icon: "ti-star",
+          tier: 1,
+        },
+        {
+          id: "sessions_5",
+          label: "Getting started",
+          desc: "5 sessions rated by your coach",
+          icon: "ti-star",
+          tier: 2,
+          requires: ["first_session"],
+        },
+        {
+          id: "sessions_25",
+          label: "Dedicated",
+          desc: "25 sessions rated by your coach",
+          icon: "ti-trophy",
+          tier: 3,
+          requires: ["sessions_5"],
+        },
+        {
+          id: "rating_60",
+          label: "Promising",
+          desc: "Reach an average overall rating of 60",
+          icon: "ti-chart-line",
+          tier: 2,
+          requires: ["first_session"],
+        },
+        {
+          id: "rating_75",
+          label: "Talented",
+          desc: "Reach an average overall rating of 75",
+          icon: "ti-chart-line",
+          tier: 3,
+          requires: ["rating_60"],
+        },
+        {
+          id: "rating_90",
+          label: "Elite",
+          desc: "Reach an average overall rating of 90",
+          icon: "ti-crown",
+          tier: 4,
+          requires: ["rating_75"],
+        },
+      ],
+    },
+    consistency: {
+      label: "Consistency",
+      icon: "ti-calendar",
+      color: "var(--blue)",
+      items: [
+        {
+          id: "streak_3",
+          label: "Showing up",
+          desc: "3 day login streak",
+          icon: "ti-flame",
+          tier: 1,
+        },
+        {
+          id: "streak_7",
+          label: "Weekly warrior",
+          desc: "7 day login streak",
+          icon: "ti-flame",
+          tier: 2,
+          requires: ["streak_3"],
+        },
+        {
+          id: "streak_30",
+          label: "Unstoppable",
+          desc: "30 day login streak",
+          icon: "ti-flame",
+          tier: 3,
+          requires: ["streak_7"],
+        },
+        {
+          id: "training_5",
+          label: "In the gym",
+          desc: "Complete 5 training sessions",
+          icon: "ti-barbell",
+          tier: 2,
+          requires: ["streak_3"],
+        },
+        {
+          id: "training_20",
+          label: "Iron will",
+          desc: "Complete 20 training sessions",
+          icon: "ti-barbell",
+          tier: 3,
+          requires: ["training_5"],
+        },
+      ],
+    },
+    wellness: {
+      label: "Wellness",
+      icon: "ti-heart-rate-monitor",
+      color: "var(--green)",
+      items: [
+        {
+          id: "first_checkin",
+          label: "Body check",
+          desc: "Log your first wellness check-in",
+          icon: "ti-heart",
+          tier: 1,
+        },
+        {
+          id: "checkins_7",
+          label: "Self aware",
+          desc: "7 wellness check-ins logged",
+          icon: "ti-heart",
+          tier: 2,
+          requires: ["first_checkin"],
+        },
+        {
+          id: "checkins_30",
+          label: "Holistic athlete",
+          desc: "30 wellness check-ins logged",
+          icon: "ti-heart",
+          tier: 3,
+          requires: ["checkins_7"],
+        },
+        {
+          id: "wellness_perfect",
+          label: "Peak condition",
+          desc: "Log all wellness metrics at 8 or above",
+          icon: "ti-award",
+          tier: 3,
+          requires: ["checkins_7"],
+        },
+      ],
+    },
+    faith: {
+      label: "Faith",
+      icon: "ti-cross",
+      color: "var(--faith)",
+      items: [
+        {
+          id: "first_prayer",
+          label: "First step",
+          desc: "Complete your first daily prayer",
+          icon: "ti-cross",
+          tier: 1,
+        },
+        {
+          id: "faith_7",
+          label: "Faithful",
+          desc: "7 day faith streak",
+          icon: "ti-cross",
+          tier: 2,
+          requires: ["first_prayer"],
+        },
+        {
+          id: "faith_30",
+          label: "Devoted",
+          desc: "30 day faith streak",
+          icon: "ti-cross",
+          tier: 3,
+          requires: ["faith_7"],
+        },
+      ],
+    },
+    community: {
+      label: "Community",
+      icon: "ti-users",
+      color: "var(--red)",
+      items: [
+        {
+          id: "join_squad",
+          label: "Team player",
+          desc: "Join a verified squad",
+          icon: "ti-users",
+          tier: 1,
+        },
+        {
+          id: "scout_flagged",
+          label: "On the radar",
+          desc: "Get flagged as an elite prospect",
+          icon: "ti-flag",
+          tier: 2,
+          requires: ["join_squad"],
+        },
+        {
+          id: "report_shared",
+          label: "Making waves",
+          desc: "Have your scouting report shared",
+          icon: "ti-file-text",
+          tier: 3,
+          requires: ["scout_flagged"],
+        },
+        {
+          id: "scout_placed",
+          label: "The journey begins",
+          desc: "Get placed by a scout",
+          icon: "ti-rocket",
+          tier: 4,
+          requires: ["report_shared"],
+        },
+      ],
+    },
+  };
+
+  const achievements = async (s) => {
+    const { data: unlocked } = await HF_DB.getAchievements(s.userId);
+    await HF_DB.checkAndUnlockAchievements(s.userId);
+
+    const unlockedIds = new Set(unlocked.map((a) => a.id));
+    window._unlockedIds = [...unlockedIds];
+
+    const unlockedMap = {};
+    unlocked.forEach((a) => (unlockedMap[a.id] = a));
+
+    const totalCount = Object.values(ACHIEVEMENTS).reduce(
+      (sum, cat) => sum + cat.items.length,
+      0,
+    );
+    const unlockedCount = unlocked.length;
+
+    const renderTree = (cat) => {
+      const items = cat.items;
+      const nodeSize = 72;
+      const hGap = 120;
+      const vGap = 100;
+
+      // assign positions by tier
+      const tiers = {};
+      items.forEach((item) => {
+        if (!tiers[item.tier]) tiers[item.tier] = [];
+        tiers[item.tier].push(item);
+      });
+
+      const maxTier = Math.max(...Object.keys(tiers).map(Number));
+      const maxPerTier = Math.max(...Object.values(tiers).map((t) => t.length));
+      const svgW = maxTier * hGap + nodeSize + 40;
+      const svgH = maxPerTier * vGap + nodeSize + 56;
+
+      // calculate node positions
+      const positions = {};
+      Object.entries(tiers).forEach(([tier, tierItems]) => {
+        const x = (parseInt(tier) - 1) * hGap + 20;
+        tierItems.forEach((item, idx) => {
+          const totalH = tierItems.length * vGap;
+          const startY = (svgH - totalH) / 2;
+          const y = startY + idx * vGap;
+          positions[item.id] = { x, y };
+        });
+      });
+
+      // build connection lines
+      const lines = items
+        .flatMap((item) => {
+          if (!item.requires) return [];
+          return item.requires.map((reqId) => {
+            const from = positions[reqId];
+            const to = positions[item.id];
+            if (!from || !to) return "";
+            const isActive = unlockedIds.has(reqId) && unlockedIds.has(item.id);
+            const isPending =
+              unlockedIds.has(reqId) && !unlockedIds.has(item.id);
+            const color = isActive
+              ? cat.color
+              : isPending
+                ? "rgba(196,154,10,.4)"
+                : "var(--border)";
+            return `<line 
+          x1="${from.x + nodeSize / 2}" y1="${from.y + nodeSize / 2}"
+          x2="${to.x + nodeSize / 2}"   y2="${to.y + nodeSize / 2}"
+          stroke="${color}" stroke-width="${isActive ? 2 : 1}"
+          stroke-dasharray="${isPending ? "4,4" : "none"}"/>`;
+          });
+        })
+        .join("");
+
+      // build nodes
+      const nodes = items
+        .map((item) => {
+          const pos = positions[item.id];
+          const isUnlocked = unlockedIds.has(item.id);
+          const requires = item.requires || [];
+          const prereqsMet = requires.every((r) => unlockedIds.has(r));
+          const isLocked = !prereqsMet && !isUnlocked;
+
+          const bgColor = isUnlocked ? cat.color : "var(--bg2)";
+          const borderColor = isUnlocked
+            ? cat.color
+            : prereqsMet
+              ? cat.color
+              : "var(--border)";
+          const borderWidth = isUnlocked ? 2 : prereqsMet ? 2 : 1;
+          const borderDash = prereqsMet && !isUnlocked ? "4,3" : "none";
+          const iconColor = isUnlocked
+            ? "#0f0f0d"
+            : isLocked
+              ? "#444"
+              : cat.color + "88";
+          const textColor = isUnlocked ? cat.color : isLocked ? "#444" : "#888";
+
+          return `
+          <g transform="translate(${pos.x}, ${pos.y})"
+            data-id="${item.id}"
+            onmouseenter="HF_PLAYER.showAchievementTooltip(event, '${item.id}')"
+            onmouseleave="HF_PLAYER.hideAchievementTooltip()"
+            onclick="${!isLocked ? `HF_PLAYER.showAchievementDetail('${item.id}')` : ""}"
+            style="cursor:${isLocked ? "default" : "pointer"}">
+            <rect width="${nodeSize}" height="${nodeSize}"
+              fill="${bgColor}"
+              stroke="${borderColor}"
+              stroke-width="${borderWidth}"
+              stroke-dasharray="${borderDash}"
+              rx="0"
+              style="transition:filter 0.15s ease;"/>
+          ${
+            isUnlocked
+              ? `
+            <rect width="${nodeSize}" height="4" fill="${cat.color}" rx="0"/>`
+              : ""
+          }
+          <text x="${nodeSize / 2}" y="${nodeSize / 2 - 6}" 
+            text-anchor="middle" 
+            font-family="tabler-icons" 
+            font-size="20"
+            fill="${iconColor}">
+          </text>
+          <foreignObject x="4" y="${nodeSize / 2 - 8}" width="${nodeSize - 8}" height="20">
+            <div xmlns="http://www.w3.org/1999/xhtml" 
+              style="text-align:center;font-size:10px;color:${iconColor};">
+              <i class="ti ${isLocked ? "ti-lock" : item.icon}"></i>
+            </div>
+          </foreignObject>
+          <foreignObject x="${-10}" y="${nodeSize + 2}" width="${nodeSize + 20}" height="32">
+            <div xmlns="http://www.w3.org/1999/xhtml"
+              style="text-align:center;font-size:8px;font-weight:700;font-family:Inter,sans-serif;color:${textColor};line-height:1.3;word-wrap:break-word;">
+              ${isLocked ? "???" : item.label}
+            </div>
+          </foreignObject>
+          ${
+            isUnlocked
+              ? `
+            <circle cx="${nodeSize - 8}" cy="8" r="6" fill="var(--green)"/>
+            <text x="${nodeSize - 8}" y="12" text-anchor="middle" font-size="8" fill="white">✓</text>`
+              : ""
+          }
+        </g>`;
+        })
+        .join("");
+
+      const catUnlocked = items.filter((i) => unlockedIds.has(i.id)).length;
+      const catKey = cat.label.toLowerCase().replace(/\s/g, "-");
+
+      return `
+        <div class="card" style="margin-bottom:var(--sp-lg);">
+          <div class="card-title" style="justify-content:space-between;cursor:pointer;"
+            onclick="
+              const c=document.getElementById('tree-${catKey}');
+              const i=document.getElementById('tree-chevron-${catKey}');
+              c.style.display=c.style.display==='none'?'block':'none';
+              i.className='ti '+(c.style.display==='none'?'ti-chevron-down':'ti-chevron-up');
+            ">
+            <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+              <i class="ti ${cat.icon}" style="color:${cat.color}"></i>
+              ${cat.label}
+              <span style="font-size:11px;color:var(--text3);font-family:var(--font);text-transform:none;letter-spacing:0;font-weight:400;">
+                ${catUnlocked}/${items.length}
+              </span>
+            </div>
+            <i id="tree-chevron-${catKey}" class="ti ti-chevron-down" style="font-size:14px;color:var(--text3)"></i>
+          </div>
+          <div id="tree-${catKey}" style="display:none;">
+            <div style="overflow-x:auto;">
+              <svg width="${svgW}" height="${svgH}" xmlns="http://www.w3.org/2000/svg">
+                ${lines}
+                ${nodes}
+              </svg>
+            </div>
+            <div id="achievement-detail-${catKey}" style="display:none;margin-top:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:2px solid ${cat.color};"></div>
+          </div>
+        </div>`;
+    };
 
     setMain(`
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Achievements</div>
-      ${earned
-        .map(
-          (a) => `
-        <div class="achievement" style="opacity:${a.earned ? "1" : "0.4"};">
-          <div class="achievement-icon" style="color:${a.earned ? "var(--gold)" : "var(--text3)"}">
-            ${a.icon}
-          </div>
-          <div>
-            <div class="achievement-title">${a.title}</div>
-            <div class="achievement-sub">${a.sub}</div>
-          </div>
-          <div class="achievement-date">
-            ${
-              a.earned
-                ? `<span style="color:var(--green);font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Earned</span>`
-                : `<span style="color:var(--text3);font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Locked</span>`
-            }
-          </div>
-        </div>`,
-        )
+    <div class="welcome-banner">
+      <div>
+        <div class="welcome-title">Achievements</div>
+        <div class="welcome-sub">${unlockedCount} of ${totalCount} unlocked</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-family:var(--font);font-size:42px;font-weight:700;color:var(--gold);">${Math.round((unlockedCount / totalCount) * 100)}%</div>
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,.4);">Complete</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:var(--sp-md);flex-wrap:wrap;margin-bottom:var(--sp-lg);">
+      ${Object.entries(ACHIEVEMENTS)
+        .map(([key, cat]) => {
+          const catUnlocked = cat.items.filter((a) =>
+            unlockedIds.has(a.id),
+          ).length;
+          const pct = Math.round((catUnlocked / cat.items.length) * 100);
+          return `
+          <div style="flex:1;min-width:120px;padding:var(--sp-md);background:var(--bg2);border-top:2px solid ${cat.color};">
+            <div style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${cat.color};margin-bottom:4px;">
+              <i class="ti ${cat.icon}" style="margin-right:4px"></i>${cat.label}
+            </div>
+            <div style="font-size:18px;font-weight:700;color:var(--text)">${catUnlocked}/${cat.items.length}</div>
+            <div style="height:3px;background:var(--border);margin-top:6px;">
+              <div style="height:100%;width:${pct}%;background:${cat.color};transition:width 0.3s ease;"></div>
+            </div>
+          </div>`;
+        })
         .join("")}
     </div>
 
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Next milestone</div>
-      ${
-        overall === null
-          ? `
-        <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--gold);font-size:13px;color:var(--text2)">
-          Get your first session rating from your coach to start unlocking achievements.
-        </div>`
-          : overall < 80
-            ? `
-        <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--gold);font-size:13px;color:var(--text2)">
-          <strong style="color:var(--text)">Reach 80+ overall rating</strong>: You're at ${overall}%. Keep pushing!
-        </div>`
-            : `
-        <div style="padding:12px;background:rgba(26,122,46,.05);border-left:2px solid var(--green);font-size:13px;color:var(--text2)">
-          <strong style="color:var(--green)">Elite status reached!</strong> You're at ${overall}%. Outstanding.
-        </div>`
-      }
-    </div>`);
+    ${Object.values(ACHIEVEMENTS)
+      .map((cat) => renderTree(cat))
+      .join("")}
+
+    <div style="display:flex;gap:var(--sp-lg);flex-wrap:wrap;padding:var(--sp-md);background:var(--bg2);font-size:11px;color:var(--text2);">
+      <div style="display:flex;align-items:center;gap:6px;"><div style="width:16px;height:16px;background:var(--gold);"></div>Unlocked</div>
+      <div style="display:flex;align-items:center;gap:6px;"><div style="width:16px;height:16px;background:var(--bg2);border:1px solid var(--gold);"></div>Available</div>
+      <div style="display:flex;align-items:center;gap:6px;"><div style="width:16px;height:16px;background:var(--bg2);border:1px solid var(--border);opacity:0.4;"></div>Locked</div>
+    </div>
+  `);
   };
 
   // ── HEALTH ─────────────────────────────────────────────────
@@ -612,22 +1323,31 @@ const HF_PLAYER = (() => {
     </div>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:var(--sp-sm);">
       ${metrics
-        .map((m) => {
-          const val = todayLog[m.id] || 0;
-          const pct = (val / 10) * 100;
-          return `
-          <div style="padding:var(--sp-md);background:var(--bg2);border-top:2px solid var(--border);">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-              <i class="ti ${m.icon}" style="color:var(--text2)"></i>
-              <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">${m.label}</span>
-            </div>
-            <div style="font-family:var(--font-head);font-size:28px;font-weight:700;color:var(--text);line-height:1;">${val}</div>
-            <div style="height:3px;background:var(--border);margin-top:8px;">
-              <div style="height:100%;width:${pct}%;background:var(--gold);"></div>
-            </div>
-            <div style="font-size:10px;color:var(--text3);margin-top:4px">${m.desc}</div>
-          </div>`;
-        })
+        .map(
+          (m) => `
+  <div style="padding:var(--sp-md);background:var(--bg2);margin-bottom:var(--sp-sm);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:32px;height:32px;background:var(--bg);display:flex;align-items:center;justify-content:center;">
+          <i class="ti ${m.icon}" style="font-size:16px;color:var(--text2)"></i>
+        </div>
+        <div>
+          <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);">${m.label}</div>
+          <div style="font-size:10px;color:var(--text3)">${m.desc}</div>
+        </div>
+      </div>
+      <span id="hv-${m.id}" style="font-family:var(--font);font-size:28px;font-weight:700;color:var(--gold);">
+        ${todayLog?.[m.id] || 5}
+      </span>
+    </div>
+    <input type="range" min="1" max="10" value="${todayLog?.[m.id] || 5}" step="1"
+      style="width:100%;accent-color:var(--gold);"
+      oninput="document.getElementById('hv-${m.id}').textContent=this.value">
+    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:4px;">
+      <span>1: Low</span><span>10: High</span>
+    </div>
+  </div>`,
+        )
         .join("")}
     </div>
     ${
@@ -651,7 +1371,7 @@ const HF_PLAYER = (() => {
               <i class="ti ${m.icon}" style="color:var(--text2)"></i>
               <span style="font-size:13px;font-weight:600;color:var(--text)">${m.label}</span>
             </div>
-            <span id="hv-${m.id}" style="font-family:var(--font-head);font-size:14px;font-weight:700;color:var(--gold)">
+            <span id="hv-${m.id}" style="font-family:var(--font);font-size:14px;font-weight:700;color:var(--gold)">
               ${todayLog?.[m.id] || 5}
             </span>
           </div>
@@ -724,7 +1444,6 @@ const HF_PLAYER = (() => {
           <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--green);"></div>Ready</div>
           <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--gold);"></div>Monitor</div>
           <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--red);"></div>At risk</div>
-          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--blue);border-radius:50%;"></div>Today</div>
         </div>
       </div>
 
@@ -745,8 +1464,7 @@ const HF_PLAYER = (() => {
           <tbody>
             ${logs
               .map((l) => {
-                const isToday =
-                  l.date === _localDate();
+                const isToday = l.date === HF_DB.localDate();
                 return `
                 <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
                   <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
@@ -757,7 +1475,7 @@ const HF_PLAYER = (() => {
                   <td>${l.sleep || "-"}</td>
                   <td>${l.soreness || "-"}</td>
                   <td>${l.hydration || "-"}</td>
-                  <td style="color:var(--text2);font-size:11px">${l.notes || "-"}</td>
+                  <td style="color:var(--text2);font-size:11px">${l.notes && l.notes !== "null" ? l.notes : "None"}</td>
                 </tr>`;
               })
               .join("")}
@@ -787,24 +1505,27 @@ const HF_PLAYER = (() => {
 
   // ── MESSAGES ─────────────────────────────────────────────────
   const messages = async (s) => {
-    const { data: msgs } = await HF_DB.getMessages(s.userId);
-    const { data: archived } = await HF_DB.getArchivedMessages(s.userId);
-    const { data: invites } = await HF_DB.getSquadInvites(s.userId);
+    const [{ data: msgs }, { data: archived }, { data: invites }] =
+      await Promise.all([
+        HF_DB.getMessages(s.userId),
+        HF_DB.getArchivedMessages(s.userId),
+        HF_DB.getSquadInvites(s.userId),
+      ]);
+    const allSenderIds = [
+      ...(msgs || []).map((m) => m.from_id),
+      ...(archived || []).map((m) => m.from_id),
+    ];
+    const senderNames = await HF_DB.getUserNamesByIds(allSenderIds);
 
-    // enrich messages with sender names
-    const enriched = await Promise.all(
-      (msgs || []).map(async (m) => ({
-        ...m,
-        senderName: await HF_DB.getUserNameById(m.from_id),
-      })),
-    );
+    const enriched = (msgs || []).map((m) => ({
+      ...m,
+      senderName: senderNames[m.from_id] || "HappyFeet",
+    }));
 
-    const enrichedArchived = await Promise.all(
-      (archived || []).map(async (m) => ({
-        ...m,
-        senderName: await HF_DB.getUserNameById(m.from_id),
-      })),
-    );
+    const enrichedArchived = (archived || []).map((m) => ({
+      ...m,
+      senderName: senderNames[m.from_id] || "HappyFeet",
+    }));
 
     setMain(`
     ${
@@ -883,7 +1604,7 @@ const HF_PLAYER = (() => {
                 <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
               </div>
               <div style="flex:1;opacity:0.6">
-                <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+                <div style="font-size:11px;font-family:var(--font);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
                   From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : "HappyFeet Admin")}
                 </div>
                 <div class="msg-name">${m.subject || "Message"}</div>
@@ -906,7 +1627,7 @@ const HF_PLAYER = (() => {
 
   // ── FAITH ────────────────────────────────────────────────────
   const faith = async (s) => {
-    const todayKey = _localDate();
+    const todayKey = HF_DB.localDate();
     const storageKey = `hf_faith_checklist_${s.userId}_${todayKey}`;
     const checked = JSON.parse(localStorage.getItem(storageKey) || "[]");
 
@@ -950,11 +1671,11 @@ const HF_PLAYER = (() => {
         ${
           allChecked
             ? `
-          <span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">
+          <span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">
             <i class="ti ti-circle-check"></i> All done
           </span>`
             : `
-          <span style="font-family:var(--font-head);font-size:10px;color:var(--text3);">
+          <span style="font-family:var(--font);font-size:10px;color:var(--text3);">
             ${checked.length}/${prayers.length} completed
           </span>`
         }
@@ -973,7 +1694,7 @@ const HF_PLAYER = (() => {
               <div style="font-family:var(--font);font-size:13px;font-weight:600;color:${isChecked ? "var(--green)" : "var(--faith)"};margin-bottom:4px;${isChecked ? "text-decoration:line-through;" : ""}">
                 ${p.title}
               </div>
-              <div style="font-size:12px;color:var(--text2);font-style:italic;line-height:1.5;${isChecked ? "opacity:0.5;" : ""}">
+              <div style="font-size:12px;color:var(--text2);font-style:normal;line-height:1.5;${isChecked ? "opacity:0.5;" : ""}">
                 ${p.desc}
               </div>
             </div>
@@ -984,7 +1705,7 @@ const HF_PLAYER = (() => {
       ${
         allChecked
           ? `
-        <div style="text-align:center;padding:var(--sp-lg);color:var(--faith);font-size:13px;font-style:italic;">
+        <div style="text-align:center;padding:var(--sp-lg);color:var(--faith);font-size:13px;font-style:normal;">
           <i class="ti ti-heart" style="margin-right:6px"></i>
           All prayers completed for today. Come back tomorrow.
         </div>`
@@ -1014,28 +1735,30 @@ const HF_PLAYER = (() => {
           ([title, verse]) => `
         <div style="padding:12px;background:var(--faith-lt);border-radius:0;border-left:3px solid var(--faith);margin-bottom:8px">
           <div style="font-size:11px;font-weight:700;color:var(--faith);margin-bottom:4px">${title}</div>
-          <div style="font-size:12px;color:var(--text2);font-style:italic;line-height:1.6">${verse}</div>
+          <div style="font-size:12px;color:var(--text2);font-style:normal;line-height:1.6">${verse}</div>
         </div>`,
         )
         .join("")}
     </div>`);
   };
 
-  const updateTrainingDay = async (dayIndex, type) => {
+  const updateTrainingDay = async (dayIndex, type, specificDate = null) => {
     const session = HF_DB.getSession();
-    const key = `hf_training_plan_${session.userId}`;
-    const saved = JSON.parse(localStorage.getItem(key) || "{}");
-    saved[dayIndex] = type;
-    localStorage.setItem(key, JSON.stringify(saved));
-
     const existing = await HF_DB.getTraining(session.userId);
-    await HF_DB.saveTraining(session.userId, {
-      ...existing,
-      weeklyPlan: saved,
-    });
+    const schedule = existing?.schedule || {};
+
+    if (specificDate) {
+      // store by specific date for month view
+      schedule[specificDate] = type;
+    } else {
+      // store by weekday for week/day view
+      schedule[dayIndex] = type;
+    }
+
+    await HF_DB.saveTraining(session.userId, { ...existing, schedule });
 
     HF_UTILS.toast(
-      `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dayIndex]} set to ${type}`,
+      `${specificDate || ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dayIndex]} set to ${type}`,
       "success",
     );
     training(session);
@@ -1063,6 +1786,20 @@ const HF_PLAYER = (() => {
       return;
     }
 
+    await HF_DB.checkAndUnlockAchievements(session.userId).then(
+      ({ newlyUnlocked }) => {
+        if (newlyUnlocked?.length > 0) {
+          setTimeout(() => {
+            HF_UTILS.launchConfetti();
+            HF_UTILS.toast(
+              `🏆 Achievement unlocked: ${newlyUnlocked.length} new!`,
+              "success",
+            );
+          }, 500);
+        }
+      },
+    );
+
     HF_UTILS.toast("Health check-in logged!", "success");
     health(session);
   };
@@ -1075,7 +1812,7 @@ const HF_PLAYER = (() => {
     <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
       <div style="display:flex;align-items:center;gap:var(--sp-lg);">
         <div style="position:relative;">
-          <div style="width:72px;height:72px;background:#1a7a2e;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
+          <div style="width:72px;height:72px;background:#1a7a2e;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#fff;">
             ${HF_UTILS.initials(session.name)}
           </div>
           <button onclick="HF_UTILS.toast('Profile photo upload coming soon!','success')"
@@ -1084,7 +1821,7 @@ const HF_PLAYER = (() => {
           </button>
         </div>
         <div>
-          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${session.name}</div>
+          <div style="font-family:var(--font);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${session.name}</div>
           <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.pos || "-"} · ${p.tier || "-"}</div>
         </div>
       </div>
@@ -1261,10 +1998,10 @@ const HF_PLAYER = (() => {
       overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:var(--sp-xl);`;
       overlay.innerHTML = `
       <div style="background:var(--bg);border-top:3px solid var(--gold);padding:var(--sp-2xl);max-width:480px;width:100%;">
-        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
+        <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
           HappyFeet ${msg.from_id === "system" ? "System" : "Admin"}
         </div>
-        <div style="font-family:var(--font-head);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
+        <div style="font-family:var(--font);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
           ${msg.subject || "Message"}
         </div>
         <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:var(--sp-xl);">
@@ -1298,7 +2035,7 @@ const HF_PLAYER = (() => {
     messages(HF_DB.getSession());
   };
 
-  const togglePrayer = (prayerId, dateKey, userId) => {
+  const togglePrayer = async (prayerId, dateKey, userId) => {
     const storageKey = `hf_faith_checklist_${userId}_${dateKey}`;
     const checked = JSON.parse(localStorage.getItem(storageKey) || "[]");
 
@@ -1327,6 +2064,21 @@ const HF_PLAYER = (() => {
           session.profile = updatedProfile;
           HF_DB.saveSession(session);
         });
+
+        // at the end of each function before the final toast/nav
+        await HF_DB.checkAndUnlockAchievements(session.userId).then(
+          ({ newlyUnlocked }) => {
+            if (newlyUnlocked?.length > 0) {
+              setTimeout(() => {
+                HF_UTILS.launchConfetti();
+                HF_UTILS.toast(
+                  `🏆 Achievement unlocked: ${newlyUnlocked.length} new!`,
+                  "success",
+                );
+              }, 500);
+            }
+          },
+        );
 
         HF_UTILS.toast(
           `Faith streak: ${newStreak} days! Keep going.`,
@@ -1506,7 +2258,7 @@ const HF_PLAYER = (() => {
     const tags = document.getElementById("compose-tags");
     const tag = document.createElement("div");
     tag.id = `tag-${userId}`;
-    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font-head);letter-spacing:0.04em;`;
+    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font);letter-spacing:0.04em;`;
     tag.innerHTML = `
     ${userName}
     <span style="cursor:pointer;font-size:14px;font-weight:700;line-height:1;" 
@@ -1574,8 +2326,28 @@ const HF_PLAYER = (() => {
       return;
     }
 
+    // create one shared thread ID for all recipients
+    const threadId = crypto.randomUUID();
+
     for (const recipient of recipients) {
-      await HF_DB._sendMessage(session.userId, recipient.id, subject, body);
+      await HF_DB._sendMessage(
+        session.userId,
+        recipient.id,
+        subject,
+        body,
+        threadId,
+      );
+    }
+
+    // also send a copy to self so sender can see the thread
+    if (recipients.length > 1) {
+      await HF_DB._sendMessage(
+        session.userId,
+        session.userId,
+        subject,
+        `[Group message to ${recipients.map((r) => r.name).join(", ")}]\n\n${body}`,
+        threadId,
+      );
     }
 
     window._composeRecipients = [];
@@ -1693,7 +2465,7 @@ const HF_PLAYER = (() => {
       <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('messages')">
         <i class="ti ti-arrow-left"></i> Back
       </button>
-      <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+      <div style="font-family:var(--font);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
         ${subject || "Conversation"}
       </div>
     </div>
@@ -1706,7 +2478,7 @@ const HF_PLAYER = (() => {
             const emojiOnly = isEmojiOnly(m.body);
             return `
             <div style="display:flex;flex-direction:column;align-items:${isMine ? "flex-end" : "flex-start"};">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font-head);letter-spacing:0.04em;">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font);letter-spacing:0.04em;">
                 ${isMine ? "You" : m.senderName} · ${HF_UTILS.timeAgo(m.created_at)}
               </div>
               <div style="
@@ -1805,55 +2577,13 @@ const HF_PLAYER = (() => {
   };
 
   const viewSenderProfile = async (userId) => {
-    const { data: user } = await HF_DB.getUserById(userId);
-    if (!user) {
-      HF_UTILS.toast("User not found.", "error");
-      return;
-    }
-    const p = user.profile || {};
-    const overall = p.ratings
-      ? Math.round(
-          (p.ratings.speed + p.ratings.tech + p.ratings.tact + p.ratings.phys) /
-            4,
-        )
-      : null;
-
-    setMain(`
-    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
-        <div style="width:72px;height:72px;background:var(--green);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
-          ${HF_UTILS.initials(user.name)}
-        </div>
-        <div>
-          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;color:#fff;">${user.name}</div>
-          <div style="font-size:13px;color:rgba(255,255,255,.55)">${p.pos || p.org || "-"} · ${p.tier || p.exp + " yrs exp" || "-"}</div>
-          <div style="margin-top:8px">${HF_UTILS.badgeHTML(user.role, user.role === "player" ? "green" : user.role === "coach" ? "gold" : "blue")}</div>
-        </div>
-      </div>
-      ${
-        overall !== null
-          ? `
-        <div style="text-align:right">
-          <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold)">${overall}%</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.1em">Overall</div>
-        </div>`
-          : ""
-      }
-    </div>
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Details</div>
-      <div class="info-grid">
-        ${p.pos ? `<div class="info-cell"><div class="info-label">Position</div><div class="info-val">${p.pos}</div></div>` : ""}
-        ${p.tier ? `<div class="info-cell"><div class="info-label">Tier</div><div class="info-val">${p.tier}</div></div>` : ""}
-        ${p.hometown ? `<div class="info-cell"><div class="info-label">Hometown</div><div class="info-val">${p.hometown}</div></div>` : ""}
-        ${p.org ? `<div class="info-cell"><div class="info-label">Organisation</div><div class="info-val">${p.org}</div></div>` : ""}
-        ${p.exp ? `<div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp} years</div></div>` : ""}
-        ${p.club ? `<div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club}</div></div>` : ""}
-      </div>
-    </div>
-    <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')" style="margin-top:8px">
-      <i class="ti ti-arrow-left"></i> Back to messages
-    </button>`);
+    const session = HF_DB.getSession();
+    const html = await HF_UTILS.viewProfile(
+      userId,
+      "HF_ROUTER.navTo('messages')",
+    );
+    if (!html) return;
+    setMain(html);
   };
 
   const reportToAdmin = async (fromId, senderName) => {
@@ -1886,10 +2616,325 @@ const HF_PLAYER = (() => {
     document.getElementById("health-slider-view").style.display = "none";
   };
 
+  const showDayPicker = (dayIndex, specificDate = null) => {
+    const picker = document.getElementById("day-picker");
+    const label = document.getElementById("day-picker-label");
+    const options = document.getElementById("day-picker-options");
+    if (!picker || !options) return;
+
+    const days = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const types = [
+      "Rest",
+      "Technical",
+      "Tactical",
+      "Physical",
+      "Recovery",
+      "Match",
+    ];
+
+    if (label)
+      label.textContent = specificDate
+        ? `Select session type for ${new Date(specificDate + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}`
+        : `Select session type for ${days[dayIndex]}`;
+
+    picker.style.display = "block";
+
+    options.innerHTML = types
+      .map(
+        (t) => `
+    <button class="btn btn-outline btn-sm"
+      onclick="HF_PLAYER.updateTrainingDay(${dayIndex}, '${t}', ${specificDate ? `'${specificDate}'` : "null"});document.getElementById('day-picker').style.display='none'">
+      ${t}
+    </button>`,
+      )
+      .join("");
+  };
+
+  const toggleSessionComplete = async (sessionType, date, completed) => {
+    const session = HF_DB.getSession();
+    const notes =
+      document.getElementById(`session-notes-${date}`)?.value.trim() || null;
+
+    const result = await HF_DB.logTrainingSession(
+      session.userId,
+      sessionType,
+      notes,
+      date,
+      completed,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    await HF_DB.checkAndUnlockAchievements(session.userId).then(
+      ({ newlyUnlocked }) => {
+        if (newlyUnlocked?.length > 0) {
+          setTimeout(() => {
+            HF_UTILS.launchConfetti();
+            HF_UTILS.toast(
+              `🏆 Achievement unlocked: ${newlyUnlocked.length} new!`,
+              "success",
+            );
+          }, 500);
+        }
+      },
+    );
+
+    HF_UTILS.toast(
+      completed ? "Session marked complete! 💪" : "Session unmarked.",
+      "success",
+    );
+    training(session);
+  };
+
+  // keep old one for backward compat
+  const logSessionComplete = async (sessionType) => {
+    await toggleSessionComplete(sessionType, HF_DB.localDate(), true);
+  };
+
+  const completionSection = (specificDate = null) => {
+    const schedule = window._trainingSchedule || {};
+    const logs = window._trainingLogs || [];
+    const typeColors = window._trainingTypeColors || {};
+
+    const targetDate = specificDate || HF_DB.localDate();
+    const isToday = targetDate === HF_DB.localDate();
+    const logForDate = logs?.find((l) => l.date === targetDate);
+    const isDone = logForDate?.completed;
+    const dayOfWeek = new Date(targetDate + "T00:00:00").getDay();
+    const dayType = schedule[targetDate] || schedule[dayOfWeek];
+    const color = dayType ? typeColors[dayType] : "var(--border)";
+    const dateLabel = new Date(targetDate + "T00:00:00").toLocaleDateString(
+      "en-GB",
+      {
+        weekday: "long",
+        day: "numeric",
+        month: "short",
+      },
+    );
+
+    const content = isDone
+      ? `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:13px;color:var(--green);display:flex;align-items:center;gap:6px;">
+        <i class="ti ti-circle-check"></i>
+        ${dayType || "Session"} completed!
+        ${logForDate.notes ? `<span style="font-size:11px;color:var(--text2);">"${logForDate.notes}"</span>` : ""}
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="HF_PLAYER.toggleSessionComplete('${dayType || "Rest"}', '${targetDate}', false)">
+        <i class="ti ti-x"></i> Uncomplete
+      </button>
+    </div>`
+      : dayType
+        ? `
+    <div style="font-size:13px;color:var(--text);margin-bottom:8px;">
+      Planned: <strong style="color:${color}">${dayType}</strong>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input type="text" id="session-notes-${targetDate}" placeholder="Add session notes (optional)..."
+        style="flex:1;min-width:150px;padding:8px 12px;background:var(--bg);border:0.5px solid var(--border);color:var(--text);font-size:13px;outline:none;font-family:var(--font);">
+      <button class="btn btn-primary btn-sm" onclick="HF_PLAYER.toggleSessionComplete('${dayType}', '${targetDate}', true)">
+        <i class="ti ti-circle-check"></i> Mark completed
+      </button>
+    </div>`
+        : `
+    <div style="font-size:13px;color:var(--text2);">
+      No session planned.
+      <span onclick="HF_PLAYER.showDayPicker(${dayOfWeek}, '${targetDate}')"
+        style="color:var(--gold);cursor:pointer;text-decoration:underline;margin-left:4px;">Set one</span>
+    </div>`;
+
+    return `
+    <div id="completion-section" style="padding:var(--sp-md);background:${isDone ? "rgba(26,122,46,.08)" : dayType ? color + "22" : "var(--bg2)"};border-left:3px solid ${isDone ? "var(--green)" : dayType ? color : "var(--border)"};margin-bottom:var(--sp-lg);">
+      <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:6px;">
+        ${isToday ? "Today" : dateLabel}
+      </div>
+      ${content}
+    </div>`;
+  };
+
+  const selectTrainingDay = async (dateStr, dayIndex) => {
+    window._trainingSelectedDate = dateStr;
+    showDayPicker(dayIndex, dateStr);
+
+    // refresh logs in case something changed
+    const { data: freshLogs } = await HF_DB.getTrainingLogs(
+      HF_DB.getSession().userId,
+    );
+    window._trainingLogs = freshLogs;
+
+    // update completion section in place
+    const completionEl = document.getElementById("completion-section");
+    if (completionEl) {
+      completionEl.outerHTML = completionSection(dateStr);
+    }
+  };
+
+  const showAchievementDetail = (achievementId) => {
+    const item = Object.values(ACHIEVEMENTS)
+      .flatMap((c) => c.items)
+      .find((i) => i.id === achievementId);
+    const cat = Object.values(ACHIEVEMENTS).find((c) =>
+      c.items.find((i) => i.id === achievementId),
+    );
+    if (!item || !cat) return;
+
+    const unlockedIds = new Set(window._unlockedIds || []);
+    const requires = item.requires || [];
+    const prereqsMet = requires.every((r) => unlockedIds.has(r));
+    const isLocked = !prereqsMet && !unlockedIds.has(item.id);
+
+    const catKey = cat.label.toLowerCase().replace(/\s/g, "-");
+    const detailId = `achievement-detail-${catKey}`;
+    const detail = document.getElementById(detailId);
+    if (!detail) return;
+
+    const isVisible = detail.style.display !== "none";
+    document
+      .querySelectorAll('[id^="achievement-detail-"]')
+      .forEach((el) => (el.style.display = "none"));
+    if (isVisible) return;
+
+    detail.style.display = "block";
+    detail.innerHTML = isLocked
+      ? `
+      <div style="display:flex;align-items:center;gap:var(--sp-md);">
+        <i class="ti ti-lock" style="font-size:24px;color:var(--text3)"></i>
+        <div>
+          <div style="font-family:var(--font);font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text3);">
+            ???
+          </div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">
+            Unlock required: ${requires
+              .map((r) => {
+                const req = Object.values(ACHIEVEMENTS)
+                  .flatMap((c) => c.items)
+                  .find((i) => i.id === r);
+                return req?.label || r;
+              })
+              .join(", ")}
+          </div>
+        </div>
+      </div>`
+      : `
+      <div style="display:flex;align-items:center;gap:var(--sp-md);">
+        <i class="ti ${item.icon}" style="font-size:24px;color:${cat.color}"></i>
+        <div>
+          <div style="font-family:var(--font);font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:${cat.color};">
+            ${item.label}
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">${item.desc}</div>
+          ${
+            item.requires?.length
+              ? `
+            <div style="font-size:11px;color:var(--text3);margin-top:4px;">
+              Requires: ${requires
+                .map((r) => {
+                  const req = Object.values(ACHIEVEMENTS)
+                    .flatMap((c) => c.items)
+                    .find((i) => i.id === r);
+                  return req?.label || r;
+                })
+                .join(", ")}
+            </div>`
+              : ""
+          }
+        </div>
+      </div>`;
+  };
+
+  const showAchievementTooltip = (event, achievementId) => {
+    const item = Object.values(ACHIEVEMENTS)
+      .flatMap((c) => c.items)
+      .find((i) => i.id === achievementId);
+    const cat = Object.values(ACHIEVEMENTS).find((c) =>
+      c.items.find((i) => i.id === achievementId),
+    );
+    if (!item || !cat) return;
+
+    const unlockedIds = new Set(window._unlockedIds || []);
+    const requires = item.requires || [];
+    const prereqsMet = requires.every((r) => unlockedIds.has(r));
+    const isLocked = !prereqsMet && !unlockedIds.has(item.id);
+    const isUnlocked = unlockedIds.has(item.id);
+
+    // remove existing tooltip
+    document.getElementById("achievement-tooltip")?.remove();
+
+    const tooltip = document.createElement("div");
+    tooltip.id = "achievement-tooltip";
+    tooltip.className = "achievement-tooltip";
+    tooltip.innerHTML = `
+    <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${isLocked ? "var(--text3)" : cat.color};margin-bottom:4px;">
+      ${isLocked ? "???" : item.label}
+    </div>
+    <div style="font-size:11px;color:var(--text2);">
+      ${isLocked ? "Complete prerequisites to unlock this achievement." : item.desc}
+    </div>
+    ${
+      requires.length && !isUnlocked
+        ? `
+      <div style="font-size:10px;color:var(--text3);margin-top:6px;border-top:0.5px solid var(--border);padding-top:6px;">
+        Requires: ${requires
+          .map((r) => {
+            const req = Object.values(ACHIEVEMENTS)
+              .flatMap((c) => c.items)
+              .find((i) => i.id === r);
+            return `<span style="color:${unlockedIds.has(r) ? "var(--green)" : "var(--text3)"}">
+            ${unlockedIds.has(r) ? "✓" : "○"} ${req?.label || r}
+          </span>`;
+          })
+          .join(" · ")}
+      </div>`
+        : ""
+    }
+    ${
+      isUnlocked
+        ? `
+      <div style="font-size:10px;color:var(--green);margin-top:6px;">
+        <i class="ti ti-circle-check"></i> Unlocked
+      </div>`
+        : !isLocked
+          ? `
+      <div style="font-size:10px;color:var(--gold);margin-top:6px;">
+        <i class="ti ti-clock"></i> In progress
+      </div>`
+          : ""
+    }`;
+
+    document.body.appendChild(tooltip);
+
+    // position near cursor
+    const x = Math.min(event.clientX + 12, window.innerWidth - 240);
+    const y = Math.min(event.clientY + 12, window.innerHeight - 120);
+    tooltip.style.left = x + "px";
+    tooltip.style.top = y + "px";
+  };
+
+  const hideAchievementTooltip = () => {
+    document.getElementById("achievement-tooltip")?.remove();
+  };
+
   return {
     render,
+    training,
     updateTrainingDay,
+    showDayPicker,
+    logSessionComplete,
+    toggleSessionComplete,
+    selectTrainingDay,
     logHealthCheckin,
+    showHealthSliders,
+    showHealthCards,
     editProfile,
     saveProfile,
     respondInvite,
@@ -1905,14 +2950,19 @@ const HF_PLAYER = (() => {
     searchRecipients,
     selectRecipient,
     removeRecipient,
+    viewThread,
     toggleMsgActions,
     replyToMessage,
     sendReply,
     viewSenderProfile,
     reportToAdmin,
-    viewThread,
-    showHealthCards,
-    showHealthSliders,
+    filterCoaches,
+    requestTrial,
+    messageCoach,
+    sendCoachMessage,
+    showAchievementDetail,
+    showAchievementTooltip,
+    hideAchievementTooltip,
   };
 })();
 

@@ -48,7 +48,7 @@ happyfeet/
 │   └── dashboard.css           # App shell, topbar, sidenav, layout
 └── js/
 ├── config.js               # Supabase URL + anon key
-├── theme.js                # Light/dark mode toggle with localStorage persistence
+├── theme.js                # Light/dark mode toggle
 ├── scripture.js            # Daily rotating scripture from a pool of 30 (day-of-year based)
 ├── utils.js                # DOM, avatars, bars, badges, toasts, hashing, mini charts, calendars
 ├── db.js                   # Database abstraction layer (Supabase)
@@ -107,7 +107,7 @@ HappyFeet uses a custom auth system built on top of Supabase's database layer. P
 
 **Admin:**
 - Admins are stored in the `users` table with `role: 'admin'`
-- Multiple admins supported — all receive notifications for verification events
+- Multiple admins supported: all receive notifications for verification events
 - Accessed via separate admin login screen
 
 ### Real-time

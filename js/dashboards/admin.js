@@ -45,7 +45,7 @@ const HF_ADMIN = (() => {
     setMain(`
       <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
         <div>
-          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">Admin Dashboard</div>
+          <div style="font-family:var(--font);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">Admin Dashboard</div>
           <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">HappyFeet Platform Management</div>
         </div>
       </div>
@@ -87,7 +87,7 @@ const HF_ADMIN = (() => {
             ${
               pending?.length > 0
                 ? `
-            <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
+            <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
                 Squads
             </div>
             ${pending.map((v) => _verificationRow(v)).join("")}`
@@ -96,7 +96,7 @@ const HF_ADMIN = (() => {
             ${
               agencyPending?.length > 0
                 ? `
-            <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);margin:12px 0 8px;">
+            <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);margin:12px 0 8px;">
                 Agencies
             </div>
             ${agencyPending.map((v) => _agencyVerificationRow(v)).join("")}`
@@ -252,7 +252,7 @@ const HF_ADMIN = (() => {
     </div>`;
 
     setMain(`
-    <div style="font-family:var(--font-head);font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-lg);">
+    <div style="font-family:var(--font);font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-lg);">
       Squad Verifications
     </div>
 
@@ -333,7 +333,7 @@ const HF_ADMIN = (() => {
     </div>`;
 
     setMain(`
-    <div style="font-family:var(--font-head);font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-lg);">
+    <div style="font-family:var(--font);font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-lg);">
       Agency Verifications
     </div>
 
@@ -409,6 +409,9 @@ const HF_ADMIN = (() => {
         showActions
           ? `
         <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.viewUserProfile('${u.id}')">
+            <i class="ti ti-user"></i> Profile
+        </button>
           ${
             u.banned
               ? `
@@ -428,7 +431,7 @@ const HF_ADMIN = (() => {
           </button>
         </div>`
           : `
-        <div style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;background:rgba(200,16,46,.1);color:var(--red);">
+        <div style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;background:rgba(200,16,46,.1);color:var(--red);">
           Admin
         </div>`
       }
@@ -491,23 +494,27 @@ const HF_ADMIN = (() => {
 
   // ── MESSAGES ───────────────────────────────────────────────
   const messages = async (s) => {
-    const { data: msgs } = await HF_DB.getMessages(s.userId);
-    const { data: archived } = await HF_DB.getArchivedMessages(s.userId);
+    const [{ data: msgs }, { data: archived }] = await Promise.all([
+      HF_DB.getMessages(s.userId),
+      HF_DB.getArchivedMessages(s.userId),
+    ]);
 
     // enrich messages with sender names
-    const enriched = await Promise.all(
-      (msgs || []).map(async (m) => ({
-        ...m,
-        senderName: await HF_DB.getUserNameById(m.from_id),
-      })),
-    );
+    const allSenderIds = [
+      ...(msgs || []).map((m) => m.from_id),
+      ...(archived || []).map((m) => m.from_id),
+    ];
+    const senderNames = await HF_DB.getUserNamesByIds(allSenderIds);
 
-    const enrichedArchived = await Promise.all(
-      (archived || []).map(async (m) => ({
-        ...m,
-        senderName: await HF_DB.getUserNameById(m.from_id),
-      })),
-    );
+    const enriched = (msgs || []).map((m) => ({
+      ...m,
+      senderName: senderNames[m.from_id] || "HappyFeet",
+    }));
+
+    const enrichedArchived = (archived || []).map((m) => ({
+      ...m,
+      senderName: senderNames[m.from_id] || "HappyFeet",
+    }));
 
     setMain(`
     <div class="card">
@@ -553,7 +560,7 @@ const HF_ADMIN = (() => {
                 <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
                 </div>
                 <div style="flex:1;opacity:0.6">
-                <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+                <div style="font-size:11px;font-family:var(--font);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
                     From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : "HappyFeet Admin")}
                 </div>
                 <div class="msg-name">${m.subject || "Message"}</div>
@@ -591,7 +598,7 @@ const HF_ADMIN = (() => {
         </div>
 
         <div id="edit-form-${v.id}" style="display:none;margin-bottom:12px;padding:12px;background:var(--bg);border:0.5px solid var(--border);">
-        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
             Edit verification details
         </div>
         <div class="fg">
@@ -752,7 +759,7 @@ const HF_ADMIN = (() => {
     overlay.innerHTML = `
     <div class="verification-alert-card">
       <i class="ti ti-clipboard-check" style="font-size:36px;color:var(--gold);margin-bottom:var(--sp-lg);display:block;"></i>
-      <div style="font-family:var(--font-head);font-size:18px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-sm);">
+      <div style="font-family:var(--font);font-size:18px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-sm);">
         ${count} pending verification${count > 1 ? "s" : ""}
       </div>
       <div style="font-size:14px;color:var(--text2);margin-bottom:var(--sp-xl);line-height:1.6;">
@@ -801,10 +808,10 @@ const HF_ADMIN = (() => {
       overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:var(--sp-xl);`;
       overlay.innerHTML = `
       <div style="background:var(--bg);border-top:3px solid var(--gold);padding:var(--sp-2xl);max-width:480px;width:100%;">
-        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
+        <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
           HappyFeet ${msg.from_id === "system" ? "System" : "Admin"}
         </div>
-        <div style="font-family:var(--font-head);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
+        <div style="font-family:var(--font);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
           ${msg.subject || "Message"}
         </div>
         <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:var(--sp-xl);">
@@ -911,7 +918,7 @@ const HF_ADMIN = (() => {
     const tags = document.getElementById("compose-tags");
     const tag = document.createElement("div");
     tag.id = `tag-${userId}`;
-    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font-head);letter-spacing:0.04em;`;
+    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font);letter-spacing:0.04em;`;
     tag.innerHTML = `
     ${userName}
     <span style="cursor:pointer;font-size:14px;font-weight:700;line-height:1;" 
@@ -980,8 +987,28 @@ const HF_ADMIN = (() => {
       return;
     }
 
+    // create one shared thread ID for all recipients
+    const threadId = crypto.randomUUID();
+
     for (const recipient of recipients) {
-      await HF_DB._sendMessage(session.userId, recipient.id, subject, body);
+      await HF_DB._sendMessage(
+        session.userId,
+        recipient.id,
+        subject,
+        body,
+        threadId,
+      );
+    }
+
+    // also send a copy to self so sender can see the thread
+    if (recipients.length > 1) {
+      await HF_DB._sendMessage(
+        session.userId,
+        session.userId,
+        subject,
+        `[Group message to ${recipients.map((r) => r.name).join(", ")}]\n\n${body}`,
+        threadId,
+      );
     }
 
     window._composeRecipients = [];
@@ -1099,7 +1126,7 @@ const HF_ADMIN = (() => {
       <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('messages')">
         <i class="ti ti-arrow-left"></i> Back
       </button>
-      <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+      <div style="font-family:var(--font);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
         ${subject || "Conversation"}
       </div>
     </div>
@@ -1112,7 +1139,7 @@ const HF_ADMIN = (() => {
             const emojiOnly = isEmojiOnly(m.body);
             return `
             <div style="display:flex;flex-direction:column;align-items:${isMine ? "flex-end" : "flex-start"};">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font-head);letter-spacing:0.04em;">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font);letter-spacing:0.04em;">
                 ${isMine ? "You" : m.senderName} · ${HF_UTILS.timeAgo(m.created_at)}
               </div>
               <div style="
@@ -1211,55 +1238,13 @@ const HF_ADMIN = (() => {
   };
 
   const viewSenderProfile = async (userId) => {
-    const { data: user } = await HF_DB.getUserById(userId);
-    if (!user) {
-      HF_UTILS.toast("User not found.", "error");
-      return;
-    }
-    const p = user.profile || {};
-    const overall = p.ratings
-      ? Math.round(
-          (p.ratings.speed + p.ratings.tech + p.ratings.tact + p.ratings.phys) /
-            4,
-        )
-      : null;
-
-    setMain(`
-    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
-        <div style="width:72px;height:72px;background:var(--green);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
-          ${HF_UTILS.initials(user.name)}
-        </div>
-        <div>
-          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;color:#fff;">${user.name}</div>
-          <div style="font-size:13px;color:rgba(255,255,255,.55)">${p.pos || p.org || "-"} · ${p.tier || p.exp + " yrs exp" || "-"}</div>
-          <div style="margin-top:8px">${HF_UTILS.badgeHTML(user.role, user.role === "player" ? "green" : user.role === "coach" ? "gold" : "blue")}</div>
-        </div>
-      </div>
-      ${
-        overall !== null
-          ? `
-        <div style="text-align:right">
-          <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold)">${overall}%</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.1em">Overall</div>
-        </div>`
-          : ""
-      }
-    </div>
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Details</div>
-      <div class="info-grid">
-        ${p.pos ? `<div class="info-cell"><div class="info-label">Position</div><div class="info-val">${p.pos}</div></div>` : ""}
-        ${p.tier ? `<div class="info-cell"><div class="info-label">Tier</div><div class="info-val">${p.tier}</div></div>` : ""}
-        ${p.hometown ? `<div class="info-cell"><div class="info-label">Hometown</div><div class="info-val">${p.hometown}</div></div>` : ""}
-        ${p.org ? `<div class="info-cell"><div class="info-label">Organisation</div><div class="info-val">${p.org}</div></div>` : ""}
-        ${p.exp ? `<div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp} years</div></div>` : ""}
-        ${p.club ? `<div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club}</div></div>` : ""}
-      </div>
-    </div>
-    <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')" style="margin-top:8px">
-      <i class="ti ti-arrow-left"></i> Back to messages
-    </button>`);
+    const session = HF_DB.getSession();
+    const html = await HF_UTILS.viewProfile(
+      userId,
+      "HF_ROUTER.navTo('messages')",
+    );
+    if (!html) return;
+    setMain(html);
   };
 
   const reportToAdmin = async (fromId, senderName) => {
@@ -1280,6 +1265,12 @@ const HF_ADMIN = (() => {
     }
 
     HF_UTILS.toast(`${senderName} has been reported to admin.`, "success");
+  };
+
+  const viewUserProfile = async (userId) => {
+    const html = await HF_UTILS.viewProfile(userId, "HF_ROUTER.navTo('users')");
+    if (!html) return;
+    setMain(html);
   };
 
   return {
@@ -1307,6 +1298,7 @@ const HF_ADMIN = (() => {
     replyToMessage,
     sendReply,
     viewSenderProfile,
+    viewUserProfile,
     reportToAdmin,
     viewThread,
   };
