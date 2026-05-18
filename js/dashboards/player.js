@@ -535,25 +535,30 @@ const HF_PLAYER = (() => {
     const { data: logs } = await HF_DB.getHealthLogs(s.userId);
 
     const metrics = [
-      { id: "energy", label: "Energy", icon: "ti-bolt", color: "var(--gold)" },
+      {
+        id: "energy",
+        label: "Energy",
+        icon: "ti-bolt",
+        desc: "Physical energy level",
+      },
       {
         id: "mood",
         label: "Mood",
         icon: "ti-mood-smile",
-        color: "var(--faith)",
+        desc: "Mental state",
       },
-      { id: "sleep", label: "Sleep", icon: "ti-moon", color: "var(--blue)" },
+      { id: "sleep", label: "Sleep", icon: "ti-moon", desc: "Quality of rest" },
       {
         id: "soreness",
         label: "Soreness",
         icon: "ti-activity",
-        color: "var(--red)",
+        desc: "Muscle soreness",
       },
       {
         id: "hydration",
         label: "Hydration",
         icon: "ti-droplet",
-        color: "var(--green)",
+        desc: "Water intake",
       },
     ];
 
@@ -562,6 +567,88 @@ const HF_PLAYER = (() => {
       day: "numeric",
       month: "long",
     });
+
+    const loggedView = todayLog
+      ? `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-lg);">
+      <div style="font-size:13px;color:var(--text2);">
+        <i class="ti ti-circle-check" style="color:var(--green);margin-right:6px"></i>
+        Logged today
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="HF_PLAYER.showHealthSliders()">
+        <i class="ti ti-edit"></i> Update
+      </button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:var(--sp-sm);">
+      ${metrics
+        .map((m) => {
+          const val = todayLog[m.id] || 0;
+          const pct = (val / 10) * 100;
+          return `
+          <div style="padding:var(--sp-md);background:var(--bg2);border-top:2px solid var(--border);">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+              <i class="ti ${m.icon}" style="color:var(--text2)"></i>
+              <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">${m.label}</span>
+            </div>
+            <div style="font-family:var(--font-head);font-size:28px;font-weight:700;color:var(--text);line-height:1;">${val}</div>
+            <div style="height:3px;background:var(--border);margin-top:8px;">
+              <div style="height:100%;width:${pct}%;background:var(--gold);"></div>
+            </div>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px">${m.desc}</div>
+          </div>`;
+        })
+        .join("")}
+    </div>
+    ${
+      todayLog.notes
+        ? `
+      <div style="padding:10px 12px;background:var(--bg2);border-left:2px solid var(--border);font-size:13px;color:var(--text2);margin-top:var(--sp-md);">
+        <i class="ti ti-notes" style="margin-right:6px"></i>${todayLog.notes}
+      </div>`
+        : ""
+    }`
+      : "";
+
+    const sliderView = `
+    <div id="health-sliders">
+      ${metrics
+        .map(
+          (m) => `
+        <div style="margin-bottom:var(--sp-md);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <i class="ti ${m.icon}" style="color:var(--text2)"></i>
+              <span style="font-size:13px;font-weight:600;color:var(--text)">${m.label}</span>
+            </div>
+            <span id="hv-${m.id}" style="font-family:var(--font-head);font-size:14px;font-weight:700;color:var(--gold)">
+              ${todayLog?.[m.id] || 5}
+            </span>
+          </div>
+          <input type="range" min="1" max="10" value="${todayLog?.[m.id] || 5}" step="1"
+            style="width:100%;accent-color:var(--gold)"
+            oninput="document.getElementById('hv-${m.id}').textContent=this.value">
+        </div>`,
+        )
+        .join("")}
+      <div class="fg">
+        <label>Notes</label>
+        <input type="text" id="health-notes" value="${todayLog?.notes || ""}" placeholder="Any injuries, illness, or notes..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="btn btn-primary" onclick="HF_PLAYER.logHealthCheckin()">
+          <i class="ti ti-circle-check"></i> ${todayLog ? "Update check-in" : "Log check-in"}
+        </button>
+        ${
+          todayLog
+            ? `
+          <button class="btn btn-outline" onclick="HF_PLAYER.showHealthCards()">
+            Cancel
+          </button>`
+            : ""
+        }
+      </div>
+    </div>`;
 
     setMain(`
     <div class="card">
@@ -572,93 +659,55 @@ const HF_PLAYER = (() => {
         <span style="font-size:11px;color:var(--text3)">${today}</span>
       </div>
 
-      ${
-        todayLog
-          ? `
-        <div style="padding:10px 12px;background:rgba(26,122,46,.06);border-left:2px solid var(--green);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md);">
-          <i class="ti ti-circle-check" style="color:var(--green);margin-right:6px"></i>
-          Today's check-in logged. You can update it below.
-        </div>`
-          : ""
-      }
+      <div id="health-logged-view">
+        ${todayLog ? loggedView : ""}
+      </div>
+      <div id="health-slider-view" style="${todayLog ? "display:none" : ""}">
+        ${sliderView}
+      </div>
+    </div>
 
-      ${metrics
-        .map(
-          (m) => `
-        <div style="margin-bottom:var(--sp-md);">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <div style="display:flex;align-items:center;gap:6px;">
-              <i class="ti ${m.icon}" style="color:${m.color}"></i>
-              <span style="font-size:13px;font-weight:600;color:var(--text)">${m.label}</span>
-            </div>
-            <span id="hv-${m.id}" style="font-family:var(--font-head);font-size:14px;font-weight:700;color:${m.color}">
-              ${todayLog?.[m.id] || 5}
-            </span>
-          </div>
-          <input type="range" min="1" max="10" value="${todayLog?.[m.id] || 5}" step="1"
-            style="width:100%;accent-color:${m.color}"
-            oninput="document.getElementById('hv-${m.id}').textContent=this.value">
-        </div>`,
-        )
-        .join("")}
-
-      <div class="fg">
-        <label>Notes</label>
-        <input type="text" id="health-notes" value="${todayLog?.notes || ""}" placeholder="Any injuries, illness, or notes..."
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+    ${
+      logs && logs.length > 0
+        ? `
+      <div class="card">
+        <div class="card-title"><div class="card-dot"></div>Check-in calendar</div>
+        ${HF_UTILS.miniCalendarHTML(logs, (date) => {
+          const log = logs.find((l) => l.date === date);
+          if (!log) return "var(--green)";
+          const avg = Math.round(
+            (log.energy +
+              log.mood +
+              log.sleep +
+              (10 - log.soreness) +
+              log.hydration) /
+              5,
+          );
+          return avg >= 8
+            ? "var(--green)"
+            : avg >= 6
+              ? "var(--gold)"
+              : "var(--red)";
+        })}
+        <div style="display:flex;gap:var(--sp-md);margin-top:var(--sp-md);font-size:11px;color:var(--text2);">
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--green);"></div>Ready</div>
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--gold);"></div>Monitor</div>
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--red);"></div>At risk</div>
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--blue);border-radius:50%;"></div>Today</div>
+        </div>
       </div>
 
-      <button class="btn btn-primary" style="margin-top:8px" onclick="HF_PLAYER.logHealthCheckin()">
-        <i class="ti ti-circle-check"></i> ${todayLog ? "Update check-in" : "Log check-in"}
-      </button>
-    </div>
-
-    ${
-      logs && logs.length > 0
-        ? `
-  <div class="card">
-    <div class="card-title"><div class="card-dot"></div>Check-in calendar</div>
-    ${HF_UTILS.miniCalendarHTML(logs, (date) => {
-      const log = logs.find((l) => l.date === date);
-      if (!log) return "var(--green)";
-      const avg = Math.round(
-        (log.energy +
-          log.mood +
-          log.sleep +
-          (10 - log.soreness) +
-          log.hydration) /
-          5,
-      );
-      return avg >= 8
-        ? "var(--green)"
-        : avg >= 6
-          ? "var(--gold)"
-          : "var(--red)";
-    })}
-    <div style="display:flex;gap:var(--sp-md);margin-top:var(--sp-md);font-size:11px;color:var(--text2);">
-      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--green);"></div>Ready</div>
-      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--gold);"></div>Monitor</div>
-      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--red);"></div>At risk</div>
-      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--blue);border-radius:50%;"></div>Today</div>
-    </div>
-  </div>`
-        : ""
-    }
-
-    ${
-      logs && logs.length > 0
-        ? `
       <div class="card">
         <div class="card-title"><div class="card-dot"></div>Recent wellness history</div>
         <table class="table">
           <thead>
             <tr>
               <th>Date</th>
-              <th style="color:var(--gold)"><i class="ti ti-bolt"></i></th>
-              <th style="color:var(--faith)"><i class="ti ti-mood-smile"></i></th>
-              <th style="color:var(--blue)"><i class="ti ti-moon"></i></th>
-              <th style="color:var(--red)"><i class="ti ti-activity"></i></th>
-              <th style="color:var(--green)"><i class="ti ti-droplet"></i></th>
+              <th title="Energy"><i class="ti ti-bolt"></i></th>
+              <th title="Mood"><i class="ti ti-mood-smile"></i></th>
+              <th title="Sleep"><i class="ti ti-moon"></i></th>
+              <th title="Soreness"><i class="ti ti-activity"></i></th>
+              <th title="Hydration"><i class="ti ti-droplet"></i></th>
             </tr>
           </thead>
           <tbody>
@@ -671,11 +720,11 @@ const HF_PLAYER = (() => {
                   <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
                     ${isToday ? "Today" : new Date(l.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
                   </td>
-                  <td style="color:var(--gold);font-weight:600">${l.energy || "-"}</td>
-                  <td style="color:var(--faith);font-weight:600">${l.mood || "-"}</td>
-                  <td style="color:var(--blue);font-weight:600">${l.sleep || "-"}</td>
-                  <td style="color:var(--red);font-weight:600">${l.soreness || "-"}</td>
-                  <td style="color:var(--green);font-weight:600">${l.hydration || "-"}</td>
+                  <td>${l.energy || "-"}</td>
+                  <td>${l.mood || "-"}</td>
+                  <td>${l.sleep || "-"}</td>
+                  <td>${l.soreness || "-"}</td>
+                  <td>${l.hydration || "-"}</td>
                 </tr>`;
               })
               .join("")}
@@ -1794,6 +1843,16 @@ const HF_PLAYER = (() => {
     HF_UTILS.toast(`${senderName} has been reported to admin.`, "success");
   };
 
+  const showHealthSliders = () => {
+    document.getElementById("health-logged-view").style.display = "none";
+    document.getElementById("health-slider-view").style.display = "block";
+  };
+
+  const showHealthCards = () => {
+    document.getElementById("health-logged-view").style.display = "block";
+    document.getElementById("health-slider-view").style.display = "none";
+  };
+
   return {
     render,
     updateTrainingDay,
@@ -1819,6 +1878,8 @@ const HF_PLAYER = (() => {
     viewSenderProfile,
     reportToAdmin,
     viewThread,
+    showHealthCards,
+    showHealthSliders,
   };
 })();
 

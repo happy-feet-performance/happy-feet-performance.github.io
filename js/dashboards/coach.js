@@ -676,11 +676,11 @@ const HF_COACH = (() => {
         <thead>
           <tr>
             <th>Player</th>
-            <th style="color:var(--gold)" title="Energy"><i class="ti ti-bolt"></i></th>
-            <th style="color:var(--faith)" title="Mood"><i class="ti ti-mood-smile"></i></th>
-            <th style="color:var(--blue)" title="Sleep"><i class="ti ti-moon"></i></th>
-            <th style="color:var(--red)" title="Soreness"><i class="ti ti-activity"></i></th>
-            <th style="color:var(--green)" title="Hydration"><i class="ti ti-droplet"></i></th>
+            <th title="Energy"><i class="ti ti-bolt"></i></th>
+            <th title="Mood"><i class="ti ti-mood-smile"></i></th>
+            <th title="Sleep"><i class="ti ti-moon"></i></th>
+            <th title="Soreness"><i class="ti ti-activity"></i></th>
+            <th title="Hydration"><i class="ti ti-droplet"></i></th>
             <th>Status</th>
           </tr>
         </thead>
@@ -717,11 +717,11 @@ const HF_COACH = (() => {
               return `
               <tr style="cursor:pointer;" onclick="HF_COACH.viewPlayerHealth('${ph.player_id}', '${name.replace(/'/g, "\\'")}')">
                 <td style="font-weight:600">${name}</td>
-                <td style="color:var(--gold)">${log?.energy || "-"}</td>
-                <td style="color:var(--faith)">${log?.mood || "-"}</td>
-                <td style="color:var(--blue)">${log?.sleep || "-"}</td>
-                <td style="color:var(--red)">${log?.soreness || "-"}</td>
-                <td style="color:var(--green)">${log?.hydration || "-"}</td>
+                <td>${log?.energy || "-"}</td>
+                <td>${log?.mood || "-"}</td>
+                <td>${log?.sleep || "-"}</td>
+                <td>${log?.soreness || "-"}</td>
+                <td>${log?.hydration || "-"}</td>
                 <td>
                   <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;color:${statusColor};background:${statusColor}22;">
                     ${statusLabel}
@@ -738,18 +738,18 @@ const HF_COACH = (() => {
       <div class="card-title"><div class="card-dot"></div>Wellness key</div>
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:var(--sp-sm);margin-bottom:var(--sp-lg);">
         ${[
-          ["ti-bolt", "Energy", "var(--gold)"],
-          ["ti-mood-smile", "Mood", "var(--faith)"],
-          ["ti-moon", "Sleep", "var(--blue)"],
-          ["ti-activity", "Soreness", "var(--red)"],
-          ["ti-droplet", "Hydration", "var(--green)"],
+          ["ti-bolt", "Energy", "var(--text)"],
+          ["ti-mood-smile", "Mood", "var(--text)"],
+          ["ti-moon", "Sleep", "var(--text)"],
+          ["ti-activity", "Soreness", "var(--text)"],
+          ["ti-droplet", "Hydration", "var(--text)"],
         ]
           .map(
             ([icon, label, color]) => `
-          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:var(--sp-md);background:var(--bg2);border-top:2px solid ${color};">
-            <i class="ti ${icon}" style="font-size:20px;color:${color}"></i>
-            <div style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">${label}</div>
-          </div>`,
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:var(--sp-md);background:var(--bg2);border-top:2px solid var(--border);">
+    <i class="ti ${icon}" style="font-size:20px;color:${color}"></i>
+    <div style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">${label}</div>
+  </div>`,
           )
           .join("")}
       </div>
@@ -2162,6 +2162,31 @@ const HF_COACH = (() => {
     ${
       sessions && sessions.length > 0
         ? `
+  <div class="card">
+    <div class="card-title"><div class="card-dot"></div>Session calendar</div>
+    ${HF_UTILS.miniCalendarHTML(sessions, (date) => {
+      const session = sessions.find(
+        (s) => s.created_at?.split("T")[0] === date,
+      );
+      if (!session) return "var(--green)";
+      return session.overall >= 80
+        ? "var(--green)"
+        : session.overall >= 65
+          ? "var(--gold)"
+          : "var(--red)";
+    })}
+    <div style="display:flex;gap:var(--sp-md);margin-top:var(--sp-md);font-size:11px;color:var(--text2);">
+      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--green);"></div>80+</div>
+      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--gold);"></div>65–79</div>
+      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--red);"></div>Below 65</div>
+    </div>
+  </div>`
+        : ""
+    }
+  
+    ${
+      sessions && sessions.length > 0
+        ? `
       <div class="card">
         <div class="card-title"><div class="card-dot"></div>Session history</div>
         <table class="table">
@@ -2384,11 +2409,11 @@ const HF_COACH = (() => {
           <thead>
             <tr>
               <th>Date</th>
-              <th style="color:var(--gold)"><i class="ti ti-bolt"></i></th>
-              <th style="color:var(--faith)"><i class="ti ti-mood-smile"></i></th>
-              <th style="color:var(--blue)"><i class="ti ti-moon"></i></th>
-              <th style="color:var(--red)"><i class="ti ti-activity"></i></th>
-              <th style="color:var(--green)"><i class="ti ti-droplet"></i></th>
+              <th title="Energy"><i class="ti ti-bolt"></i></th>
+              <th title="Mood"><i class="ti ti-mood-smile"></i></th>
+              <th title="Sleep"><i class="ti ti-moon"></i></th>
+              <th title="Soreness"><i class="ti ti-activity"></i></th>
+              <th title="Hydration"><i class="ti ti-droplet"></i></th>
               <th>Notes</th>
             </tr>
           </thead>
@@ -2402,12 +2427,11 @@ const HF_COACH = (() => {
                   <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
                     ${isToday ? "Today" : new Date(l.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
                   </td>
-                  <td style="color:var(--gold)">${l.energy || "-"}</td>
-                  <td style="color:var(--faith)">${l.mood || "-"}</td>
-                  <td style="color:var(--blue)">${l.sleep || "-"}</td>
-                  <td style="color:var(--red)">${l.soreness || "-"}</td>
-                  <td style="color:var(--green)">${l.hydration || "-"}</td>
-                  <td style="color:var(--text2);font-size:11px">${l.notes || "-"}</td>
+                  <td>${log?.energy || "-"}</td>
+                  <td>${log?.mood || "-"}</td>
+                  <td>${log?.sleep || "-"}</td>
+                  <td>${log?.soreness || "-"}</td>
+                  <td>${log?.hydration || "-"}</td>
                 </tr>`;
               })
               .join("")}
