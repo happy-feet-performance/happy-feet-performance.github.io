@@ -283,9 +283,17 @@ const HF_DB = (() => {
     });
     if (error) return { error: error.message };
 
+    // fetch coach name
+    const { data: coach } = await _client
+      .from("users")
+      .select("name")
+      .eq("id", data.coachId)
+      .single();
+    const coachName = coach?.name || "A coach";
+
     await _notifyAdmins(
       "New squad verification submitted",
-      `A coach has submitted "${data.teamName}" for squad verification.`,
+      `Coach ${coachName} has submitted "${data.teamName}" for squad verification.`,
     );
 
     return { success: true };
@@ -348,9 +356,15 @@ const HF_DB = (() => {
     });
     if (msgError) return { error: msgError.message };
 
+    const { data: coach } = await _client
+      .from("users")
+      .select("name")
+      .eq("id", coachId)
+      .single();
+    const coachName = coach?.name || "The coach";
     await _notifyAdmins(
       "Squad approved",
-      `Squad "${teamName}" has been verified. Coach has been notified.`,
+      `Squad "${teamName}" has been verified. Coach ${coachName} has been notified.`,
     );
 
     return { success: true };
@@ -390,9 +404,15 @@ const HF_DB = (() => {
     });
     if (msgError) return { error: msgError.message };
 
+    const { data: coach } = await _client
+      .from("users")
+      .select("name")
+      .eq("id", coachId)
+      .single();
+    const coachName = coach?.name || "The coach";
     await _notifyAdmins(
       "Squad rejected",
-      `Squad "${teamName}" was rejected. Reason: ${reason}. Coach has been notified.`,
+      `Squad "${teamName}" was rejected. Reason: ${reason}. Coach ${coachName} has been notified.`,
     );
 
     return { success: true };
@@ -942,9 +962,17 @@ const HF_DB = (() => {
     });
     if (error) return { error: error.message };
 
+    // fetch scout name
+    const { data: scout } = await _client
+      .from("users")
+      .select("name")
+      .eq("id", data.scoutId)
+      .single();
+    const scoutName = scout?.name || "A scout";
+
     await _notifyAdmins(
       "New agency verification submitted",
-      `A scout has submitted "${data.agencyName}" for agency verification.`,
+      `Scout ${scoutName} has submitted "${data.agencyName}" for agency verification.`,
     );
 
     return { success: true };
@@ -980,9 +1008,30 @@ const HF_DB = (() => {
       .eq("id", verificationId);
     if (verError) return { error: verError.message };
 
+    // fetch verification details to copy to profile
+    const { data: ver } = await _client
+      .from("agency_verifications")
+      .select("*")
+      .eq("id", verificationId)
+      .single();
+
+    // update scout's profile with regions and leagues
+    const { data: scout } = await _client
+      .from("users")
+      .select("profile")
+      .eq("id", scoutId)
+      .single();
+
+    const updatedProfile = {
+      ...scout.profile,
+      regionsCovered: ver.regions_covered || [],
+      targetLeagues: ver.target_leagues || [],
+      website: ver.website || null,
+    };
+
     const { error: userError } = await _client
       .from("users")
-      .update({ agency_status: "verified" })
+      .update({ agency_status: "verified", profile: updatedProfile })
       .eq("id", scoutId);
     if (userError) return { error: userError.message };
 
@@ -994,9 +1043,10 @@ const HF_DB = (() => {
       read: false,
     });
 
+    const scoutName = scout?.name || "The scout";
     await _notifyAdmins(
       "Agency approved",
-      `Agency "${agencyName}" has been verified. Scout has been notified.`,
+      `Agency "${agencyName}" has been verified. Scout ${scoutName} has been notified.`,
     );
 
     return { success: true };
@@ -1034,9 +1084,15 @@ const HF_DB = (() => {
       read: false,
     });
 
+    const { data: scout } = await _client
+      .from("users")
+      .select("name")
+      .eq("id", scoutId)
+      .single();
+    const scoutName = scout?.name || "The scout";
     await _notifyAdmins(
       "Agency rejected",
-      `Agency "${agencyName}" was rejected. Reason: ${reason}. Scout has been notified.`,
+      `Agency "${agencyName}" was rejected. Reason: ${reason}. Scout ${scoutName} has been notified.`,
     );
 
     return { success: true };
@@ -1547,6 +1603,40 @@ const HF_DB = (() => {
     return { data };
   };
 
+  const getTodaySessionRating = async (coachId, playerId) => {
+    const today = new Date().toISOString().split("T")[0];
+    const { data, error } = await _client
+      .from("session_ratings")
+      .select("*")
+      .eq("coach_id", coachId)
+      .eq("player_id", playerId)
+      .gte("created_at", today + "T00:00:00")
+      .lte("created_at", today + "T23:59:59")
+      .maybeSingle();
+    if (error) return { data: null };
+    return { data };
+  };
+
+  const _updateSessionRating = async (
+    ratingId,
+    sessionType,
+    ratings,
+    overall,
+  ) => {
+    const { error } = await _client
+      .from("session_ratings")
+      .update({
+        session_type: sessionType,
+        speed: ratings.speed,
+        technical: ratings.technical,
+        tactical: ratings.tactical,
+        physical: ratings.physical,
+        overall,
+      })
+      .eq("id", ratingId);
+    return { error };
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     createUser,
@@ -1626,9 +1716,11 @@ const HF_DB = (() => {
     updateLoginStreak,
     getLoginStreak,
     saveSessionRating,
+    getTodaySessionRating,
     getPlayerSessionRatings,
     getSquadSessionRatings,
     searchAllUsers,
+    _updateSessionRating,
   };
 })();
 

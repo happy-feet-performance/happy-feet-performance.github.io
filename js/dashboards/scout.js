@@ -72,14 +72,10 @@ const HF_SCOUT = (() => {
           : `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:var(--bg3);color:var(--text2);">Unregistered</span>`;
 
     setMain(`
-      <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
+      <div class="welcome-banner">
         <div>
-          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">
-            ${newUser ? "Welcome" : "Welcome back"}, Scout ${s.name.split(" ").pop()}!
-          </div>
-          <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.org || "-"}</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px;">Regions: ${regionsDisplay}</div>
-          <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px;">Targets: ${leaguesDisplay}</div>
+          <div class="welcome-title">${newUser ? "Welcome" : "Welcome back"}, Scout ${s.name.split(" ").pop()}!</div>
+          <div class="welcome-sub">${p.org || "-"} · ${p.region || "-"}</div>
           <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
             ${badgeHTML("Scout", "blue")}
             ${agencyStatusBadge}

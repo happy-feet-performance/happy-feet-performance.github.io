@@ -403,6 +403,11 @@ const HF_ROUTER = (() => {
           const newStatus = updatedUser.agency_status;
           if (newStatus && newStatus !== session.agencyStatus) {
             session.agencyStatus = newStatus;
+
+            // refresh full profile from db to get regions/leagues
+            const { data: freshUser } = await HF_DB.getUserById(session.userId);
+            if (freshUser) session.profile = freshUser.profile;
+
             HF_DB.saveSession(session);
             _buildSidenav(session, 0, 0);
 

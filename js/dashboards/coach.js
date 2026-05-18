@@ -108,26 +108,26 @@ const HF_COACH = (() => {
                     )
                   : null;
                 return `
-                <tr>
-                  <td style="font-weight:600">${name}</td>
-                  <td>${p.pos || "-"}</td>
-                  <td>${p.tier || "-"}</td>
-                  <td>
-                    <span style="font-size:10px;padding:1px 7px;font-weight:600;
-                      background:${p.status === "signed" ? "rgba(26,122,46,.1)" : "rgba(196,154,10,.1)"};
-                      color:${p.status === "signed" ? "var(--green)" : "var(--gold)"}">
-                      ${p.status === "signed" ? "Signed" : "Unattached"}
-                    </span>
-                  </td>
-                  <td style="font-weight:700;color:${overall ? "var(--gold)" : "var(--text3)"}">
-                    ${overall !== null ? overall + "%" : "-"}
-                  </td>
-                  <td>
-                    <button class="btn btn-danger btn-sm" onclick="HF_COACH.confirmKickPlayer('${sp.player_id}', '${safeName}')">
-                      <i class="ti ti-logout"></i> Remove
-                    </button>
-                  </td>
-                </tr>`;
+                  <tr style="cursor:pointer;" onclick="HF_COACH.trackPlayer('${sp.player_id}', '${safeName}')">
+                    <td style="font-weight:600">${name}</td>
+                    <td>${p.pos || "-"}</td>
+                    <td>${p.tier || "-"}</td>
+                    <td>
+                      <span style="font-size:10px;padding:1px 7px;font-weight:600;
+                        background:${p.status === "signed" ? "rgba(26,122,46,.1)" : "rgba(196,154,10,.1)"};
+                        color:${p.status === "signed" ? "var(--green)" : "var(--gold)"}">
+                        ${p.status === "signed" ? "Signed" : "Unattached"}
+                      </span>
+                    </td>
+                    <td style="font-weight:700;color:${overall ? "var(--gold)" : "var(--text3)"}">
+                      ${overall !== null ? overall + "%" : "-"}
+                    </td>
+                    <td onclick="event.stopPropagation()">
+                      <button class="btn btn-danger btn-sm" onclick="HF_COACH.confirmKickPlayer('${sp.player_id}', '${safeName}')">
+                        <i class="ti ti-logout"></i> Remove
+                      </button>
+                    </td>
+                  </tr>`;
               })
               .join("")}
           </tbody>
@@ -181,10 +181,10 @@ const HF_COACH = (() => {
             : `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:var(--bg3);color:var(--text2);">Unregistered</span>`;
 
     setMain(`
-    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
+    <div class="welcome-banner">
       <div>
-        <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${newUser ? "Welcome" : "Welcome back"}, Coach ${s.name.split(" ").pop()}!</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.spec || "Head coach"} · ${p.licence || "-"} licence</div>
+        <div class="welcome-title">${newUser ? "Welcome" : "Welcome back"}, Coach ${s.name.split(" ").pop()}!</div>
+        <div class="welcome-sub">${p.spec || "Head coach"} · ${p.licence || "-"} licence</div>
         <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
           ${badgeHTML("Coach", "gold")}
           <span style="font-size:11px;color:rgba(255,255,255,.4)">${p.club || "-"}</span>
@@ -1968,6 +1968,240 @@ const HF_COACH = (() => {
     HF_UTILS.toast(`${senderName} has been reported to admin.`, "success");
   };
 
+  const trackPlayer = async (playerId, playerName) => {
+    const session = HF_DB.getSession();
+    const { data: sessions } = await HF_DB.getPlayerSessionRatings(playerId);
+    const { data: todayRating } = await HF_DB.getTodaySessionRating(
+      session.userId,
+      playerId,
+    );
+
+    const trendData = sessions
+      ? [...sessions].reverse().map((s) => s.overall)
+      : [];
+    const latest = sessions?.[0];
+    let lastDate = null;
+
+    setMain(`
+    <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);">
+      <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('squad')">
+        <i class="ti ti-arrow-left"></i> Back to squad
+      </button>
+      <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+        ${playerName}
+      </div>
+    </div>
+
+    <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--gold)">${latest ? latest.overall + "/100" : "-"}</div>
+        <div class="metric-label">Last rating</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--green)">${sessions?.length || 0}</div>
+        <div class="metric-label">Sessions</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--blue)">
+          ${
+            sessions?.length > 1
+              ? sessions[0].overall > sessions[1].overall
+                ? "↑"
+                : sessions[0].overall < sessions[1].overall
+                  ? "↓"
+                  : "→"
+              : "-"
+          }
+        </div>
+        <div class="metric-label">Trend</div>
+      </div>
+    </div>
+
+    ${
+      trendData.length > 0
+        ? `
+      <div class="card">
+        <div class="card-title"><div class="card-dot"></div>Rating trend</div>
+        ${HF_UTILS.miniChartHTML(trendData)}
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-top:6px">
+          <span>Oldest</span><span>Latest</span>
+        </div>
+      </div>`
+        : ""
+    }
+
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Log session rating
+          <span style="font-size:11px;color:var(--text3);">
+            ${new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+          </span>
+        </div>
+        ${
+          todayRating
+            ? `
+          <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
+            Editing today's rating
+          </span>`
+            : ""
+        }
+      </div>
+      ${["Speed", "Technical", "Tactical", "Physical"]
+        .map(
+          (l) => `
+        <div class="bar-row">
+          <div class="bar-head">
+            <span>${l}</span>
+            <span id="cv-${l.toLowerCase()}" style="color:var(--gold);font-weight:600">7</span>
+          </div>
+          <input type="range" min="1" max="10" value="7" step="1"
+            style="width:100%;accent-color:var(--gold);margin-top:4px"
+            oninput="document.getElementById('cv-${l.toLowerCase()}').textContent=this.value">
+        </div>`,
+        )
+        .join("")}
+      <div class="fg" style="margin-top:8px">
+        <label>Notes</label>
+        <input type="text" id="tr-notes" placeholder="e.g. Strong first touch, work on weak foot"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <button class="btn btn-primary" style="margin-top:8px" 
+        onclick="HF_COACH.savePlayerRating('${playerId}', '${playerName.replace(/'/g, "\\'")}')">
+        <i class="ti ti-circle-check"></i> Save rating
+      </button>
+    </div>
+
+    ${
+      sessions && sessions.length > 0
+        ? `
+      <div class="card">
+        <div class="card-title"><div class="card-dot"></div>Session history</div>
+        <table class="table">
+          <thead><tr><th>Date</th><th>Type</th><th>Overall</th><th>Speed</th><th>Technical</th><th>Tactical</th><th>Physical</th></tr></thead>
+          <tbody>
+            ${sessions
+              .map((r) => {
+                const dateStr = new Date(r.created_at).toLocaleDateString(
+                  "en-GB",
+                  {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  },
+                );
+                const isToday =
+                  new Date(r.created_at).toISOString().split("T")[0] ===
+                  new Date().toISOString().split("T")[0];
+                const showHeader = dateStr !== lastDate;
+                lastDate = dateStr;
+                return `
+                ${
+                  showHeader
+                    ? `
+                  <tr>
+                    <td colspan="7" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isToday ? "var(--gold)" : "var(--text3)"};padding:8px 0 4px;border-bottom:0.5px solid var(--border);">
+                      ${isToday ? "Today — " : ""}${dateStr}
+                    </td>
+                  </tr>`
+                    : ""
+                }
+                <tr>
+                  <td style="color:var(--text2)">${HF_UTILS.timeAgo(r.created_at)}</td>
+                  <td>${r.session_type}</td>
+                  <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
+                    ${r.overall}
+                  </td>
+                  <td>${r.speed}</td>
+                  <td>${r.technical}</td>
+                  <td>${r.tactical}</td>
+                  <td>${r.physical}</td>
+                </tr>`;
+              })
+              .join("")}
+                      </tbody>
+                    </table>
+                  </div>`
+        : ""
+    }
+  `);
+    setTimeout(() => {
+      if (todayRating) {
+        const fields = ["speed", "technical", "tactical", "physical"];
+        fields.forEach((f) => {
+          const slider = document.querySelector(`input[oninput*="cv-${f}"]`);
+          const display = document.getElementById(`cv-${f}`);
+          const val = Math.round((todayRating[f] || 70) / 10);
+          if (slider) slider.value = val;
+          if (display) display.textContent = val;
+        });
+        const typeSelect = document.getElementById("tr-type");
+        if (typeSelect) typeSelect.value = todayRating.session_type;
+      }
+    }, 100);
+  };
+
+  const savePlayerRating = async (playerId, playerName) => {
+    const session = HF_DB.getSession();
+    const sessionType = document.getElementById("tr-type")?.value;
+    if (!sessionType) {
+      HF_UTILS.toast("Please select a session type.", "error");
+      return;
+    }
+
+    const ratings = {
+      speed:
+        parseInt(document.getElementById("cv-speed")?.textContent || 7) * 10,
+      technical:
+        parseInt(document.getElementById("cv-technical")?.textContent || 7) *
+        10,
+      tactical:
+        parseInt(document.getElementById("cv-tactical")?.textContent || 7) * 10,
+      physical:
+        parseInt(document.getElementById("cv-physical")?.textContent || 7) * 10,
+    };
+
+    // check if rating already exists for today
+    const { data: existing } = await HF_DB.getTodaySessionRating(
+      session.userId,
+      playerId,
+    );
+
+    let result;
+    if (existing) {
+      // update existing
+      const overall = Math.round(
+        (ratings.speed +
+          ratings.technical +
+          ratings.tactical +
+          ratings.physical) /
+          4,
+      );
+      const { error } = await HF_DB._updateSessionRating(
+        existing.id,
+        sessionType,
+        ratings,
+        overall,
+      );
+      result = error ? { error } : { success: true, overall };
+    } else {
+      result = await HF_DB.saveSessionRating(
+        session.userId,
+        playerId,
+        sessionType,
+        ratings,
+      );
+    }
+
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+    HF_UTILS.toast(`Session logged! Overall: ${result.overall}/100`, "success");
+    trackPlayer(playerId, playerName);
+  };
+
   return {
     render,
     readMessage,
@@ -2000,6 +2234,8 @@ const HF_COACH = (() => {
     viewSenderProfile,
     reportToAdmin,
     viewThread,
+    trackPlayer,
+    savePlayerRating,
   };
 })();
 

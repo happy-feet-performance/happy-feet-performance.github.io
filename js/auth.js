@@ -160,13 +160,32 @@ const HF_AUTH = (() => {
 
       scout: `
         <div class="fg">
-          <label class="required">Organisation / agency</label>
+          <label class="required">Organisation / Agency</label>
           <input type="text" id="su-org" placeholder="e.g. Independent / Agency name">
         </div>
         <div class="form-row">
           <div class="fg">
             <label class="required">Years experience</label>
             <input type="number" id="su-exp" min="0" max="50" placeholder="e.g. 3">
+          </div>
+          <div class="fg">
+            <label class="required">Home region</label>
+            <select id="su-region">
+              <option value="">Select region</option>
+              <option>Ghana</option>
+              <option>Nigeria</option>
+              <option>Senegal</option>
+              <option>Ivory Coast</option>
+              <option>Cameroon</option>
+              <option>Kenya</option>
+              <option>South Africa</option>
+              <option>Egypt</option>
+              <option>Morocco</option>
+              <option>West Africa</option>
+              <option>East Africa</option>
+              <option>North Africa</option>
+              <option>Other</option>
+            </select>
           </div>
         </div>`,
     };
@@ -307,6 +326,7 @@ const HF_AUTH = (() => {
       profile = {
         org: el("su-org")?.value.trim() || "",
         exp: el("su-exp")?.value || "",
+        region: el("su-region")?.value || "",
         prospectsTracked: 0,
       };
       if (!profile.org) {
@@ -322,6 +342,10 @@ const HF_AUTH = (() => {
           "signup-err",
           "Years of experience must be between 0 and 50.",
         );
+        return;
+      }
+      if (!profile.region) {
+        showError("signup-err", "Please select your home region.");
         return;
       }
     }
@@ -351,7 +375,7 @@ const HF_AUTH = (() => {
     const summaryRows = {
       player: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Player<br><strong>Position:</strong> ${profile.pos || "-"}<br><strong>Tier:</strong> ${profile.tier}<br><strong>Hometown:</strong> ${profile.hometown || "-"}`,
       coach: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Coach<br><strong>Licence:</strong> ${profile.licence}<br><strong>Club:</strong> ${profile.club || "-"}`,
-      scout: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Scout<br><strong>Organisation:</strong> ${profile.org || "-"}`,
+      scout: `<strong>Name:</strong> ${name}<br>${contactLine}<br><strong>Role:</strong> Scout<br><strong>Organisation:</strong> ${profile.org || "-"}<br><strong>Home region:</strong> ${profile.region || "-"}`,
     };
     el("confirm-icon").innerHTML = icons[state.role];
     el("confirm-title").textContent = `You're set, ${name.split(" ")[0]}!`;
