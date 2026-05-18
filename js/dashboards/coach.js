@@ -23,26 +23,107 @@ const HF_COACH = (() => {
   };
 
   const squad = async (s) => {
+    const { data: squadPlayers } = await HF_DB.getSquadPlayers(s.userId);
+    const { data: trialRequests } = await HF_DB.getPendingTrialRequests(
+      s.userId,
+    );
+    const { data: trialPlayers } = await HF_DB.getTrialPlayers(s.userId);
+    const isVerified = s.squadStatus === "verified";
     const squadStatus = s.squadStatus || "unregistered";
-    const isVerified = squadStatus === "verified";
     const p = s.profile || {};
 
     if (!isVerified) {
       setMain(`
-    <div class="card">
-      <div style="text-align:center;padding:32px;color:var(--text2)">
-        <i class="ti ti-lock" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Squad locked</div>
-        <div style="font-size:13px">Register and verify your squad to start adding players.</div>
-        <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="HF_COACH.resubmitSquad()">
-          <i class="ti ti-clipboard-check"></i> Register your squad
-        </button>
-      </div>
-    </div>`);
+        ${
+          trialRequests && trialRequests.length > 0
+            ? `
+          <div class="card">
+            <div class="card-title" style="justify-content:space-between;">
+              <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+                <div class="card-dot"></div>Trial requests
+                <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
+                  ${trialRequests.length} pending
+                </span>
+              </div>
+            </div>
+            ${trialRequests
+              .map((req) => {
+                const p = req.player?.profile || {};
+                const safeName = (req.player?.name || "").replace(/'/g, "\\'");
+                return `
+                <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
+                  <div class="avatar avatar-md" style="background:var(--green)">${HF_UTILS.initials(req.player?.name || "?")}</div>
+                  <div style="flex:1">
+                    <div style="font-size:13px;font-weight:600;color:var(--text)">${req.player?.name || "-"}</div>
+                    <div style="font-size:11px;color:var(--text2)">${p.pos || "-"} · ${p.tier || "-"} · ${p.hometown || "-"}</div>
+                    <div style="font-size:10px;color:var(--text3);margin-top:2px">${HF_UTILS.timeAgo(req.created_at)}</div>
+                  </div>
+                  <div style="display:flex;gap:6px;flex-shrink:0;">
+                    <button class="btn btn-primary btn-sm" onclick="HF_COACH.acceptTrialRequest('${req.id}', '${req.player_id}', '${safeName}')">
+                      <i class="ti ti-circle-check"></i> Accept to trial
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="HF_COACH.declineTrialRequest('${req.id}', '${req.player_id}', '${safeName}')">
+                      <i class="ti ti-x"></i> Decline
+                    </button>
+                  </div>
+                </div>`;
+              })
+              .join("")}
+          </div>`
+            : ""
+        }
+
+        ${
+          trialPlayers && trialPlayers.length > 0
+            ? `
+          <div class="card">
+            <div class="card-title" style="justify-content:space-between;">
+              <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+                <div class="card-dot"></div>On trial
+                <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(26,122,46,.15);color:var(--green);">
+                  ${trialPlayers.length} players
+                </span>
+              </div>
+            </div>
+            ${trialPlayers
+              .map((req) => {
+                const p = req.player?.profile || {};
+                const safeName = (req.player?.name || "").replace(/'/g, "\\'");
+                return `
+                <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--green);margin-bottom:var(--sp-sm);">
+                  <div class="avatar avatar-md" style="background:var(--green)">${HF_UTILS.initials(req.player?.name || "?")}</div>
+                  <div style="flex:1">
+                    <div style="font-size:13px;font-weight:600;color:var(--text)">${req.player?.name || "-"}</div>
+                    <div style="font-size:11px;color:var(--text2)">${p.pos || "-"} · ${p.tier || "-"} · ${p.hometown || "-"}</div>
+                    <div style="font-size:10px;color:var(--text3);margin-top:2px">On trial since ${HF_UTILS.timeAgo(req.responded_at)}</div>
+                  </div>
+                  <div style="display:flex;gap:6px;flex-shrink:0;">
+                    <button class="btn btn-primary btn-sm" onclick="HF_COACH.approveTrialPlayer('${req.id}', '${req.player_id}', '${safeName}')">
+                      <i class="ti ti-user-plus"></i> Add to squad
+                    </button>
+                    <button class="btn btn-danger btn-sm" onclick="HF_COACH.removeTrialPlayer('${req.id}', '${req.player_id}', '${safeName}')">
+                      <i class="ti ti-x"></i> Remove
+                    </button>
+                  </div>
+                </div>`;
+              })
+              .join("")}
+          </div>`
+            : ""
+        }
+        <div class="card">
+          <div style="text-align:center;padding:32px;color:var(--text2)">
+            <i class="ti ti-lock" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Squad locked</div>
+            <div style="font-size:13px">Register and verify your squad to start adding players.</div>
+            <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="HF_COACH.resubmitSquad()">
+              <i class="ti ti-clipboard-check"></i> Register your squad
+            </button>
+          </div>
+        </div>`);
       return;
     }
 
-    const { data: squadPlayers } = await HF_DB.getSquadPlayers(s.userId);
     const hasPlayers = squadPlayers?.length > 0;
 
     setMain(`
@@ -3191,6 +3272,122 @@ const HF_COACH = (() => {
     HF_ROUTER.navTo("recruitment");
   };
 
+  const respondTrialRequest = async (
+    requestId,
+    playerId,
+    playerName,
+    accept,
+  ) => {
+    const session = HF_DB.getSession();
+    const status = accept ? "accepted" : "declined";
+
+    const result = await HF_DB.respondToTrialRequest(requestId, status);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    // notify player
+    await HF_DB._sendMessage(
+      "system",
+      playerId,
+      accept ? "Trial request accepted!" : "Trial request declined",
+      accept
+        ? `Great news! ${session.name} has accepted your trial request for ${session.profile?.club || "their squad"}. They will be in touch with further details. Stay ready!`
+        : `${session.name} has declined your trial request at this time. You can send another request after 24 hours.`,
+    );
+
+    HF_UTILS.toast(
+      accept
+        ? `Trial accepted — ${playerName} has been notified!`
+        : `Trial declined — ${playerName} has been notified.`,
+      accept ? "success" : "error",
+    );
+
+    squad(session);
+  };
+
+  const acceptTrialRequest = async (requestId, playerId, playerName) => {
+    const session = HF_DB.getSession();
+    const result = await HF_DB.respondToTrialRequest(requestId, "trial");
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    await HF_DB._sendMessage(
+      "system",
+      playerId,
+      "Trial request accepted!",
+      `${session.name} has accepted your trial request for ${session.profile?.club || "their squad"}. You are now on trial — train hard and make your mark!`,
+    );
+
+    HF_UTILS.toast(`${playerName} is now on trial!`, "success");
+    squad(session);
+  };
+
+  const declineTrialRequest = async (requestId, playerId, playerName) => {
+    const session = HF_DB.getSession();
+    const result = await HF_DB.respondToTrialRequest(requestId, "declined");
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    await HF_DB._sendMessage(
+      "system",
+      playerId,
+      "Trial request declined",
+      `${session.name} has declined your trial request at this time. You can send another request after 24 hours.`,
+    );
+
+    HF_UTILS.toast(`${playerName}'s trial request declined.`, "error");
+    squad(session);
+  };
+
+  const approveTrialPlayer = async (requestId, playerId, playerName) => {
+    const session = HF_DB.getSession();
+
+    // mark trial as accepted
+    await HF_DB.respondToTrialRequest(requestId, "accepted");
+
+    // send squad invite
+    const result = await HF_DB.sendSquadInvite(
+      session.userId,
+      playerId,
+      session.profile?.club || "the squad",
+      playerName,
+      session.name,
+    );
+
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    HF_UTILS.toast(`Squad invite sent to ${playerName}!`, "success");
+    squad(session);
+  };
+
+  const removeTrialPlayer = async (requestId, playerId, playerName) => {
+    const session = HF_DB.getSession();
+    const result = await HF_DB.respondToTrialRequest(requestId, "removed");
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    await HF_DB._sendMessage(
+      "system",
+      playerId,
+      "Trial period ended",
+      `${session.name} has ended your trial period with ${session.profile?.club || "their squad"}. Keep working hard — your opportunity will come!`,
+    );
+
+    HF_UTILS.toast(`${playerName} removed from trial.`, "error");
+    squad(session);
+  };
+
   return {
     render,
     readMessage,
@@ -3236,6 +3433,11 @@ const HF_COACH = (() => {
     saveSession,
     messageScout,
     sendScoutMessage,
+    respondTrialRequest,
+    acceptTrialRequest,
+    declineTrialRequest,
+    approveTrialPlayer,
+    removeTrialPlayer,
   };
 })();
 

@@ -51,7 +51,14 @@ const HF_PLAYER = (() => {
   // ── FIND MY TEAM ───────────────────────────────────────
   const findmyteam = async (s) => {
     const { data: coaches } = await HF_DB.getOpenCoaches();
-    const p = s.profile || {};
+
+    // fetch trial request status for each coach
+    const coachesWithStatus = await Promise.all(
+      (coaches || []).map(async (c) => {
+        const { data: req } = await HF_DB.getTrialRequestStatus(s.userId, c.id);
+        return { ...c, trialRequest: req };
+      }),
+    );
 
     setMain(`
     <div class="welcome-banner">
@@ -62,7 +69,7 @@ const HF_PLAYER = (() => {
     </div>
 
     <div style="display:flex;gap:8px;margin-bottom:var(--sp-lg);flex-wrap:wrap;">
-      <select id="fmt-league" onchange="HF_PLAYER.filterCoaches()" 
+      <select id="fmt-league" onchange="HF_PLAYER.filterCoaches()"
         style="padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
         <option value="">All leagues</option>
         <option>Ghana Premier League</option>
@@ -78,7 +85,7 @@ const HF_PLAYER = (() => {
 
     <div id="coaches-list">
       ${
-        !coaches || coaches.length === 0
+        !coachesWithStatus || coachesWithStatus.length === 0
           ? `
         <div class="card">
           <div style="text-align:center;padding:32px;color:var(--text2)">
@@ -87,17 +94,28 @@ const HF_PLAYER = (() => {
             <div style="font-size:13px">Verified coaches who are open for recruitment will appear here.</div>
           </div>
         </div>`
-          : coaches.map((c) => _coachCard(c, s.userId)).join("")
+          : coachesWithStatus.map((c) => _coachCard(c, s.userId)).join("")
       }
     </div>`);
 
-    window._fmtAllCoaches = coaches;
+    window._fmtAllCoaches = coachesWithStatus;
     window._fmtUserId = s.userId;
   };
 
   const _coachCard = (c, playerId) => {
     const p = c.profile || {};
     const safeName = c.name.replace(/'/g, "\\'");
+    const req = c.trialRequest;
+    const isPending = req?.status === "pending";
+    const isAccepted = req?.status === "accepted";
+    const isDeclined = req?.status === "declined";
+
+    // check if declined within 24 hours
+    const declinedRecently =
+      isDeclined &&
+      req?.responded_at &&
+      new Date() - new Date(req.responded_at) < 24 * 60 * 60 * 1000;
+
     return `
     <div class="card" style="margin-bottom:var(--sp-md);">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-md);">
@@ -116,10 +134,29 @@ const HF_PLAYER = (() => {
           <div style="font-size:10px;color:var(--text3);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.08em">Players</div>
         </div>
       </div>
-      <div style="margin-top:var(--sp-md);padding-top:var(--sp-md);border-top:0.5px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-primary btn-sm" onclick="HF_PLAYER.requestTrial('${c.id}', '${safeName}')">
-          <i class="ti ti-send"></i> Request trial
-        </button>
+      <div style="margin-top:var(--sp-md);padding-top:var(--sp-md);border-top:0.5px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        ${
+          isAccepted
+            ? `
+          <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(26,122,46,.15);color:var(--green);">
+            <i class="ti ti-circle-check"></i> Trial accepted
+          </span>`
+            : isPending
+              ? `
+          <span id="trial-btn-${c.id}" style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(196,154,10,.15);color:var(--gold);">
+            <i class="ti ti-clock"></i> Trial request pending
+          </span>`
+              : declinedRecently
+                ? `
+          <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(200,16,46,.1);color:var(--red);">
+            <i class="ti ti-x"></i> Declined — resend in 24hrs
+          </span>`
+                : `
+          <button id="trial-btn-${c.id}" class="btn btn-primary btn-sm"
+            onclick="HF_PLAYER.requestTrial('${c.id}', '${safeName}')">
+            <i class="ti ti-send"></i> Request trial
+          </button>`
+        }
         <button class="btn btn-outline btn-sm" onclick="HF_PLAYER.messageCoach('${c.id}', '${safeName}')">
           <i class="ti ti-message"></i> Message
         </button>
@@ -151,19 +188,41 @@ const HF_PLAYER = (() => {
 
   const requestTrial = async (coachId, coachName) => {
     const session = HF_DB.getSession();
-    const p = session.profile || {};
 
-    const result = await HF_DB._sendMessage(
-      session.userId,
-      coachId,
-      "Trial request",
-      `${session.name} (${p.pos || "Player"} · ${p.tier || "-"} · ${p.hometown || "-"}) has requested a trial with your squad. Check their profile on HappyFeet.`,
-    );
+    // update button immediately
+    const btn = document.getElementById(`trial-btn-${coachId}`);
+    if (btn) {
+      btn.outerHTML = `
+      <span id="trial-btn-${coachId}" style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(196,154,10,.15);color:var(--gold);">
+        <i class="ti ti-clock"></i> Trial request pending
+      </span>`;
+    }
 
+    const result = await HF_DB.requestTrial(session.userId, coachId);
     if (result.error) {
       HF_UTILS.toast(result.error, "error");
+      // revert button if error
+      findmyteam(session);
       return;
     }
+
+    // notify coach via system message
+    const p = session.profile || {};
+    await HF_DB._sendMessage(
+      "system",
+      coachId,
+      "New trial request",
+      `${session.name} (${p.pos || "Player"} · ${p.tier || "-"} · ${p.hometown || "-"}) has requested a trial with your squad.\n\nGo to your squad page to accept or decline.`,
+    );
+
+    // save request ID for coach to reference
+    await HF_DB._sendMessage(
+      "system",
+      session.userId,
+      `Trial request sent to ${coachName}`,
+      `Your trial request to ${coachName} has been sent. You will be notified when they respond.`,
+    );
+
     HF_UTILS.toast(`Trial request sent to ${coachName}!`, "success");
   };
 
