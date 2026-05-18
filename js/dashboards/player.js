@@ -1432,7 +1432,7 @@ const HF_PLAYER = (() => {
     </div>`);
   };
 
-  const sendReply = async (toId, subject) => {
+  const sendReply = async (toId, subject, threadId) => {
     const session = HF_DB.getSession();
     const body = document.getElementById("reply-body")?.value.trim();
     if (!body) {
@@ -1440,19 +1440,166 @@ const HF_PLAYER = (() => {
       return;
     }
 
+    // detect emoji-only and launch confetti
+    const emojiOnly =
+      body
+        .replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, "")
+        .trim().length === 0;
+    if (emojiOnly) {
+      const firstEmoji = body.match(
+        /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu,
+      )?.[0];
+      if (firstEmoji) HF_UTILS.launchEmojiConfetti(firstEmoji);
+    }
+
     const result = await HF_DB._sendMessage(
       session.userId,
       toId,
       subject,
       body,
+      threadId,
     );
     if (result.error) {
       HF_UTILS.toast(result.error, "error");
       return;
     }
 
-    HF_UTILS.toast("Reply sent!", "success");
-    HF_ROUTER.navTo("messages");
+    document.getElementById("reply-body").value = "";
+    viewThread(threadId, toId, subject);
+  };
+
+  const viewThread = async (threadId, otherUserId, subject) => {
+    const session = HF_DB.getSession();
+    const { data: msgs } = await HF_DB.getThread(threadId, session.userId);
+
+    const isEmojiOnly = (text) => {
+      const stripped = text
+        .replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, "")
+        .trim();
+      return stripped.length === 0;
+    };
+
+    const renderMessageBody = (body) => {
+      return body.replace(
+        /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu,
+        '<span class="emoji-animate" style="font-size:1.3em;">$1</span>',
+      );
+    };
+
+    // mark all unread messages in thread as read
+    const unread =
+      msgs?.filter((m) => !m.read && m.to_id === session.userId) || [];
+    for (const m of unread) await HF_DB.markMessageRead(m.id);
+
+    // enrich with sender names
+    const enriched = await Promise.all(
+      (msgs || []).map(async (m) => ({
+        ...m,
+        senderName: await HF_DB.getUserNameById(m.from_id),
+      })),
+    );
+
+    setMain(`
+    <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);">
+      <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('messages')">
+        <i class="ti ti-arrow-left"></i> Back
+      </button>
+      <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+        ${subject || "Conversation"}
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:var(--sp-lg);display:flex;flex-direction:column;gap:var(--sp-md);min-height:300px;max-height:60vh;overflow-y:auto;" id="thread-messages">
+        ${enriched
+          .map((m) => {
+            const isMine = m.from_id === session.userId;
+            const emojiOnly = isEmojiOnly(m.body);
+            return `
+            <div style="display:flex;flex-direction:column;align-items:${isMine ? "flex-end" : "flex-start"};">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font-head);letter-spacing:0.04em;">
+                ${isMine ? "You" : m.senderName} · ${HF_UTILS.timeAgo(m.created_at)}
+              </div>
+              <div style="
+                max-width:75%;
+                padding:${emojiOnly ? "4px" : "10px 14px"};
+                background:${emojiOnly ? "transparent" : isMine ? "var(--gold)" : "var(--bg2)"};
+                color:${isMine && !emojiOnly ? "#0f0f0d" : "var(--text)"};
+                font-size:${emojiOnly ? "32px" : "13px"};
+                line-height:1.5;">
+                ${renderMessageBody(m.body)}
+              </div>
+            </div>`;
+          })
+          .join("")}
+      </div>
+
+      <div style="padding:var(--sp-md);border-top:0.5px solid var(--border);background:var(--bg);">
+        <div id="emoji-picker" style="display:none;padding:var(--sp-sm);background:var(--bg2);border:0.5px solid var(--border);margin-bottom:8px;flex-wrap:wrap;gap:4px;">
+          ${[
+            "😀",
+            "😂",
+            "😍",
+            "🔥",
+            "👏",
+            "💪",
+            "⚽",
+            "🏆",
+            "🎯",
+            "👊",
+            "🙏",
+            "❤️",
+            "😤",
+            "😭",
+            "🤝",
+            "✅",
+            "💯",
+            "🚀",
+            "👋",
+            "😎",
+            "🤔",
+            "😅",
+            "🥅",
+            "🎉",
+            "👍",
+            "👎",
+            "❌",
+            "⚡",
+            "🌟",
+            "😴",
+          ]
+            .map(
+              (e) => `
+            <span style="font-size:24px;cursor:pointer;width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;transition:transform 0.15s ease;"
+              onmouseover="this.style.transform='scale(1.3)'"
+              onmouseout="this.style.transform='scale(1)'"
+              onclick="document.getElementById('reply-body').value += '${e}';this.style.transform='scale(1.5)';setTimeout(()=>this.style.transform='scale(1)',150)">
+              ${e}
+            </span>`,
+            )
+            .join("")}
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="reply-body" placeholder="Write a reply..."
+            style="flex:1;padding:0 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;font-family:var(--font);outline:none;height:42px;box-sizing:border-box;">
+          <button class="btn btn-outline" style="height:42px;width:42px;min-height:42px;padding:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex-shrink:0;"
+            title="Emoji"
+            onclick="const p=document.getElementById('emoji-picker');p.style.display=p.style.display==='none'?'flex':'none'">
+            <i class="ti ti-mood-smile"></i>
+          </button>
+          <button class="btn btn-primary" style="height:42px;width:42px;min-height:42px;padding:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex-shrink:0;"
+            onclick="HF_${session.role.toUpperCase()}.sendReply('${otherUserId}', '${(subject || "").replace(/'/g, "\\'")}', '${threadId}')">
+            <i class="ti ti-send"></i>
+          </button>
+        </div>
+      </div>
+    </div>`);
+
+    // scroll to bottom of thread
+    setTimeout(() => {
+      const threadEl = document.getElementById("thread-messages");
+      if (threadEl) threadEl.scrollTop = threadEl.scrollHeight;
+    }, 100);
   };
 
   const viewSenderProfile = async (userId) => {
@@ -1551,6 +1698,7 @@ const HF_PLAYER = (() => {
     sendReply,
     viewSenderProfile,
     reportToAdmin,
+    viewThread,
   };
 })();
 

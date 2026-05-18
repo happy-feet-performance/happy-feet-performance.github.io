@@ -1187,16 +1187,41 @@ const HF_DB = (() => {
     return { data };
   };
 
-  const _sendMessage = async (fromId, toId, subject, body) => {
-    const { error } = await _client.from("messages").insert({
-      from_id: fromId,
-      to_id: toId,
-      subject,
-      body,
-      read: false,
-    });
+  const _sendMessage = async (
+    fromId,
+    toId,
+    subject,
+    body,
+    threadId = null,
+    parentId = null,
+  ) => {
+    const newThreadId = threadId || crypto.randomUUID();
+    const { data, error } = await _client
+      .from("messages")
+      .insert({
+        from_id: fromId,
+        to_id: toId,
+        subject,
+        body,
+        read: false,
+        thread_id: newThreadId,
+        parent_id: parentId || null,
+      })
+      .select()
+      .single();
     if (error) return { error: error.message };
-    return { success: true };
+    return { success: true, threadId: newThreadId, messageId: data.id };
+  };
+
+  const getThread = async (threadId, userId) => {
+    const { data, error } = await _client
+      .from("messages")
+      .select("*")
+      .eq("thread_id", threadId)
+      .or(`to_id.eq.${userId},from_id.eq.${userId}`)
+      .order("created_at", { ascending: true });
+    if (error) return { data: [] };
+    return { data };
   };
 
   const getUserNameById = async (userId) => {
@@ -1522,6 +1547,7 @@ const HF_DB = (() => {
     addScoutClub,
     getAllPlayers,
     getUserById,
+    getThread,
     _sendMessage,
     removePlayerFromSquad,
     decrementTeamSize,

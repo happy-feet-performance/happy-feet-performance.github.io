@@ -204,11 +204,11 @@ const HF_UTILS = (() => {
     };
 
     const msgRow = (m) => `
-      <div class="msg-item" id="msg-${m.id}">
+      <div class="msg-item" id="msg-${m.id}" onclick="HF_${role.toUpperCase()}.viewThread('${m.thread_id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')">
         <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
           <i class="ti ti-shield" style="font-size:16px;color:${!m.read ? "var(--gold)" : "var(--text2)"}"></i>
         </div>
-        <div style="flex:1;cursor:pointer;" onclick="HF_${role.toUpperCase()}.readMessage('${m.id}', document.getElementById('msg-${m.id}'))">
+        <div style="flex:1">
           <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
             From: ${m.senderName || "HappyFeet"}
           </div>
@@ -232,7 +232,7 @@ const HF_UTILS = (() => {
       </div>
       <div id="msg-actions-${m.id}" style="display:none;padding:var(--sp-sm);background:var(--bg2);border-left:2px solid var(--border);margin-bottom:4px;">
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn btn-outline btn-sm" onclick="HF_${role.toUpperCase()}.replyToMessage('${m.id}', '${m.from_id}', '${(m.senderName || "HappyFeet").replace(/'/g, "\\'")}', '${(m.subject || "").replace(/'/g, "\\'")}')">
+          <button class="btn btn-outline btn-sm" onclick="HF_${role.toUpperCase()}.replyToMessage('${m.id}', '${m.from_id}', '${(m.senderName || "HappyFeet").replace(/'/g, "\\'")}', '${(m.subject || "").replace(/'/g, "\\'")}', '${m.thread_id}')">
             <i class="ti ti-arrow-back-up"></i> Reply
           </button>
           ${
@@ -279,6 +279,17 @@ const HF_UTILS = (() => {
     return now - created < 5 * 60 * 1000;
   };
 
+  const replyToMessage = (messageId, fromId, senderName, subject, threadId) => {
+    if (!fromId || fromId === "admin" || fromId === "system") {
+      HF_UTILS.toast(
+        "You cannot reply to system messages directly. Use Contact Admin instead.",
+        "error",
+      );
+      return;
+    }
+    viewThread(threadId, fromId, subject);
+  };
+
   const launchConfetti = () => {
     const colors = ["#C49A0A", "#1a7a2e", "#ffffff", "#185FA5", "#0f0f0d"];
     const pieces = [];
@@ -308,6 +319,30 @@ const HF_UTILS = (() => {
       window._stopConfetti = null;
     };
   };
+
+  const launchEmojiConfetti = (emoji) => {
+    const count = 12;
+    for (let i = 0; i < count; i++) {
+      const piece = document.createElement("div");
+      const rotation = Math.random() * 60 - 30;
+      piece.style.cssText = `
+      position: fixed;
+      font-size: ${Math.random() * 16 + 14}px;
+      left: ${Math.random() * 100}vw;
+      bottom: 80px;
+      z-index: 9999;
+      pointer-events: none;
+      transform-origin: center;
+      animation: emojiBurst ${Math.random() * 0.8 + 0.6}s ease-out forwards;
+      animation-delay: ${Math.random() * 0.3}s;
+      opacity: 1;
+    `;
+      piece.textContent = emoji;
+      document.body.appendChild(piece);
+      setTimeout(() => piece.remove(), 1500);
+    }
+  };
+
   return {
     initials,
     age,
@@ -336,6 +371,7 @@ const HF_UTILS = (() => {
     messageListHTML,
     isNewUser,
     launchConfetti,
+    launchEmojiConfetti,
   };
 })();
 
