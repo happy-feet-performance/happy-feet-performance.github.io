@@ -351,6 +351,69 @@ const HF_UTILS = (() => {
     }
   };
 
+  const miniCalendarHTML = (logs, colorFn) => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+    const monthName = today.toLocaleDateString("en-GB", {
+      month: "long",
+      year: "numeric",
+    });
+
+    // build set of dates that have logs
+    const logDates = new Set(
+      (logs || []).map(
+        (l) => l.date?.split("T")[0] || l.created_at?.split("T")[0],
+      ),
+    );
+    const todayStr = today.toISOString().split("T")[0];
+
+    const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+    let cells = "";
+
+    // empty cells for first day offset
+    for (let i = 0; i < firstDay; i++) {
+      cells += `<div></div>`;
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const hasLog = logDates.has(dateStr);
+      const isToday = dateStr === todayStr;
+      const isFuture = dateStr > todayStr;
+      const color = hasLog
+        ? colorFn
+          ? colorFn(dateStr)
+          : "var(--green)"
+        : "transparent";
+
+      cells += `
+      <div title="${dateStr}" style="
+        width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+        font-size:11px;font-weight:${isToday ? "700" : "400"};
+        color:${isFuture ? "var(--text3)" : isToday ? "#0f0f0d" : hasLog ? "#fff" : "var(--text2)"};
+        background:${isToday ? "var(--gold)" : hasLog ? color : "transparent"};
+        border:${isToday ? "none" : hasLog ? "none" : "0.5px solid transparent"};
+        opacity:${isFuture ? 0.3 : 1};
+        cursor:${hasLog ? "pointer" : "default"};
+      ">${d}</div>`;
+    }
+
+    return `
+    <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);margin-bottom:var(--sp-sm);">
+      ${monthName}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,28px);gap:2px;margin-bottom:4px;">
+      ${days.map((d) => `<div style="width:28px;text-align:center;font-size:9px;font-weight:700;color:var(--text3);font-family:var(--font-head);letter-spacing:0.06em;text-transform:uppercase;">${d}</div>`).join("")}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,28px);gap:2px;">
+      ${cells}
+    </div>`;
+  };
+
   return {
     initials,
     age,
@@ -370,6 +433,7 @@ const HF_UTILS = (() => {
     avatarHTML,
     barHTML,
     miniChartHTML,
+    miniCalendarHTML,
     badgeHTML,
     activityHTML,
     toast,

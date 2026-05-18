@@ -1637,6 +1637,64 @@ const HF_DB = (() => {
     return { error };
   };
 
+  const saveHealthLog = async (playerId, data) => {
+    const today = new Date().toISOString().split("T")[0];
+    const { data: existing } = await _client
+      .from("health_logs")
+      .select("id")
+      .eq("player_id", playerId)
+      .eq("date", today)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await _client
+        .from("health_logs")
+        .update({ ...data, date: today })
+        .eq("id", existing.id);
+      if (error) return { error: error.message };
+    } else {
+      const { error } = await _client
+        .from("health_logs")
+        .insert({ player_id: playerId, date: today, ...data });
+      if (error) return { error: error.message };
+    }
+    return { success: true };
+  };
+
+  const getHealthLogs = async (playerId, limit = 14) => {
+    const { data, error } = await _client
+      .from("health_logs")
+      .select("*")
+      .eq("player_id", playerId)
+      .order("date", { ascending: false })
+      .limit(limit);
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getTodayHealthLog = async (playerId) => {
+    const today = new Date().toISOString().split("T")[0];
+    const { data, error } = await _client
+      .from("health_logs")
+      .select("*")
+      .eq("player_id", playerId)
+      .eq("date", today)
+      .maybeSingle();
+    if (error) return { data: null };
+    return { data };
+  };
+
+  const getPlayerHealthLogs = async (playerId, limit = 7) => {
+    const { data, error } = await _client
+      .from("health_logs")
+      .select("*")
+      .eq("player_id", playerId)
+      .order("date", { ascending: false })
+      .limit(limit);
+    if (error) return { data: [] };
+    return { data };
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     createUser,
@@ -1721,6 +1779,10 @@ const HF_DB = (() => {
     getSquadSessionRatings,
     searchAllUsers,
     _updateSessionRating,
+    saveHealthLog,
+    getHealthLogs,
+    getTodayHealthLog,
+    getPlayerHealthLogs,
   };
 })();
 
