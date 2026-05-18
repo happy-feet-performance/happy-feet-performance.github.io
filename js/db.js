@@ -1200,15 +1200,17 @@ const HF_DB = (() => {
   };
 
   const getUserNameById = async (userId) => {
-    if (!userId || userId === "admin" || userId === "system")
-      return "HappyFeet Admin";
+    if (!userId) return "HappyFeet";
+    if (userId === "admin" || userId === "system") return "HappyFeet Admin";
+
     const { data, error } = await _client
       .from("users")
       .select("name, role")
       .eq("id", userId)
       .maybeSingle();
+
     if (error || !data) return "HappyFeet";
-    return data.role === "admin" ? `Admin: ${data.name}` : data.name;
+    return data.name;
   };
 
   const getSquadPlayers = async (coachId) => {

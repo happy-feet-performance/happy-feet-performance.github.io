@@ -204,13 +204,13 @@ const HF_UTILS = (() => {
     };
 
     const msgRow = (m) => `
-      <div class="msg-item" id="msg-${m.id}" onclick="HF_${role.toUpperCase()}.readMessage('${m.id}', document.getElementById('msg-${m.id}'))">
+      <div class="msg-item" id="msg-${m.id}">
         <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
-          <i class="ti ti-shield" style="font-size:16px;color:${!m.read ? 'var(--gold)' : 'var(--text2)'}"></i>
+          <i class="ti ti-shield" style="font-size:16px;color:${!m.read ? "var(--gold)" : "var(--text2)"}"></i>
         </div>
-        <div style="flex:1">
+        <div style="flex:1;cursor:pointer;" onclick="HF_${role.toUpperCase()}.readMessage('${m.id}', document.getElementById('msg-${m.id}'))">
           <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
-            From: ${getSenderLabel(m)}
+            From: ${m.senderName || "HappyFeet"}
           </div>
           <div class="msg-name">${m.subject || "Message"}</div>
           <div class="msg-preview">${m.body}</div>
@@ -223,6 +223,29 @@ const HF_UTILS = (() => {
             onclick="event.stopPropagation();HF_${role.toUpperCase()}.archiveMessage('${m.id}', this)">
             <i class="ti ti-archive"></i>
           </button>
+          <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
+            title="More options"
+            onclick="event.stopPropagation();HF_${role.toUpperCase()}.toggleMsgActions('${m.id}', '${m.from_id}', '${(m.senderName || "HappyFeet").replace(/'/g, "\\'")}')">
+            <i class="ti ti-dots-vertical"></i>
+          </button>
+        </div>
+      </div>
+      <div id="msg-actions-${m.id}" style="display:none;padding:var(--sp-sm);background:var(--bg2);border-left:2px solid var(--border);margin-bottom:4px;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" onclick="HF_${role.toUpperCase()}.replyToMessage('${m.id}', '${m.from_id}', '${(m.senderName || "HappyFeet").replace(/'/g, "\\'")}', '${(m.subject || "").replace(/'/g, "\\'")}')">
+            <i class="ti ti-arrow-back-up"></i> Reply
+          </button>
+          ${
+            m.from_id && m.from_id !== "admin" && m.from_id !== "system"
+              ? `
+            <button class="btn btn-outline btn-sm" onclick="HF_${role.toUpperCase()}.viewSenderProfile('${m.from_id}')">
+              <i class="ti ti-user"></i> View profile
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="HF_${role.toUpperCase()}.reportToAdmin('${m.from_id}', '${(m.senderName || "").replace(/'/g, "\\'")}')">
+              <i class="ti ti-flag"></i> Report
+            </button>`
+              : ""
+          }
         </div>
       </div>`;
 

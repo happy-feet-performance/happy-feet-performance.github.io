@@ -1234,17 +1234,14 @@ const HF_PLAYER = (() => {
       <div class="card-title"><div class="card-dot"></div>New message</div>
       <div class="fg">
         <label class="required">To</label>
-        <input type="text" id="compose-search" placeholder="Search by name or email..."
-          oninput="HF_${session.role.toUpperCase()}.searchRecipients(this.value)"
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-        <div id="compose-search-results" style="margin-top:4px;"></div>
-        <div id="compose-selected" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(196,154,10,.08);border-left:2px solid var(--gold);font-size:13px;color:var(--text);align-items:center;justify-content:space-between;">
-          <span id="compose-selected-name"></span>
-          <span onclick="HF_${session.role.toUpperCase()}.clearRecipient()" style="cursor:pointer;color:var(--text3);font-size:12px;">
-            <i class="ti ti-x"></i> Clear
-          </span>
+        <div id="compose-to-container" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px;background:var(--bg2);border:0.5px solid var(--border);min-height:44px;cursor:text;" onclick="document.getElementById('compose-search').focus()">
+          <div id="compose-tags" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
+          <input type="text" id="compose-search" placeholder="Search by name or email..."
+            oninput="HF_${session.role.toUpperCase()}.searchRecipients(this.value)"
+            style="flex:1;min-width:150px;border:none;background:transparent;color:var(--text);font-size:13px;font-family:var(--font);outline:none;padding:2px 4px;">
         </div>
-        <input type="hidden" id="compose-to">
+        <div id="compose-search-results" style="margin-top:2px;border:0.5px solid var(--border);background:var(--bg);display:none;"></div>
+        <input type="hidden" id="compose-to-ids">
       </div>
       <div class="fg">
         <label class="required">Subject</label>
@@ -1263,63 +1260,121 @@ const HF_PLAYER = (() => {
         <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')">Cancel</button>
       </div>
     </div>`);
+
+    // store selected recipients
+    window._composeRecipients = [];
   };
 
   const searchRecipients = async (query) => {
     const results = document.getElementById("compose-search-results");
     if (!results) return;
     if (!query || query.length < 2) {
+      results.style.display = "none";
       results.innerHTML = "";
       return;
     }
 
     const session = HF_DB.getSession();
     const { data } = await HF_DB.searchAllUsers(query, session.userId);
+    const existing = window._composeRecipients?.map((r) => r.id) || [];
+    const filtered = data?.filter((u) => !existing.includes(u.id)) || [];
 
-    if (!data || data.length === 0) {
-      results.innerHTML = `<div style="font-size:13px;color:var(--text2);padding:8px">No users found.</div>`;
+    if (!filtered || filtered.length === 0) {
+      results.style.display = "none";
       return;
     }
 
-    results.innerHTML = data
+    results.style.display = "block";
+    results.innerHTML = filtered
       .map(
         (u) => `
-    <div style="display:flex;align-items:center;gap:var(--sp-md);padding:10px;background:var(--bg);border:0.5px solid var(--border);margin-bottom:4px;cursor:pointer;"
-      onclick="HF_${session.role.toUpperCase()}.selectRecipient('${u.id}', '${u.name.replace(/'/g, "\\'")} (${u.role})')">
+    <div style="display:flex;align-items:center;gap:var(--sp-md);padding:10px;cursor:pointer;border-bottom:0.5px solid var(--border);"
+      onmousedown="event.preventDefault();HF_${session.role.toUpperCase()}.selectRecipient('${u.id}', '${u.name.replace(/'/g, "\\'")}', '${u.role}')">
       <div class="avatar avatar-sm" style="background:${u.role === "player" ? "var(--green)" : u.role === "coach" ? "var(--gold)" : u.role === "admin" ? "var(--red)" : "var(--blue)"}">
         ${HF_UTILS.initials(u.name)}
       </div>
       <div>
         <div style="font-size:13px;font-weight:600;color:var(--text)">${u.name}</div>
-        <div style="font-size:11px;color:var(--text2)">${u.role} · ${u.contact}</div>
+        <div style="font-size:11px;color:var(--text2)">${u.role}</div>
       </div>
     </div>`,
       )
       .join("");
   };
 
-  const selectRecipient = (userId, displayName) => {
-    document.getElementById("compose-to").value = userId;
-    document.getElementById("compose-search").value = "";
-    document.getElementById("compose-search-results").innerHTML = "";
-    document.getElementById("compose-selected-name").textContent = displayName;
-    document.getElementById("compose-selected").style.display = "flex";
+  const selectRecipient = (userId, userName, userRole) => {
+    if (!window._composeRecipients) window._composeRecipients = [];
+
+    // don't add duplicates
+    if (window._composeRecipients.find((r) => r.id === userId)) return;
+
+    window._composeRecipients.push({
+      id: userId,
+      name: userName,
+      role: userRole,
+    });
+
+    // add tag chip
+    const tags = document.getElementById("compose-tags");
+    const tag = document.createElement("div");
+    tag.id = `tag-${userId}`;
+    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font-head);letter-spacing:0.04em;`;
+    tag.innerHTML = `
+    ${userName}
+    <span style="cursor:pointer;font-size:14px;font-weight:700;line-height:1;" 
+      onclick="HF_${HF_DB.getSession().role.toUpperCase()}.removeRecipient('${userId}')">×</span>`;
+    tags?.appendChild(tag);
+
+    const clearAll = document.getElementById("compose-clear-all");
+    if (!clearAll && window._composeRecipients.length > 1) {
+      const link = document.createElement("div");
+      link.id = "compose-clear-all";
+      link.style.cssText =
+        "font-size:11px;color:var(--text3);cursor:pointer;padding:2px 4px;text-decoration:underline;";
+      link.textContent = "Clear all";
+      link.onclick = () => {
+        window._composeRecipients = [];
+        document.getElementById("compose-tags").innerHTML = "";
+        link.remove();
+      };
+      document.getElementById("compose-to-container")?.appendChild(link);
+    }
+
+    // remove clear all if back to 0 or 1
+    if (window._composeRecipients.length <= 1) {
+      document.getElementById("compose-clear-all")?.remove();
+    }
+
+    // clear search
+    const search = document.getElementById("compose-search");
+    const results = document.getElementById("compose-search-results");
+    if (search) {
+      search.value = "";
+      search.focus();
+    }
+    if (results) {
+      results.style.display = "none";
+      results.innerHTML = "";
+    }
   };
 
-  const clearRecipient = () => {
-    document.getElementById("compose-to").value = "";
-    document.getElementById("compose-selected").style.display = "none";
-    document.getElementById("compose-selected-name").textContent = "";
+  const removeRecipient = (userId) => {
+    window._composeRecipients =
+      window._composeRecipients?.filter((r) => r.id !== userId) || [];
+    document.getElementById(`tag-${userId}`)?.remove();
+    if (window._composeRecipients.length <= 1) {
+      document.getElementById("compose-clear-all")?.remove();
+    }
   };
 
   const sendComposedMessage = async () => {
     const session = HF_DB.getSession();
-    const toId = document.getElementById("compose-to")?.value;
+    const recipients = window._composeRecipients || [];
     const subject = document.getElementById("compose-subject")?.value.trim();
     const body = document.getElementById("compose-body")?.value.trim();
 
-    if (!toId) {
-      HF_UTILS.toast("Please select a recipient.", "error");
+    if (recipients.length === 0) {
+      HF_UTILS.toast("Please select at least one recipient.", "error");
       return;
     }
     if (!subject) {
@@ -1328,6 +1383,60 @@ const HF_PLAYER = (() => {
     }
     if (!body) {
       HF_UTILS.toast("Please enter a message.", "error");
+      return;
+    }
+
+    for (const recipient of recipients) {
+      await HF_DB._sendMessage(session.userId, recipient.id, subject, body);
+    }
+
+    window._composeRecipients = [];
+    HF_UTILS.toast(
+      `Message sent to ${recipients.length} recipient${recipients.length > 1 ? "s" : ""}!`,
+      "success",
+    );
+    HF_ROUTER.navTo("messages");
+  };
+
+  const toggleMsgActions = (messageId, fromId, senderName) => {
+    const actions = document.getElementById(`msg-actions-${messageId}`);
+    if (actions)
+      actions.style.display =
+        actions.style.display === "none" ? "block" : "none";
+  };
+
+  const replyToMessage = (messageId, fromId, senderName, subject) => {
+    if (!fromId || fromId === "admin" || fromId === "system") {
+      HF_UTILS.toast("You cannot reply to system messages.", "error");
+      return;
+    }
+    const session = HF_DB.getSession();
+    setMain(`
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Reply to ${senderName}</div>
+      <div style="padding:10px 12px;background:var(--bg2);border-left:2px solid var(--border);font-size:12px;color:var(--text2);margin-bottom:var(--sp-md);">
+        <i class="ti ti-arrow-back-up" style="margin-right:6px"></i>
+        Replying to: <strong style="color:var(--text)">${subject || "Message"}</strong>
+      </div>
+      <div class="fg">
+        <label class="required">Message</label>
+        <textarea id="reply-body" rows="4" placeholder="Write your reply..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="HF_${session.role.toUpperCase()}.sendReply('${fromId}', 'Re: ${(subject || "Message").replace(/'/g, "\\'")}')">
+          <i class="ti ti-send"></i> Send reply
+        </button>
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')">Cancel</button>
+      </div>
+    </div>`);
+  };
+
+  const sendReply = async (toId, subject) => {
+    const session = HF_DB.getSession();
+    const body = document.getElementById("reply-body")?.value.trim();
+    if (!body) {
+      HF_UTILS.toast("Please enter a reply.", "error");
       return;
     }
 
@@ -1342,8 +1451,80 @@ const HF_PLAYER = (() => {
       return;
     }
 
-    HF_UTILS.toast("Message sent!", "success");
+    HF_UTILS.toast("Reply sent!", "success");
     HF_ROUTER.navTo("messages");
+  };
+
+  const viewSenderProfile = async (userId) => {
+    const { data: user } = await HF_DB.getUserById(userId);
+    if (!user) {
+      HF_UTILS.toast("User not found.", "error");
+      return;
+    }
+    const p = user.profile || {};
+    const overall = p.ratings
+      ? Math.round(
+          (p.ratings.speed + p.ratings.tech + p.ratings.tact + p.ratings.phys) /
+            4,
+        )
+      : null;
+
+    setMain(`
+    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
+        <div style="width:72px;height:72px;background:var(--green);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
+          ${HF_UTILS.initials(user.name)}
+        </div>
+        <div>
+          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;color:#fff;">${user.name}</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.55)">${p.pos || p.org || "-"} · ${p.tier || p.exp + " yrs exp" || "-"}</div>
+          <div style="margin-top:8px">${HF_UTILS.badgeHTML(user.role, user.role === "player" ? "green" : user.role === "coach" ? "gold" : "blue")}</div>
+        </div>
+      </div>
+      ${
+        overall !== null
+          ? `
+        <div style="text-align:right">
+          <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold)">${overall}%</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.1em">Overall</div>
+        </div>`
+          : ""
+      }
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Details</div>
+      <div class="info-grid">
+        ${p.pos ? `<div class="info-cell"><div class="info-label">Position</div><div class="info-val">${p.pos}</div></div>` : ""}
+        ${p.tier ? `<div class="info-cell"><div class="info-label">Tier</div><div class="info-val">${p.tier}</div></div>` : ""}
+        ${p.hometown ? `<div class="info-cell"><div class="info-label">Hometown</div><div class="info-val">${p.hometown}</div></div>` : ""}
+        ${p.org ? `<div class="info-cell"><div class="info-label">Organisation</div><div class="info-val">${p.org}</div></div>` : ""}
+        ${p.exp ? `<div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp} years</div></div>` : ""}
+        ${p.club ? `<div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club}</div></div>` : ""}
+      </div>
+    </div>
+    <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')" style="margin-top:8px">
+      <i class="ti ti-arrow-left"></i> Back to messages
+    </button>`);
+  };
+
+  const reportToAdmin = async (fromId, senderName) => {
+    const session = HF_DB.getSession();
+    const reason = prompt(
+      `Report ${senderName} to admin?\n\nPlease describe the issue:`,
+    );
+    if (!reason) return;
+
+    const adminIds = await HF_DB.getAdminIds();
+    for (const adminId of adminIds) {
+      await HF_DB._sendMessage(
+        session.userId,
+        adminId,
+        `[Report] User: ${senderName}`,
+        `${session.name} has reported ${senderName}.\n\nReason: ${reason}`,
+      );
+    }
+
+    HF_UTILS.toast(`${senderName} has been reported to admin.`, "success");
   };
 
   return {
@@ -1364,7 +1545,12 @@ const HF_PLAYER = (() => {
     sendComposedMessage,
     searchRecipients,
     selectRecipient,
-    clearRecipient,
+    removeRecipient,
+    toggleMsgActions,
+    replyToMessage,
+    sendReply,
+    viewSenderProfile,
+    reportToAdmin,
   };
 })();
 
