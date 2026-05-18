@@ -216,16 +216,15 @@ const HF_PLAYER = (() => {
     const overall = calcRating(r);
     const tracker = await HF_DB.getTracker(s.userId);
     const sessionsThisMonth = tracker?.sessionsThisMonth || 0;
-    const faithStreak = p.faithStreak || 0;
     const loginStreak = await HF_DB.getLoginStreak(s.userId);
-    const messagesUnread = 0;
     const newUser = HF_UTILS.isNewUser(s);
+    const { data: agentConvos } = await HF_DB.getAgentConversations(s.userId);
 
     setMain(`
     <div class="welcome-banner">
       <div>
-        <div class="welcome-title" id="welcome-title">${newUser ? "Welcome" : "Welcome back"}, ${s.name.split(" ")[0]}!</div>
-        <div class="welcome-sub">${p.pos || "Player"} · ${p.tier || "U21"} · ${p.status === "unattached" ? "Free Agent" : p.club || "unattached"}</div>
+        <div class="welcome-title">${newUser ? "Welcome" : "Welcome back"}, ${s.name.split(" ")[0]}!</div>
+        <div class="welcome-sub">${p.pos || "Player"} · ${p.tier || "U21"} · ${p.status === "unattached" ? "Free Agent" : p.club || "Unattached"}</div>
       </div>
       <div style="text-align:right">
         <div style="font-size:32px;font-weight:700;color:var(--gold)">${overall !== null ? overall + "%" : "-"}</div>
@@ -252,9 +251,9 @@ const HF_PLAYER = (() => {
         <div class="metric-sub" style="color:var(--text2)">Days in a row</div>
       </div>
       <div class="metric-card">
-        <div class="metric-val" style="color:var(--red)">${messagesUnread}</div>
+        <div class="metric-val" style="color:var(--red)">0</div>
         <div class="metric-label">Messages</div>
-        <div class="metric-sub" style="color:var(--text2)">${messagesUnread > 0 ? "Unread" : "All caught up"}</div>
+        <div class="metric-sub" style="color:var(--text2)">All caught up</div>
       </div>
     </div>
 
@@ -287,7 +286,42 @@ const HF_PLAYER = (() => {
         </div>`
           : ""
       }
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;align-items:center;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Recent AI conversations
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="HF_AGENT.toggle()">
+          <i class="ti ti-ball-football"></i> Ask AI
+        </button>
+      </div>
+      ${
+        !agentConvos || agentConvos.length === 0
+          ? `
+        <div style="text-align:center;padding:24px;color:var(--text2)">
+          <i class="ti ti-ball-football" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No conversations yet</div>
+          <div style="font-size:13px">Ask the AI agent anything about football.</div>
+        </div>`
+          : agentConvos
+              .map(
+                (c) => `
+          <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
+            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">
+              <i class="ti ti-message" style="color:var(--gold);margin-right:4px"></i>${c.message}
+            </div>
+            <div style="font-size:11px;color:var(--text2);line-height:1.5;">
+              ${c.response.slice(0, 120)}${c.response.length > 120 ? "..." : ""}
+            </div>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px;">${HF_UTILS.timeAgo(c.created_at)}</div>
+          </div>`,
+              )
+              .join("")
+      }
     </div>`);
+
     if (newUser) setTimeout(() => HF_UTILS.launchConfetti(), 300);
   };
 

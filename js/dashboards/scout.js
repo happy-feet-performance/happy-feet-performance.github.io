@@ -41,8 +41,8 @@ const HF_SCOUT = (() => {
     const isUnregistered = agencyStatus === "unregistered";
     const isRejected = agencyStatus === "rejected";
     const newUser = HF_UTILS.isNewUser(s);
+    const { data: agentConvos } = await HF_DB.getAgentConversations(s.userId);
 
-    // fetch real counts if verified
     let trackedCount = 0,
       eliteCount = 0,
       sharedCount = 0,
@@ -55,7 +55,6 @@ const HF_SCOUT = (() => {
       placedCount = prospects?.filter((p) => p.placed).length || 0;
     }
 
-    // build regions and leagues display
     const regionsDisplay = Array.isArray(p.regionsCovered)
       ? p.regionsCovered.join(", ")
       : p.region || "-";
@@ -71,124 +70,193 @@ const HF_SCOUT = (() => {
           ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(200,16,46,.15);color:var(--red);">Rejected</span>`
           : `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:var(--bg3);color:var(--text2);">Unregistered</span>`;
 
+    const activityStats = [
+      {
+        label: "Tracked",
+        val: trackedCount,
+        icon: "ti-eye",
+        color: "var(--gold)",
+      },
+      { label: "Elite", val: eliteCount, icon: "ti-flag", color: "var(--red)" },
+      {
+        label: "Reports shared",
+        val: sharedCount,
+        icon: "ti-file-text",
+        color: "var(--blue)",
+      },
+      {
+        label: "Placed",
+        val: placedCount,
+        icon: "ti-rocket",
+        color: "var(--green)",
+      },
+    ];
+
     setMain(`
-      <div class="welcome-banner">
-        <div>
-          <div class="welcome-title">${newUser ? "Welcome" : "Welcome back"}, Scout ${s.name.split(" ").pop()}!</div>
-          <div class="welcome-sub">${p.org || "-"} · ${p.region || "-"}</div>
-          <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
-            ${badgeHTML("Scout", "blue")}
-            ${agencyStatusBadge}
-          </div>
-        </div>
-        <div style="text-align:right;flex-shrink:0;">
-          <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold);">${isVerified ? trackedCount : "-"}</div>
-          <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,.4);">Prospects tracked</div>
+    <div class="welcome-banner">
+      <div>
+        <div class="welcome-title">${newUser ? "Welcome" : "Welcome back"}, Scout ${s.name.split(" ").pop()}!</div>
+        <div class="welcome-sub">${p.org || "-"} · ${p.region || "-"}</div>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+          ${badgeHTML("Scout", "blue")}
+          ${agencyStatusBadge}
         </div>
       </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold);">${isVerified ? trackedCount : "-"}</div>
+        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,.4);">Prospects tracked</div>
+      </div>
+    </div>
 
-      ${HF_SCRIPTURE.stripHTML()}
+    ${HF_SCRIPTURE.stripHTML()}
 
-      ${
-        isUnregistered || isPending || isRejected
-          ? `
-        <div style="padding:var(--sp-lg);background:${isRejected ? "rgba(200,16,46,.06)" : "rgba(196,154,10,.06)"};border-left:3px solid ${isRejected ? "var(--red)" : "var(--gold)"};margin-bottom:var(--sp-lg);">
-          <div style="font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isRejected ? "var(--red)" : "var(--gold)"};margin-bottom:6px;">
-            ${isRejected ? "Agency verification rejected" : isPending ? "Agency verification pending" : "Agency not registered"}
-          </div>
-          <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">
-            ${
-              isRejected
-                ? "Your agency verification was rejected. Please review the reason in your messages and resubmit."
-                : isPending
-                  ? "Your agency is awaiting admin approval. Full scouting features will unlock once verified."
-                  : "Register and verify your agency to unlock full scouting features."
-            }
-          </div>
-          ${
-            isUnregistered || isRejected
-              ? `
-            <button class="btn btn-primary btn-sm" onclick="HF_SCOUT.resubmitAgency()">
-              <i class="ti ti-clipboard-check"></i> ${isRejected ? "Resubmit agency" : "Register your agency"}
-            </button>`
-              : ""
-          }
+    ${
+      isUnregistered || isPending || isRejected
+        ? `
+      <div style="padding:var(--sp-lg);background:${isRejected ? "rgba(200,16,46,.06)" : "rgba(196,154,10,.06)"};border-left:3px solid ${isRejected ? "var(--red)" : "var(--gold)"};margin-bottom:var(--sp-lg);">
+        <div style="font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isRejected ? "var(--red)" : "var(--gold)"};margin-bottom:6px;">
+          ${isRejected ? "Agency verification rejected" : isPending ? "Agency verification pending" : "Agency not registered"}
+        </div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">
           ${
             isRejected
-              ? `
-            <button class="btn btn-outline btn-sm" style="margin-left:8px" onclick="HF_ROUTER.navTo('messages')">
-              <i class="ti ti-message"></i> View messages
-            </button>`
-              : ""
+              ? "Your agency verification was rejected. Please review the reason in your messages and resubmit."
+              : isPending
+                ? "Your agency is awaiting admin approval. Full scouting features will unlock once verified."
+                : "Register and verify your agency to unlock full scouting features."
           }
-        </div>`
-          : ""
-      }
-
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-val" style="color:var(--gold)">${isVerified ? trackedCount : "-"}</div>
-          <div class="metric-label">Tracked</div>
-          <div class="metric-sub" style="color:var(--text2)">${isVerified ? "Active prospects" : "Verify agency to unlock"}</div>
         </div>
-        <div class="metric-card">
-          <div class="metric-val" style="color:var(--red)">${isVerified ? eliteCount : "-"}</div>
-          <div class="metric-label">Elite prospects</div>
-          <div class="metric-sub" style="color:var(--text2)">${isVerified ? "Flagged" : "Verify agency to unlock"}</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-val" style="color:var(--green)">${isVerified ? sharedCount : "-"}</div>
-          <div class="metric-label">Reports shared</div>
-          <div class="metric-sub" style="color:var(--text2)">${isVerified ? "Sent to clubs" : "Verify agency to unlock"}</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-val" style="color:var(--purple)">${isVerified ? placedCount : "-"}</div>
-          <div class="metric-label">Placed</div>
-          <div class="metric-sub" style="color:var(--text2)">${isVerified ? "Total placements" : "Verify agency to unlock"}</div>
-        </div>
-      </div>
-
-      <div class="quick-actions">
-        <button class="quick-action" onclick="${isVerified ? "HF_ROUTER.navTo('discover')" : "HF_UTILS.toast('Verify your agency first.','error')"}">
-          <div class="quick-action-icon"><i class="ti ti-search"></i></div>
-          <div class="quick-action-label">Discover talent</div>
-          <div class="quick-action-sub">${isVerified ? "Search players" : "Agency not verified"}</div>
-        </button>
-        <button class="quick-action" onclick="${isVerified ? "HF_ROUTER.navTo('prospects')" : "HF_UTILS.toast('Verify your agency first.','error')"}">
-          <div class="quick-action-icon"><i class="ti ti-star"></i></div>
-          <div class="quick-action-label">Saved prospects</div>
-          <div class="quick-action-sub">${isVerified ? trackedCount + " being tracked" : "Agency not verified"}</div>
-        </button>
-        <button class="quick-action" onclick="${isVerified ? "HF_ROUTER.navTo('pipeline')" : "HF_UTILS.toast('Verify your agency first.','error')"}">
-          <div class="quick-action-icon"><i class="ti ti-trending-up"></i></div>
-          <div class="quick-action-label">Pipeline</div>
-          <div class="quick-action-sub">${isVerified ? "Track progress" : "Agency not verified"}</div>
-        </button>
-      </div>
-
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Recent scouting activity</div>
         ${
-          !isVerified
+          isUnregistered || isRejected
             ? `
-          <div style="text-align:center;padding:32px;color:var(--text2)">
-            <i class="ti ti-lock" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Locked until agency is verified</div>
-            <div style="font-size:13px">Scouting activity will appear here once your agency is verified.</div>
-          </div>`
-            : trackedCount === 0
-              ? `
-          <div style="text-align:center;padding:32px;color:var(--text2)">
-            <i class="ti ti-activity" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No activity yet</div>
-            <div style="font-size:13px">Start discovering and saving players to see activity here.</div>
-          </div>`
-              : `
-          <div style="font-size:13px;color:var(--text2);padding:var(--sp-md)">
-            ${trackedCount} prospect${trackedCount > 1 ? "s" : ""} tracked · ${eliteCount} flagged · ${sharedCount} report${sharedCount > 1 ? "s" : ""} shared
-          </div>`
+          <button class="btn btn-primary btn-sm" onclick="HF_SCOUT.resubmitAgency()">
+            <i class="ti ti-clipboard-check"></i> ${isRejected ? "Resubmit agency" : "Register your agency"}
+          </button>`
+            : ""
         }
-      </div>`);
+        ${
+          isRejected
+            ? `
+          <button class="btn btn-outline btn-sm" style="margin-left:8px" onclick="HF_ROUTER.navTo('messages')">
+            <i class="ti ti-message"></i> View messages
+          </button>`
+            : ""
+        }
+      </div>`
+        : ""
+    }
+
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--gold)">${isVerified ? trackedCount : "-"}</div>
+        <div class="metric-label">Tracked</div>
+        <div class="metric-sub" style="color:var(--text2)">${isVerified ? "Active prospects" : "Verify agency to unlock"}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--red)">${isVerified ? eliteCount : "-"}</div>
+        <div class="metric-label">Elite prospects</div>
+        <div class="metric-sub" style="color:var(--text2)">${isVerified ? "Flagged" : "Verify agency to unlock"}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--green)">${isVerified ? sharedCount : "-"}</div>
+        <div class="metric-label">Reports shared</div>
+        <div class="metric-sub" style="color:var(--text2)">${isVerified ? "Sent to clubs" : "Verify agency to unlock"}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--blue)">${isVerified ? placedCount : "-"}</div>
+        <div class="metric-label">Placed</div>
+        <div class="metric-sub" style="color:var(--text2)">${isVerified ? "Total placements" : "Verify agency to unlock"}</div>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <button class="quick-action" onclick="${isVerified ? "HF_ROUTER.navTo('discover')" : "HF_UTILS.toast('Verify your agency first.','error')"}">
+        <div class="quick-action-icon"><i class="ti ti-search"></i></div>
+        <div class="quick-action-label">Discover talent</div>
+        <div class="quick-action-sub">${isVerified ? "Search players" : "Agency not verified"}</div>
+      </button>
+      <button class="quick-action" onclick="${isVerified ? "HF_ROUTER.navTo('prospects')" : "HF_UTILS.toast('Verify your agency first.','error')"}">
+        <div class="quick-action-icon"><i class="ti ti-star"></i></div>
+        <div class="quick-action-label">Saved prospects</div>
+        <div class="quick-action-sub">${isVerified ? trackedCount + " being tracked" : "Agency not verified"}</div>
+      </button>
+      <button class="quick-action" onclick="${isVerified ? "HF_ROUTER.navTo('pipeline')" : "HF_UTILS.toast('Verify your agency first.','error')"}">
+        <div class="quick-action-icon"><i class="ti ti-trending-up"></i></div>
+        <div class="quick-action-label">Pipeline</div>
+        <div class="quick-action-sub">${isVerified ? "Track progress" : "Agency not verified"}</div>
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Recent scouting activity</div>
+      ${
+        !isVerified
+          ? `
+        <div style="text-align:center;padding:32px;color:var(--text2)">
+          <i class="ti ti-lock" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Locked until agency is verified</div>
+          <div style="font-size:13px">Scouting activity will appear here once your agency is verified.</div>
+        </div>`
+          : trackedCount === 0
+            ? `
+        <div style="text-align:center;padding:32px;color:var(--text2)">
+          <i class="ti ti-activity" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No activity yet</div>
+          <div style="font-size:13px">Start discovering and saving players to see activity here.</div>
+        </div>`
+            : `
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:var(--sp-sm);">
+          ${activityStats
+            .map(
+              (stat) => `
+            <div style="padding:var(--sp-md);background:var(--bg2);border-top:2px solid ${stat.color};display:flex;align-items:center;gap:var(--sp-md);">
+              <div style="width:36px;height:36px;background:${stat.color}22;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="ti ${stat.icon}" style="font-size:16px;color:${stat.color}"></i>
+              </div>
+              <div>
+                <div style="font-family:var(--font-head);font-size:20px;font-weight:700;color:${stat.color}">${stat.val}</div>
+                <div style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">${stat.label}</div>
+              </div>
+            </div>`,
+            )
+            .join("")}
+        </div>`
+      }
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;align-items:center;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Recent AI conversations
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="HF_AGENT.toggle()">
+          <i class="ti ti-ball-football"></i> Ask AI
+        </button>
+      </div>
+      ${
+        !agentConvos || agentConvos.length === 0
+          ? `
+        <div style="text-align:center;padding:24px;color:var(--text2)">
+          <i class="ti ti-ball-football" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No conversations yet</div>
+          <div style="font-size:13px">Ask the AI agent anything about football.</div>
+        </div>`
+          : agentConvos
+              .map(
+                (c) => `
+          <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
+            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">
+              <i class="ti ti-message" style="color:var(--gold);margin-right:4px"></i>${c.message}
+            </div>
+            <div style="font-size:11px;color:var(--text2);line-height:1.5;">
+              ${c.response.slice(0, 120)}${c.response.length > 120 ? "..." : ""}
+            </div>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px;">${HF_UTILS.timeAgo(c.created_at)}</div>
+          </div>`,
+              )
+              .join("")
+      }
+    </div>`);
 
     if (newUser) setTimeout(() => HF_UTILS.launchConfetti(), 300);
   };
@@ -586,12 +654,15 @@ const HF_SCOUT = (() => {
   </button>`
         }
         ${
-          !sp.flagged
+          sp.flagged
             ? `
-          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.flagProspect('${scoutId}', '${sp.player_id}', '${safeName}')">
-            <i class="ti ti-flag"></i> Flag
-          </button>`
-            : ""
+  <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.unflagProspect('${scoutId}', '${sp.player_id}', '${safeName}')">
+    <i class="ti ti-flag-off"></i> Unflag
+  </button>`
+            : `
+  <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.flagProspect('${scoutId}', '${sp.player_id}', '${safeName}')">
+    <i class="ti ti-flag"></i> Flag
+  </button>`
         }
         ${
           !sp.report_shared
@@ -2588,6 +2659,19 @@ ${reportEl.textContent.trim()}
     HF_UTILS.toast("PDF downloaded!", "success");
   };
 
+  const unflagProspect = async (scoutId, playerId, name) => {
+    const result = await HF_DB.updateProspectStatus(scoutId, playerId, {
+      flagged: false,
+      status: "watching",
+    });
+    if (result.error) {
+      toast(result.error, "error");
+      return;
+    }
+    toast(`${name} unflagged.`, "success");
+    prospects(HF_DB.getSession());
+  };
+
   return {
     render,
     resubmitAgency,
@@ -2635,6 +2719,7 @@ ${reportEl.textContent.trim()}
     downloadReport,
     downloadReportPDF,
     filterFMTCoaches,
+    unflagProspect,
   };
 })();
 

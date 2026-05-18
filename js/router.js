@@ -363,22 +363,21 @@ const HF_ROUTER = (() => {
       if (session.role === "coach") {
         HF_DB.subscribeToUserStatus(session.userId, async (updatedUser) => {
           const newStatus = updatedUser.squad_status;
+          const newProfile = updatedUser.profile;
+          let changed = false;
+
           if (newStatus && newStatus !== session.squadStatus) {
             session.squadStatus = newStatus;
+            changed = true;
 
-            // fetch real team size when verified
             if (newStatus === "verified") {
               const { data: squadPlayers } = await HF_DB.getSquadPlayers(
                 session.userId,
               );
-              const teamSize = squadPlayers?.length || 0;
-              session.profile = { ...session.profile, teamSize };
-            }
-
-            HF_DB.saveSession(session);
-            _buildSidenav(session, 0, 0);
-
-            if (newStatus === "verified") {
+              session.profile = {
+                ...session.profile,
+                teamSize: squadPlayers?.length || 0,
+              };
               HF_UTILS.toast(
                 "Your squad has been verified! Full access unlocked.",
                 "success",
@@ -391,7 +390,20 @@ const HF_ROUTER = (() => {
                 "error",
               );
             }
+          }
 
+          // check if team size changed
+          if (newProfile?.teamSize !== session.profile?.teamSize) {
+            session.profile = {
+              ...session.profile,
+              teamSize: newProfile.teamSize,
+            };
+            changed = true;
+          }
+
+          if (changed) {
+            HF_DB.saveSession(session);
+            _buildSidenav(session, 0, 0);
             const activeNav = document.querySelector(".nav-item.active");
             const currentView = activeNav?.dataset.view || "dashboard";
             _routeTo(currentView, session);

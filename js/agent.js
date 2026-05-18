@@ -28,16 +28,23 @@ If asked about something unrelated to football, gently redirect the conversation
 
   const toggle = () => {
     const panel = document.getElementById("ai-agent-panel");
-    const btn = document.getElementById("ai-agent-btn");
     _isOpen = !_isOpen;
     panel.style.display = _isOpen ? "flex" : "none";
     panel.style.flexDirection = "column";
 
     if (_isOpen && _history.length === 0) {
-      _addMessage(
-        "agent",
-        "Hello! I'm DribbleBot ⚽ Ask me anything about football: tactics, training, positions, African leagues, player development, or anything else football related!",
-      );
+      // only show greeting once per day
+      const session = HF_DB.getSession();
+      const greetKey = `hf_agent_greeted_${session?.userId}_${new Date().toISOString().split("T")[0]}`;
+      const hasGreeted = localStorage.getItem(greetKey);
+
+      if (!hasGreeted) {
+        _addMessage(
+          "agent",
+          "Hello! I'm HappyFeet AI ⚽ Ask me anything about football (tactics, training, positions, African leagues, player development, or anything else football related)!",
+        );
+        localStorage.setItem(greetKey, "1");
+      }
     }
 
     if (_isOpen) {
@@ -60,7 +67,6 @@ If asked about something unrelated to football, gently redirect the conversation
     _showTyping();
 
     try {
-      // use Netlify function in production, skip locally
       const isLocal =
         window.location.hostname === "localhost" ||
         window.location.hostname === "127.0.0.1" ||
@@ -69,7 +75,6 @@ If asked about something unrelated to football, gently redirect the conversation
       let reply;
 
       if (isLocal) {
-        // local mock
         await new Promise((r) => setTimeout(r, 800));
         reply =
           "AI agent is only available on the live site. Push to main to test the full AI experience.";
@@ -91,6 +96,13 @@ If asked about something unrelated to football, gently redirect the conversation
       _hideTyping();
       _addMessage("agent", reply);
       _history.push({ role: "assistant", content: reply });
+
+      // save conversation to Supabase
+      const session = HF_DB.getSession();
+      if (session?.userId) {
+        await HF_DB.saveAgentConversation(session.userId, text, reply);
+      }
+
       if (_history.length > 20) _history = _history.slice(-20);
     } catch (err) {
       _hideTyping();
@@ -144,6 +156,12 @@ If asked about something unrelated to football, gently redirect the conversation
     _isOpen = false;
     const container = document.getElementById("ai-agent-messages");
     if (container) container.innerHTML = "";
+    // clear greeting key so it shows again next login
+    const session = HF_DB.getSession();
+    if (session?.userId) {
+      const greetKey = `hf_agent_greeted_${session.userId}_${new Date().toISOString().split("T")[0]}`;
+      localStorage.removeItem(greetKey);
+    }
   };
 
   return { toggle, send, show, hide, reset };
