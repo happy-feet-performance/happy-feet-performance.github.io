@@ -214,6 +214,7 @@ const HF_ROUTER = (() => {
 
     _buildSidenav(session, unreadCount, pendingVerifications);
     _routeTo("dashboard", session);
+    HF_AGENT.show();
 
     // show overlays
     if (

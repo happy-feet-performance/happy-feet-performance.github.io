@@ -510,6 +510,8 @@ const HF_AUTH = (() => {
   const logout = () => {
     HF_DB.clearSession();
     HF_ROUTER.resetSubscriptions();
+    HF_AGENT.hide();
+    HF_AGENT.reset();
 
     // clear all form fields
     [

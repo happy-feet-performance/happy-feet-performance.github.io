@@ -1376,5 +1376,107 @@
     <script src="js/dashboards/coach.js"></script>
     <script src="js/dashboards/scout.js"></script>
     <script src="js/dashboards/admin.js"></script>
+    <script src="js/agent.js"></script>
+
+    <!-- AI AGENT -->
+    <button
+      class="ai-agent-btn"
+      id="ai-agent-btn"
+      style="display: none"
+      onclick="HF_AGENT.toggle()"
+    >
+      <i
+        class="ti ti-ball-football"
+        style="font-size: 24px; color: #0f0f0d; line-height: 1; display: block"
+      ></i>
+    </button>
+
+    <div class="ai-agent-panel" id="ai-agent-panel" style="display: none">
+      <div class="ai-agent-header">
+        <div style="display: flex; align-items: center; gap: 8px">
+          <div
+            style="
+              width: 28px;
+              height: 28px;
+              background: var(--gold);
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            "
+          >
+            <i
+              class="ti ti-ball-football"
+              style="font-size: 14px; color: #0f0f0d"
+            ></i>
+          </div>
+          <div>
+            <div
+              style="
+                font-family: var(--font-head);
+                font-size: 12px;
+                font-weight: 700;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                color: #fff;
+              "
+            >
+              DribbleBot
+            </div>
+            <div style="font-size: 10px; color: rgba(255, 255, 255, 0.4)">
+              Ask me anything football
+            </div>
+          </div>
+        </div>
+        <button
+          onclick="HF_AGENT.toggle()"
+          style="
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 18px;
+          "
+        >
+          <i class="ti ti-x"></i>
+        </button>
+      </div>
+      <div class="ai-agent-messages" id="ai-agent-messages"></div>
+      <div class="ai-agent-input-row">
+        <input
+          type="text"
+          id="ai-agent-input"
+          placeholder="Ask about football..."
+          style="
+            flex: 1;
+            padding: 0 12px;
+            height: 38px;
+            background: var(--bg2);
+            border: 0.5px solid var(--border);
+            color: var(--text);
+            font-size: 13px;
+            font-family: var(--font);
+            outline: none;
+          "
+          onkeydown="if (event.key === 'Enter') HF_AGENT.send();"
+        />
+        <button
+          onclick="HF_AGENT.send()"
+          style="
+            height: 38px;
+            width: 38px;
+            background: var(--gold);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+          "
+        >
+          <i class="ti ti-send" style="color: #0f0f0d; font-size: 16px"></i>
+        </button>
+      </div>
+    </div>
   </body>
 </html>
