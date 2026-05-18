@@ -2011,25 +2011,6 @@ const HF_DB = (() => {
     return { data: enriched };
   };
 
-  const saveAgentConversation = async (userId, message, response) => {
-    const { error } = await _client
-      .from("agent_conversations")
-      .insert({ user_id: userId, message, response });
-    if (error) return { error: error.message };
-    return { success: true };
-  };
-
-  const getAgentConversations = async (userId, limit = 5) => {
-    const { data, error } = await _client
-      .from("agent_conversations")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(limit);
-    if (error) return { data: [] };
-    return { data };
-  };
-
   const requestTrial = async (playerId, coachId) => {
     // check for existing request within 24 hours
     const yesterday = new Date();
@@ -2329,6 +2310,46 @@ const HF_DB = (() => {
     return result;
   };
 
+  const saveAgentConversation = async (
+    userId,
+    message,
+    response,
+    history,
+    sessionId,
+  ) => {
+    const sid = sessionId || crypto.randomUUID();
+    const { error } = await _client.from("agent_conversations").insert({
+      user_id: userId,
+      message,
+      response,
+      full_history: history,
+      session_id: sid,
+    });
+    if (error) return { error: error.message };
+    return { success: true, sessionId: sid };
+  };
+
+  const getAgentConversations = async (userId, limit = 5) => {
+    const { data, error } = await _client
+      .from("agent_conversations")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getAgentThread = async (sessionId) => {
+    const { data, error } = await _client
+      .from("agent_conversations")
+      .select("*")
+      .eq("session_id", sessionId)
+      .order("created_at", { ascending: true });
+    if (error) return { data: [] };
+    return { data };
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     localDate: _localDate,
@@ -2448,6 +2469,7 @@ const HF_DB = (() => {
     getClubNetworkStatus,
     getPendingClubRequests,
     getApprovedClubNetwork,
+    getAgentThread,
   };
 })();
 

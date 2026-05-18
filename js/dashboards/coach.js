@@ -483,15 +483,16 @@ const HF_COACH = (() => {
           : agentConvos
               .map(
                 (c) => `
-          <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
-            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">
-              <i class="ti ti-message" style="color:var(--gold);margin-right:4px"></i>${c.message}
-            </div>
-            <div style="font-size:11px;color:var(--text2);line-height:1.5;">
-              ${c.response.slice(0, 120)}${c.response.length > 120 ? "..." : ""}
-            </div>
-            <div style="font-size:10px;color:var(--text3);margin-top:4px;">${HF_UTILS.timeAgo(c.created_at)}</div>
-          </div>`,
+  <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);cursor:pointer;"
+    onclick="HF_AGENT.openConversation('${c.session_id}', \`${(c.message || "").replace(/`/g, "'").replace(/\n/g, " ")}\`, \`${(c.response || "").replace(/`/g, "'").replace(/\n/g, " ")}\`)">
+    <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">
+      <i class="ti ti-message" style="color:var(--gold);margin-right:4px"></i>${c.message}
+    </div>
+    <div style="font-size:11px;color:var(--text2);line-height:1.5;">
+      ${c.response.slice(0, 120)}${c.response.length > 120 ? "..." : ""}
+    </div>
+    <div style="font-size:10px;color:var(--text3);margin-top:4px;">${HF_UTILS.timeAgo(c.created_at)}</div>
+  </div>`,
               )
               .join("")
       }

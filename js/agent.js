@@ -7,6 +7,7 @@ const HF_AGENT = (() => {
   let _isOpen = false;
   let _isLoading = false;
   let _history = [];
+  let _sessionId = null;
 
   const _systemPrompt = `You are DribbleBot, a football expert assistant for the HappyFeet Performance Hub, an athletic performance platform focused on African football, particularly Ghana and West Africa.
 
@@ -33,18 +34,18 @@ If asked about something unrelated to football, gently redirect the conversation
     panel.style.flexDirection = "column";
 
     if (_isOpen && _history.length === 0) {
-      // only show greeting once per day
       const session = HF_DB.getSession();
       const greetKey = `hf_agent_greeted_${session?.userId}_${new Date().toISOString().split("T")[0]}`;
       const hasGreeted = localStorage.getItem(greetKey);
-
       if (!hasGreeted) {
         _addMessage(
           "agent",
-          "Hello! I'm HappyFeet AI ⚽ Ask me anything about football (tactics, training, positions, African leagues, player development, or anything else football related)!",
+          "Hello! I'm HappyFeet AI ⚽ Ask me anything about football — tactics, training, positions, African leagues, player development, or anything else football related!",
         );
         localStorage.setItem(greetKey, "1");
       }
+      // start a new session
+      _sessionId = crypto.randomUUID();
     }
 
     if (_isOpen) {
@@ -88,19 +89,28 @@ If asked about something unrelated to football, gently redirect the conversation
           }),
         });
         const data = await response.json();
-        reply =
+        const rawReply =
           data.content?.map((c) => c.text || "").join("") ||
           "Sorry I could not process that.";
+        reply = stripMarkdown(rawReply);
       }
 
       _hideTyping();
       _addMessage("agent", reply);
       _history.push({ role: "assistant", content: reply });
 
-      // save conversation to Supabase
+      // save with full history and session ID
       const session = HF_DB.getSession();
       if (session?.userId) {
-        await HF_DB.saveAgentConversation(session.userId, text, reply);
+        const result = await HF_DB.saveAgentConversation(
+          session.userId,
+          text,
+          reply,
+          _history,
+          _sessionId,
+        );
+        // update session ID from first save
+        if (result.sessionId) _sessionId = result.sessionId;
       }
 
       if (_history.length > 20) _history = _history.slice(-20);
@@ -115,10 +125,80 @@ If asked about something unrelated to football, gently redirect the conversation
     _isLoading = false;
   };
 
+  const stripMarkdown = (text) => {
+    return text
+      .replace(/\*\*(.*?)\*\*/g, "$1")
+      .replace(/\*(.*?)\*/g, "$1")
+      .replace(/#{1,6}\s/g, "")
+      .replace(/`{1,3}(.*?)`{1,3}/g, "$1")
+      .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+      .replace(/^\s*[-*+]\s/gm, "• ")
+      .replace(/^\s*\d+\.\s/gm, "")
+      .trim();
+  };
+
+  const openConversation = async (sessionId, lastMessage, lastResponse) => {
+    // open panel
+    const panel = document.getElementById("ai-agent-panel");
+    _isOpen = true;
+    panel.style.display = "flex";
+    panel.style.flexDirection = "column";
+
+    // clear messages
+    const container = document.getElementById("ai-agent-messages");
+    if (container) container.innerHTML = "";
+
+    // fetch full thread from Supabase
+    const { data: thread } = await HF_DB.getAgentThread(sessionId);
+
+    if (thread && thread.length > 0) {
+      // restore full history from last message's full_history
+      const lastEntry = thread[thread.length - 1];
+      _history = lastEntry.full_history || [
+        { role: "user", content: lastMessage },
+        { role: "assistant", content: lastResponse },
+      ];
+      _sessionId = sessionId;
+
+      // render all exchanges
+      thread.forEach((entry) => {
+        _addMessage("user", entry.message);
+        _addMessage("agent", entry.response);
+      });
+    } else {
+      // fallback to single exchange
+      _history = [
+        { role: "user", content: lastMessage },
+        { role: "assistant", content: lastResponse },
+      ];
+      _sessionId = sessionId;
+      _addMessage("user", lastMessage);
+      _addMessage("agent", lastResponse);
+    }
+
+    setTimeout(() => {
+      const threadEl = document.getElementById("ai-agent-messages");
+      if (threadEl) threadEl.scrollTop = threadEl.scrollHeight;
+      document.getElementById("ai-agent-input")?.focus();
+    }, 100);
+  };
+
+  const reset = () => {
+    _history = [];
+    _sessionId = null;
+    _isOpen = false;
+    const container = document.getElementById("ai-agent-messages");
+    if (container) container.innerHTML = "";
+    const session = HF_DB.getSession();
+    if (session?.userId) {
+      const greetKey = `hf_agent_greeted_${session.userId}_${new Date().toISOString().split("T")[0]}`;
+      localStorage.removeItem(greetKey);
+    }
+  };
+
   const _addMessage = (role, text) => {
     const container = document.getElementById("ai-agent-messages");
     if (!container) return;
-
     const div = document.createElement("div");
     div.className = role === "user" ? "ai-msg-user" : "ai-msg-agent";
     div.textContent = text;
@@ -151,20 +231,7 @@ If asked about something unrelated to football, gently redirect the conversation
     _isOpen = false;
   };
 
-  const reset = () => {
-    _history = [];
-    _isOpen = false;
-    const container = document.getElementById("ai-agent-messages");
-    if (container) container.innerHTML = "";
-    // clear greeting key so it shows again next login
-    const session = HF_DB.getSession();
-    if (session?.userId) {
-      const greetKey = `hf_agent_greeted_${session.userId}_${new Date().toISOString().split("T")[0]}`;
-      localStorage.removeItem(greetKey);
-    }
-  };
-
-  return { toggle, send, show, hide, reset };
+  return { toggle, send, show, hide, reset, openConversation };
 })();
 
 window.HF_AGENT = HF_AGENT;
