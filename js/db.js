@@ -1547,7 +1547,6 @@ const HF_DB = (() => {
         .from("health_logs")
         .select("id, energy, mood, sleep, soreness, hydration")
         .eq("player_id", userId)
-        .eq("completed", true)
         .then((r) => ({ data: r.data || [] })),
       _client
         .from("training_logs")
@@ -2075,7 +2074,7 @@ const HF_DB = (() => {
             error: `You can resend this request in ${hoursLeft} hour${hoursLeft !== 1 ? "s" : ""}.`,
           };
         }
-        // 24 hours passed — update to pending again
+        // 24 hours passed: update to pending again
         const { error } = await _client
           .from("trial_requests")
           .update({
@@ -2142,6 +2141,87 @@ const HF_DB = (() => {
       .order("responded_at", { ascending: false });
     if (error) return { data: [] };
     return { data };
+  };
+
+  const getSquadReadiness = async (coachId) => {
+    const { data: squadPlayers } = await _client
+      .from("squad_invites")
+      .select(
+        "player_id, player:users!squad_invites_player_id_fkey(id, name, profile)",
+      )
+      .eq("coach_id", coachId)
+      .eq("status", "accepted");
+
+    if (!squadPlayers || squadPlayers.length === 0)
+      return { data: { score: 0, breakdown: {} } };
+
+    const today = _localDate();
+    let totalRating = 0,
+      ratedCount = 0;
+    let checkedInCount = 0,
+      readyCount = 0;
+
+    for (const sp of squadPlayers) {
+      // get latest session rating
+      const { data: rating } = await _client
+        .from("session_ratings")
+        .select("overall")
+        .eq("player_id", sp.player_id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (rating) {
+        totalRating += rating.overall;
+        ratedCount++;
+      }
+
+      // get today's health log
+      const { data: health } = await _client
+        .from("health_logs")
+        .select("energy, mood, sleep, soreness, hydration")
+        .eq("player_id", sp.player_id)
+        .eq("date", today)
+        .maybeSingle();
+
+      if (health) {
+        checkedInCount++;
+        const avg = Math.round(
+          (health.energy +
+            health.mood +
+            health.sleep +
+            (10 - health.soreness) +
+            health.hydration) /
+            5,
+        );
+        if (avg >= 8) readyCount++;
+      }
+    }
+
+    const total = squadPlayers.length;
+    const avgRating = ratedCount ? Math.round(totalRating / ratedCount) : 0;
+    const wellnessRate = total ? Math.round((checkedInCount / total) * 100) : 0;
+    const readyRate = checkedInCount
+      ? Math.round((readyCount / checkedInCount) * 100)
+      : 0;
+
+    // weighted score: 40% performance, 30% wellness participation, 30% readiness
+    const score = Math.round(
+      avgRating * 0.4 + wellnessRate * 0.3 + readyRate * 0.3,
+    );
+
+    return {
+      data: {
+        score,
+        total,
+        avgRating,
+        wellnessRate,
+        readyRate,
+        checkedInCount,
+        readyCount,
+        ratedCount,
+      },
+    };
   };
 
   // ─── Public API ────────────────────────────────────────────
@@ -2254,6 +2334,7 @@ const HF_DB = (() => {
     getTrialRequestStatus,
     getPendingTrialRequests,
     getTrialPlayers,
+    getSquadReadiness,
   };
 })();
 

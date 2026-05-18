@@ -361,55 +361,69 @@ const HF_UTILS = (() => {
       month: "long",
       year: "numeric",
     });
+    const todayDate = today.getDate();
+    const todayStr = today.toISOString().split("T")[0];
 
-    // build set of dates that have logs
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay());
+    const weekEnd = new Date(today);
+    weekEnd.setDate(today.getDate() + (6 - today.getDay()));
+
     const logDates = new Set(
       (logs || []).map(
         (l) => l.date?.split("T")[0] || l.created_at?.split("T")[0],
       ),
     );
-    const todayStr = today.toISOString().split("T")[0];
-
     const days = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
     let cells = "";
-
-    // empty cells for first day offset
-    for (let i = 0; i < firstDay; i++) {
-      cells += `<div></div>`;
-    }
+    for (let i = 0; i < firstDay; i++) cells += "<div></div>";
 
     for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(year, month, d);
       const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       const hasLog = logDates.has(dateStr);
-      const isToday = dateStr === todayStr;
-      const isFuture = dateStr > todayStr;
+      const isToday = d === todayDate;
+      const isFuture = date > today;
+      const isThisWeek = date >= weekStart && date <= weekEnd;
       const color = hasLog
         ? colorFn
           ? colorFn(dateStr)
-          : "var(--green)"
+          : "var(--blue)"
         : "transparent";
 
       cells += `
       <div title="${dateStr}" style="
-        width:28px;height:28px;display:flex;align-items:center;justify-content:center;
-        font-size:11px;font-weight:${isToday ? "700" : "400"};
-        color:${isFuture ? "var(--text3)" : isToday ? "#0f0f0d" : hasLog ? "#fff" : "var(--text2)"};
-        background:${isToday ? "var(--gold)" : hasLog ? color : "transparent"};
-        border:${isToday ? "none" : hasLog ? "none" : "0.5px solid transparent"};
-        opacity:${isFuture ? 0.3 : 1};
-        cursor:${hasLog ? "pointer" : "default"};
-      ">${d}</div>`;
+        height:32px;
+        display:flex;align-items:center;justify-content:center;
+        flex-direction:column;gap:2px;
+        font-size:12px;
+        font-weight:${isToday ? "700" : "400"};
+        color:${isFuture ? "var(--text3)" : hasLog ? "#fff" : isThisWeek ? "var(--text)" : "var(--text2)"};
+        background:${hasLog ? color : isThisWeek && !isFuture ? "var(--bg2)" : "transparent"};
+        opacity:${isFuture ? 0.35 : 1};
+        position:relative;
+      ">
+        ${d}
+        ${isToday ? `<div style="width:4px;height:4px;border-radius:50%;background:${hasLog ? '#fff' : 'var(--gold)'};position:absolute;bottom:4px;"></div>` : ''}
+      </div>`;
     }
 
     return `
     <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);margin-bottom:var(--sp-sm);">
       ${monthName}
     </div>
-    <div style="display:grid;grid-template-columns:repeat(7,28px);gap:2px;margin-bottom:4px;">
-      ${days.map((d) => `<div style="width:28px;text-align:center;font-size:9px;font-weight:700;color:var(--text3);font-family:var(--font-head);letter-spacing:0.06em;text-transform:uppercase;">${d}</div>`).join("")}
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
+      ${days
+        .map(
+          (d) => `
+        <div style="text-align:center;font-size:9px;font-weight:700;color:var(--text3);font-family:var(--font-head);letter-spacing:0.06em;text-transform:uppercase;padding:4px 0;">
+          ${d}
+        </div>`,
+        )
+        .join("")}
     </div>
-    <div style="display:grid;grid-template-columns:repeat(7,28px);gap:2px;">
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">
       ${cells}
     </div>`;
   };

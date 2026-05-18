@@ -250,6 +250,7 @@ const HF_COACH = (() => {
     const isRejected = squadStatus === "rejected";
     const isAwaitingCoach = squadStatus === "awaiting_coach_approval";
     const newUser = HF_UTILS.isNewUser(s);
+    const { data: readiness } = await HF_DB.getSquadReadiness(s.userId);
 
     const { data: agentConvos } = await HF_DB.getAgentConversations(s.userId);
 
@@ -332,34 +333,54 @@ const HF_COACH = (() => {
 
     <div class="metrics-grid">
       <div class="metric-card">
-        <div class="metric-val" style="color:${isVerified ? "var(--green)" : "var(--text3)"}">
-          ${isVerified ? "-" : "-"}
+        <div class="metric-val" style="color:var(--gold)">${isVerified ? p.teamSize || 0 : '-'}</div>
+        <div class="metric-label">Squad size</div>
+        <div class="metric-sub" style="color:var(--text2)">${isVerified ? 'Active players' : 'Verify squad'}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:${readiness?.score >= 75 ? 'var(--green)' : readiness?.score >= 50 ? 'var(--gold)' : 'var(--red)'}">
+          ${isVerified && readiness ? readiness.score + '%' : '-'}
         </div>
         <div class="metric-label">Squad readiness</div>
         <div class="metric-sub" style="color:var(--text2)">
-          ${isVerified ? "Log sessions to calculate" : "Verify squad to unlock"}
+          ${isVerified && readiness ? `${readiness.readyCount}/${readiness.total} ready` : 'Verify squad'}
         </div>
       </div>
       <div class="metric-card">
-        <div class="metric-val" style="color:${isVerified ? "var(--gold)" : "var(--text3)"}">
-          ${isVerified ? "0" : "-"}
-        </div>
-        <div class="metric-label">Risk alerts</div>
-        <div class="metric-sub" style="color:var(--text2)">${isVerified ? "All clear" : "Verify squad to unlock"}</div>
+        <div class="metric-val" style="color:var(--blue)">${isVerified && readiness ? readiness.avgRating + '/100' : '-'}</div>
+        <div class="metric-label">Avg rating</div>
+        <div class="metric-sub" style="color:var(--text2)">${isVerified && readiness ? `${readiness.ratedCount} players rated` : 'No data yet'}</div>
       </div>
       <div class="metric-card">
-        <div class="metric-val" style="color:${isVerified ? "var(--gold)" : "var(--text3)"}">
-          ${isVerified ? p.teamSize || 0 : "-"}
-        </div>
-        <div class="metric-label">Active players</div>
-        <div class="metric-sub" style="color:var(--text2)">${isVerified ? "In your squad" : "Verify squad to unlock"}</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-val" style="color:var(--gold)">0</div>
-        <div class="metric-label">Messages</div>
-        <div class="metric-sub" style="color:var(--text2)">All caught up</div>
+        <div class="metric-val" style="color:var(--green)">${isVerified && readiness ? readiness.wellnessRate + '%' : '-'}</div>
+        <div class="metric-label">Wellness rate</div>
+        <div class="metric-sub" style="color:var(--text2)">${isVerified && readiness ? `${readiness.checkedInCount} checked in today` : 'No data yet'}</div>
       </div>
     </div>
+
+    ${isVerified && readiness && readiness.total > 0 ? `
+      <div class="card">
+        <div class="card-title"><div class="card-dot"></div>Squad readiness breakdown</div>
+        <div style="display:flex;flex-direction:column;gap:var(--sp-sm);">
+          ${[
+            { label: 'Performance',           val: readiness.avgRating,    max: 100, color: 'var(--gold)'  },
+            { label: 'Wellness participation', val: readiness.wellnessRate, max: 100, color: 'var(--blue)'  },
+            { label: 'Player readiness',       val: readiness.readyRate,    max: 100, color: 'var(--green)' },
+          ].map(item => `
+            <div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+                <span style="color:var(--text2)">${item.label}</span>
+                <span style="font-weight:700;color:${item.color}">${item.val}%</span>
+              </div>
+              <div style="height:6px;background:var(--border);">
+                <div style="height:100%;width:${item.val}%;background:${item.color};transition:width 0.4s ease;"></div>
+              </div>
+            </div>`).join('')}
+          <div style="padding-top:var(--sp-sm);border-top:0.5px solid var(--border);font-size:11px;color:var(--text3);">
+            Readiness = 40% performance + 30% wellness participation + 30% player readiness
+          </div>
+        </div>
+      </div>` : ''}
 
     <div class="quick-actions">
       <button class="quick-action" onclick="${isVerified ? "HF_ROUTER.navTo('squad')" : "HF_UTILS.toast('Verify your squad first.','error')"}">
@@ -715,7 +736,7 @@ const HF_COACH = (() => {
       </div>
       <div id="drills-list" style="margin-bottom:var(--sp-md);">
         <div style="text-align:center;padding:24px;background:var(--bg2);border:0.5px dashed var(--border);color:var(--text3);font-size:13px;">
-          No drills yet — add one below.
+          No drills yet: add one below.
         </div>
       </div>
 
@@ -1251,7 +1272,7 @@ const HF_COACH = (() => {
               <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${isChecked ? "var(--green)" : "var(--faith)"};margin-bottom:4px;">
                 ${p.title}
               </div>
-              <div style="font-size:12px;color:var(--text2);font-style:italic;line-height:1.5;${isChecked ? "opacity:0.5;" : ""}">
+              <div style="font-size:12px;color:var(--text2);font-style:normal;line-height:1.5;${isChecked ? "opacity:0.5;" : ""}">
                 ${p.desc}
               </div>
             </div>
@@ -2740,7 +2761,6 @@ const HF_COACH = (() => {
         ${HF_UTILS.miniCalendarHTML(sessions, () => "var(--blue)")}
         <div style="display:flex;gap:var(--sp-md);margin-top:var(--sp-md);font-size:11px;color:var(--text2);">
           <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--blue);"></div>Session logged</div>
-          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--gold);border-radius:50%;"></div>Today</div>
         </div>
       </div>
 
@@ -2960,7 +2980,6 @@ const HF_COACH = (() => {
       <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--green);"></div>Ready</div>
       <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--gold);"></div>Monitor</div>
       <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--red);"></div>At risk</div>
-      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--blue);border-radius:50%;"></div>Today</div>
     </div>
   </div>`
         : ""
@@ -3299,8 +3318,8 @@ const HF_COACH = (() => {
 
     HF_UTILS.toast(
       accept
-        ? `Trial accepted — ${playerName} has been notified!`
-        : `Trial declined — ${playerName} has been notified.`,
+        ? `Trial accepted: ${playerName} has been notified!`
+        : `Trial declined: ${playerName} has been notified.`,
       accept ? "success" : "error",
     );
 
@@ -3319,7 +3338,7 @@ const HF_COACH = (() => {
       "system",
       playerId,
       "Trial request accepted!",
-      `${session.name} has accepted your trial request for ${session.profile?.club || "their squad"}. You are now on trial — train hard and make your mark!`,
+      `${session.name} has accepted your trial request for ${session.profile?.club || "their squad"}. You are now on trial! Train hard and make your mark!`,
     );
 
     HF_UTILS.toast(`${playerName} is now on trial!`, "success");
@@ -3381,7 +3400,7 @@ const HF_COACH = (() => {
       "system",
       playerId,
       "Trial period ended",
-      `${session.name} has ended your trial period with ${session.profile?.club || "their squad"}. Keep working hard — your opportunity will come!`,
+      `${session.name} has ended your trial period with ${session.profile?.club || "their squad"}. Keep working hard, and your opportunity will come!`,
     );
 
     HF_UTILS.toast(`${playerName} removed from trial.`, "error");

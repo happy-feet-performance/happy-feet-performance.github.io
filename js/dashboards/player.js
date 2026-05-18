@@ -149,7 +149,7 @@ const HF_PLAYER = (() => {
               : declinedRecently
                 ? `
           <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(200,16,46,.1);color:var(--red);">
-            <i class="ti ti-x"></i> Declined — resend in 24hrs
+            <i class="ti ti-x"></i> Declined: resend in 24hrs
           </span>`
                 : `
           <button id="trial-btn-${c.id}" class="btn btn-primary btn-sm"
@@ -514,7 +514,14 @@ const HF_PLAYER = (() => {
 
     setMain(`
     <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Performance overview</div>
+      <div class="card-title" style="flex-direction:column;align-items:flex-start;gap:2px;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Performance overview
+        </div>
+        <div style="font-size:11px;color:var(--text3);font-family:var(--font);text-transform:none;letter-spacing:0;font-weight:400;padding-left:calc(var(--sp-sm) + 8px);">
+          Ratings are based on sessions logged by your coach
+        </div>
+      </div>
       <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr)">
         <div class="metric-card">
           <div class="metric-val" style="color:var(--gold)">${overall !== null ? overall + "%" : "-"}</div>
@@ -558,8 +565,7 @@ const HF_PLAYER = (() => {
         <div class="card-title"><div class="card-dot"></div>Session calendar</div>
         ${HF_UTILS.miniCalendarHTML(sessions, () => "var(--blue)")}
         <div style="display:flex;gap:var(--sp-md);margin-top:var(--sp-md);font-size:11px;color:var(--text2);">
-          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--blue);"></div>Session logged</div>
-          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--gold);border-radius:50%;"></div>Today</div>
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--blue);"></div>Check-in logged</div>
         </div>
       </div>`
         : ""
@@ -1047,6 +1053,8 @@ const HF_PLAYER = (() => {
     await HF_DB.checkAndUnlockAchievements(s.userId);
 
     const unlockedIds = new Set(unlocked.map((a) => a.id));
+    window._unlockedIds = [...unlockedIds];
+
     const unlockedMap = {};
     unlocked.forEach((a) => (unlockedMap[a.id] = a));
 
@@ -1072,7 +1080,7 @@ const HF_PLAYER = (() => {
       const maxTier = Math.max(...Object.keys(tiers).map(Number));
       const maxPerTier = Math.max(...Object.values(tiers).map((t) => t.length));
       const svgW = maxTier * hGap + nodeSize + 40;
-      const svgH = maxPerTier * vGap + nodeSize + 40;
+      const svgH = maxPerTier * vGap + nodeSize + 56;
 
       // calculate node positions
       const positions = {};
@@ -1140,15 +1148,19 @@ const HF_PLAYER = (() => {
           const textColor = isUnlocked ? cat.color : isLocked ? "#444" : "#888";
 
           return `
-        <g transform="translate(${pos.x}, ${pos.y})" 
-           style="cursor:${isLocked ? "default" : "pointer"}"
-           onclick="HF_PLAYER.showAchievementDetail('${item.id}')">
-          <rect width="${nodeSize}" height="${nodeSize}" 
-          fill="${bgColor}" 
-          stroke="${borderColor}" 
-          stroke-width="${borderWidth}"
-          stroke-dasharray="${borderDash}"
-          rx="0"/>
+          <g transform="translate(${pos.x}, ${pos.y})"
+            data-id="${item.id}"
+            onmouseenter="HF_PLAYER.showAchievementTooltip(event, '${item.id}')"
+            onmouseleave="HF_PLAYER.hideAchievementTooltip()"
+            onclick="${!isLocked ? `HF_PLAYER.showAchievementDetail('${item.id}')` : ""}"
+            style="cursor:${isLocked ? "default" : "pointer"}">
+            <rect width="${nodeSize}" height="${nodeSize}"
+              fill="${bgColor}"
+              stroke="${borderColor}"
+              stroke-width="${borderWidth}"
+              stroke-dasharray="${borderDash}"
+              rx="0"
+              style="transition:filter 0.15s ease;"/>
           ${
             isUnlocked
               ? `
@@ -1167,14 +1179,12 @@ const HF_PLAYER = (() => {
               <i class="ti ${isLocked ? "ti-lock" : item.icon}"></i>
             </div>
           </foreignObject>
-          <text x="${nodeSize / 2}" y="${nodeSize + 14}"
-            text-anchor="middle"
-            font-family="Inter, sans-serif"
-            font-size="9"
-            font-weight="700"
-            fill="${textColor}">
-            ${isLocked ? "???" : item.label.length > 10 ? item.label.slice(0, 9) + ".." : item.label}
-          </text>
+          <foreignObject x="${-10}" y="${nodeSize + 2}" width="${nodeSize + 20}" height="32">
+            <div xmlns="http://www.w3.org/1999/xhtml"
+              style="text-align:center;font-size:8px;font-weight:700;font-family:Inter,sans-serif;color:${textColor};line-height:1.3;word-wrap:break-word;">
+              ${isLocked ? "???" : item.label}
+            </div>
+          </foreignObject>
           ${
             isUnlocked
               ? `
@@ -1337,7 +1347,7 @@ const HF_PLAYER = (() => {
       style="width:100%;accent-color:var(--gold);"
       oninput="document.getElementById('hv-${m.id}').textContent=this.value">
     <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:4px;">
-      <span>1 — Low</span><span>10 — High</span>
+      <span>1: Low</span><span>10: High</span>
     </div>
   </div>`,
         )
@@ -1437,7 +1447,6 @@ const HF_PLAYER = (() => {
           <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--green);"></div>Ready</div>
           <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--gold);"></div>Monitor</div>
           <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--red);"></div>At risk</div>
-          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--blue);border-radius:50%;"></div>Today</div>
         </div>
       </div>
 
@@ -1469,7 +1478,7 @@ const HF_PLAYER = (() => {
                   <td>${l.sleep || "-"}</td>
                   <td>${l.soreness || "-"}</td>
                   <td>${l.hydration || "-"}</td>
-                  <td style="color:var(--text2);font-size:11px">${r.notes && r.notes !== "null" ? r.notes : "None"}</td>
+                  <td style="color:var(--text2);font-size:11px">${l.notes && l.notes !== "null" ? l.notes : "None"}</td>
                 </tr>`;
               })
               .join("")}
@@ -1685,7 +1694,7 @@ const HF_PLAYER = (() => {
               <div style="font-family:var(--font);font-size:13px;font-weight:600;color:${isChecked ? "var(--green)" : "var(--faith)"};margin-bottom:4px;${isChecked ? "text-decoration:line-through;" : ""}">
                 ${p.title}
               </div>
-              <div style="font-size:12px;color:var(--text2);font-style:italic;line-height:1.5;${isChecked ? "opacity:0.5;" : ""}">
+              <div style="font-size:12px;color:var(--text2);font-style:normal;line-height:1.5;${isChecked ? "opacity:0.5;" : ""}">
                 ${p.desc}
               </div>
             </div>
@@ -1696,7 +1705,7 @@ const HF_PLAYER = (() => {
       ${
         allChecked
           ? `
-        <div style="text-align:center;padding:var(--sp-lg);color:var(--faith);font-size:13px;font-style:italic;">
+        <div style="text-align:center;padding:var(--sp-lg);color:var(--faith);font-size:13px;font-style:normal;">
           <i class="ti ti-heart" style="margin-right:6px"></i>
           All prayers completed for today. Come back tomorrow.
         </div>`
@@ -1726,7 +1735,7 @@ const HF_PLAYER = (() => {
           ([title, verse]) => `
         <div style="padding:12px;background:var(--faith-lt);border-radius:0;border-left:3px solid var(--faith);margin-bottom:8px">
           <div style="font-size:11px;font-weight:700;color:var(--faith);margin-bottom:4px">${title}</div>
-          <div style="font-size:12px;color:var(--text2);font-style:italic;line-height:1.6">${verse}</div>
+          <div style="font-size:12px;color:var(--text2);font-style:normal;line-height:1.6">${verse}</div>
         </div>`,
         )
         .join("")}
@@ -2759,6 +2768,11 @@ const HF_PLAYER = (() => {
     );
     if (!item || !cat) return;
 
+    const unlockedIds = new Set(window._unlockedIds || []);
+    const requires = item.requires || [];
+    const prereqsMet = requires.every((r) => unlockedIds.has(r));
+    const isLocked = !prereqsMet && !unlockedIds.has(item.id);
+
     const catKey = cat.label.toLowerCase().replace(/\s/g, "-");
     const detailId = `achievement-detail-${catKey}`;
     const detail = document.getElementById(detailId);
@@ -2771,19 +2785,16 @@ const HF_PLAYER = (() => {
     if (isVisible) return;
 
     detail.style.display = "block";
-    detail.innerHTML = `
-    <div style="display:flex;align-items:center;gap:var(--sp-md);">
-      <i class="ti ${item.icon}" style="font-size:24px;color:${cat.color}"></i>
-      <div>
-        <div style="font-family:var(--font-head);font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:${cat.color};">
-          ${item.label}
-        </div>
-        <div style="font-size:12px;color:var(--text2);margin-top:2px;">${item.desc}</div>
-        ${
-          item.requires?.length
-            ? `
-          <div style="font-size:11px;color:var(--text3);margin-top:4px;">
-            Requires: ${item.requires
+    detail.innerHTML = isLocked
+      ? `
+      <div style="display:flex;align-items:center;gap:var(--sp-md);">
+        <i class="ti ti-lock" style="font-size:24px;color:var(--text3)"></i>
+        <div>
+          <div style="font-family:var(--font-head);font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text3);">
+            ???
+          </div>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px;">
+            Unlock required: ${requires
               .map((r) => {
                 const req = Object.values(ACHIEVEMENTS)
                   .flatMap((c) => c.items)
@@ -2791,11 +2802,106 @@ const HF_PLAYER = (() => {
                 return req?.label || r;
               })
               .join(", ")}
-          </div>`
-            : ""
-        }
-      </div>
-    </div>`;
+          </div>
+        </div>
+      </div>`
+      : `
+      <div style="display:flex;align-items:center;gap:var(--sp-md);">
+        <i class="ti ${item.icon}" style="font-size:24px;color:${cat.color}"></i>
+        <div>
+          <div style="font-family:var(--font-head);font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:${cat.color};">
+            ${item.label}
+          </div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px;">${item.desc}</div>
+          ${
+            item.requires?.length
+              ? `
+            <div style="font-size:11px;color:var(--text3);margin-top:4px;">
+              Requires: ${requires
+                .map((r) => {
+                  const req = Object.values(ACHIEVEMENTS)
+                    .flatMap((c) => c.items)
+                    .find((i) => i.id === r);
+                  return req?.label || r;
+                })
+                .join(", ")}
+            </div>`
+              : ""
+          }
+        </div>
+      </div>`;
+  };
+
+  const showAchievementTooltip = (event, achievementId) => {
+    const item = Object.values(ACHIEVEMENTS)
+      .flatMap((c) => c.items)
+      .find((i) => i.id === achievementId);
+    const cat = Object.values(ACHIEVEMENTS).find((c) =>
+      c.items.find((i) => i.id === achievementId),
+    );
+    if (!item || !cat) return;
+
+    const unlockedIds = new Set(window._unlockedIds || []);
+    const requires = item.requires || [];
+    const prereqsMet = requires.every((r) => unlockedIds.has(r));
+    const isLocked = !prereqsMet && !unlockedIds.has(item.id);
+    const isUnlocked = unlockedIds.has(item.id);
+
+    // remove existing tooltip
+    document.getElementById("achievement-tooltip")?.remove();
+
+    const tooltip = document.createElement("div");
+    tooltip.id = "achievement-tooltip";
+    tooltip.className = "achievement-tooltip";
+    tooltip.innerHTML = `
+    <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${isLocked ? "var(--text3)" : cat.color};margin-bottom:4px;">
+      ${isLocked ? "???" : item.label}
+    </div>
+    <div style="font-size:11px;color:var(--text2);">
+      ${isLocked ? "Complete prerequisites to unlock this achievement." : item.desc}
+    </div>
+    ${
+      requires.length && !isUnlocked
+        ? `
+      <div style="font-size:10px;color:var(--text3);margin-top:6px;border-top:0.5px solid var(--border);padding-top:6px;">
+        Requires: ${requires
+          .map((r) => {
+            const req = Object.values(ACHIEVEMENTS)
+              .flatMap((c) => c.items)
+              .find((i) => i.id === r);
+            return `<span style="color:${unlockedIds.has(r) ? "var(--green)" : "var(--text3)"}">
+            ${unlockedIds.has(r) ? "✓" : "○"} ${req?.label || r}
+          </span>`;
+          })
+          .join(" · ")}
+      </div>`
+        : ""
+    }
+    ${
+      isUnlocked
+        ? `
+      <div style="font-size:10px;color:var(--green);margin-top:6px;">
+        <i class="ti ti-circle-check"></i> Unlocked
+      </div>`
+        : !isLocked
+          ? `
+      <div style="font-size:10px;color:var(--gold);margin-top:6px;">
+        <i class="ti ti-clock"></i> In progress
+      </div>`
+          : ""
+    }`;
+
+    document.body.appendChild(tooltip);
+
+    // position near cursor
+    const x = Math.min(event.clientX + 12, window.innerWidth - 240);
+    const y = Math.min(event.clientY + 12, window.innerHeight - 120);
+    tooltip.style.left = x + "px";
+    tooltip.style.top = y + "px";
+  };
+
+  const hideAchievementTooltip = () => {
+    document.getElementById("achievement-tooltip")?.remove();
   };
 
   return {
@@ -2835,6 +2941,8 @@ const HF_PLAYER = (() => {
     messageCoach,
     sendCoachMessage,
     showAchievementDetail,
+    showAchievementTooltip,
+    hideAchievementTooltip,
   };
 })();
 

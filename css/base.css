@@ -44,7 +44,7 @@
   --sp-3xl: 40px;
 
   --font: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-head: "Oswald", "Inter", sans-serif;
+  --font-head: 'Barlow Condensed', sans-serif;
 
   --font-size-xs: 11px;
   --font-size-sm: 12px;
@@ -761,7 +761,7 @@ img {
   margin-bottom: var(--sp-xl);
   font-size: var(--font-size-sm);
   color: var(--text);
-  font-style: italic;
+  font-style: normal;
   line-height: 1.6;
 }
 
