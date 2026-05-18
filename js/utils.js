@@ -22,7 +22,7 @@ const HF_UTILS = (() => {
     return a;
   };
 
-  const today = () => _localDate();
+  const today = () => HF_DB.localDate();
 
   const timeAgo = (isoStr) => {
     const diff = Date.now() - new Date(isoStr).getTime();

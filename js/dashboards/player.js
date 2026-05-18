@@ -481,7 +481,8 @@ const HF_PLAYER = (() => {
           <tbody>
             ${sessions
               .map((r) => {
-                const isToday = r.created_at?.split("T")[0] === _localDate();
+                const isToday =
+                  r.created_at?.split("T")[0] === HF_DB.localDate();
                 return `
                 <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
                   <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
@@ -517,10 +518,13 @@ const HF_PLAYER = (() => {
   };
 
   const training = async (s) => {
+    const selectedDate = window._trainingSelectedDate || HF_DB.localDate();
     const saved = await HF_DB.getTraining(s.userId);
     const schedule = saved?.schedule || {};
+    const { data: logs } = await HF_DB.getTrainingLogs(s.userId);
+    const { data: todayLog } = await HF_DB.getTodayTrainingLog(s.userId);
     const today = new Date().getDay();
-    const todayStr = new Date().toISOString().split("T")[0];
+    const todayType = schedule[today];
 
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const types = [
@@ -540,35 +544,54 @@ const HF_PLAYER = (() => {
       Match: "var(--faith)",
     };
 
+    window._trainingSchedule = schedule;
+    window._trainingLogs = logs;
+    window._trainingTypeColors = typeColors;
+
     // get current view from window state or default to week
     const view = window._trainingView || "week";
 
     const weekView = () => `
-    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:var(--sp-lg);">
-      ${days
-        .map((day, i) => {
-          const isToday = i === today;
-          const selected = schedule[i];
-          const color = selected ? typeColors[selected] : null;
-          return `
-          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-            <div style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isToday ? "var(--text)" : "var(--text3)"};">
-              ${day}
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:var(--sp-lg);">
+        ${days
+          .map((day, i) => {
+            const isToday = i === today;
+            const selected = schedule[i];
+            const color = selected ? typeColors[selected] : null;
+            const logDate = getDateForDayISO(i);
+            const hasLog = logs?.find((l) => l.date === logDate);
+
+            return `
+            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+              <div style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isToday ? "var(--text)" : "var(--text3)"};">
+                ${day}
+              </div>
+              <div style="font-size:9px;color:var(--text3);">${getDateForDay(i)}</div>
+              <div style="width:100%;padding:8px 4px;
+                background:${selected ? color + "33" : "transparent"};
+                border:${isToday ? "2px solid var(--text)" : selected ? "0.5px solid " + color : "0.5px solid var(--border)"};
+                text-align:center;cursor:pointer;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;"
+                onclick="HF_PLAYER.selectTrainingDay('${getDateForDayISO(i)}', ${i})">
+                <span style="font-size:9px;font-weight:600;color:${selected ? color : "var(--text3)"};font-family:var(--font-head);letter-spacing:0.04em;text-transform:uppercase;">
+                  ${selected || "+"}
+                </span>
+                ${hasLog ? `<i class="ti ti-circle-check" style="font-size:10px;color:var(--green);"></i>` : ""}
+              </div>
             </div>
-            <div style="font-size:9px;color:var(--text3);">${getDateForDay(i)}</div>
-            <div style="width:100%;padding:8px 4px;
-              background:${selected ? color + "33" : isToday ? "var(--bg2)" : "transparent"};
-              border:${isToday ? "2px solid var(--text)" : selected ? "0.5px solid " + color : "0.5px solid var(--border)"};
-              text-align:center;cursor:pointer;min-height:60px;display:flex;align-items:center;justify-content:center;"
-              onclick="HF_PLAYER.showDayPicker(${i})">
-              <span style="font-size:9px;font-weight:600;color:${selected ? color : "var(--text3)"};font-family:var(--font-head);letter-spacing:0.04em;text-transform:uppercase;">
-                ${selected || "+"}
-              </span>
-            </div>
-          </div>`;
-        })
-        .join("")}
-    </div>`;
+            `;
+          })
+          .join("")}
+      </div>
+      ${completionSection()}`;
+
+    const getDateForDayISO = (dayIndex) => {
+      const now = new Date();
+      const today = now.getDay();
+      const diff = dayIndex - today;
+      const date = new Date(now);
+      date.setDate(now.getDate() + diff);
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    };
 
     const monthView = () => {
       const now = new Date();
@@ -584,62 +607,81 @@ const HF_PLAYER = (() => {
         const date = new Date(year, month, d);
         const dayOfWeek = date.getDay();
         const isToday = d === now.getDate();
-        const selected = schedule[dayOfWeek];
-        const color = selected ? typeColors[selected] : null;
         const isFuture = date > now;
+        const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+        // check specific date first, fall back to weekday
+        const selected = schedule[dateStr] || schedule[dayOfWeek];
+        const color = selected ? typeColors[selected] : null;
+        const hasLog = logs?.find((l) => l.date === dateStr);
 
         cells += `
-        <div style="
-          display:flex;flex-direction:column;align-items:center;justify-content:center;
-          height:40px;
-          background:${isToday ? "var(--text)" : selected ? color + "33" : "transparent"};
-          border:${isToday ? "none" : selected ? "0.5px solid " + color : "0.5px solid transparent"};
-          opacity:${isFuture ? 0.4 : 1};
-          cursor:${!isFuture ? "pointer" : "default"};
-          font-size:11px;
-          color:${isToday ? "var(--bg)" : selected ? color : "var(--text2)"};
-          font-weight:${isToday ? "700" : "400"};
-        " onclick="${!isFuture ? `HF_PLAYER.showDayPicker(${dayOfWeek})` : ""}">
-          ${d}
-          ${selected && !isToday ? `<div style="width:4px;height:4px;background:${color};margin-top:2px;"></div>` : ""}
-        </div>`;
+          <div style="
+            display:flex;flex-direction:column;align-items:center;justify-content:center;
+            height:40px;
+            background:${isToday ? "var(--text)" : selected ? color + "33" : "transparent"};
+            border:${isToday ? "none" : selected ? "0.5px solid " + color : "0.5px solid transparent"};
+            opacity:${isFuture ? 0.4 : 1};
+            cursor:${!isFuture ? "pointer" : "default"};
+            font-size:11px;
+            color:${isToday ? "var(--bg)" : selected ? color : "var(--text2)"};
+            font-weight:${isToday ? "700" : "400"};
+            position:relative;
+          " onclick="${!isFuture ? `HF_PLAYER.selectTrainingDay('${dateStr}', ${dayOfWeek})` : ""}">
+            ${d}
+            ${
+              hasLog
+                ? `<div style="width:4px;height:4px;background:var(--green);border-radius:50%;position:absolute;bottom:4px;"></div>`
+                : selected && !isToday
+                  ? `<div style="width:4px;height:4px;background:${color};position:absolute;bottom:4px;"></div>`
+                  : ""
+            }
+          </div>`;
       }
 
       return `
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:8px;">
-        ${days.map((d) => `<div style="text-align:center;font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);padding:4px 0;">${d}</div>`).join("")}
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:var(--sp-lg);">
-        ${cells}
-      </div>`;
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:8px;">
+          ${days.map((d) => `<div style="text-align:center;font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);padding:4px 0;">${d}</div>`).join("")}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:var(--sp-md);">
+          ${cells}
+        </div>
+        ${completionSection()}`;
     };
 
     const dayView = () => {
       const selected = schedule[today];
       const color = selected ? typeColors[selected] : "var(--border)";
+
       return `
-      <div style="padding:var(--sp-xl);background:${selected ? color + "22" : "var(--bg2)"};border:${selected ? "2px solid " + color : "0.5px solid var(--border)"};text-align:center;margin-bottom:var(--sp-lg);">
-        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Today</div>
+      <div style="padding:var(--sp-xl);background:${selected ? color + "22" : "var(--bg2)"};border:${selected ? "2px solid " + color : "0.5px solid var(--border)"};text-align:center;margin-bottom:var(--sp-md);cursor:pointer;"
+        onclick="HF_PLAYER.showDayPicker(${today})">
+        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
+          ${new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        </div>
         <div style="font-family:var(--font-head);font-size:32px;font-weight:700;color:${selected ? color : "var(--text3)"};">
           ${selected || "No session planned"}
         </div>
-        <div style="font-size:12px;color:var(--text2);margin-top:4px;">
-          ${new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        <div style="font-size:11px;color:var(--text3);margin-top:6px;">
+          <i class="ti ti-edit" style="margin-right:4px"></i>${selected ? "Click to change session" : "Click to set session"}
         </div>
-        <button class="btn btn-outline btn-sm" style="margin-top:var(--sp-md);" onclick="HF_PLAYER.showDayPicker(${today})">
-          <i class="ti ti-edit"></i> ${selected ? "Change session" : "Set session"}
-        </button>
-      </div>`;
+      </div>
+      ${completionSection()}`;
     };
 
     setMain(`
     <div class="card">
       <div class="card-title" style="justify-content:space-between;">
-        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-          <div class="card-dot"></div>Training plan
-          <span style="font-size:11px;color:var(--text3);">
-            ${new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
-          </span>
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+            <div class="card-dot"></div>Training plan
+            <span style="font-size:11px;color:var(--text3);">
+              ${new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+            </span>
+          </div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--font);text-transform:none;letter-spacing:0;font-weight:400;">
+            Click on each cell to update the session for that day
+          </div>
         </div>
         <div style="display:flex;gap:4px;">
           ${["day", "week", "month"]
@@ -961,7 +1003,7 @@ const HF_PLAYER = (() => {
           <tbody>
             ${logs
               .map((l) => {
-                const isToday = l.date === _localDate();
+                const isToday = l.date === HF_DB.localDate();
                 return `
                 <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
                   <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
@@ -1121,7 +1163,7 @@ const HF_PLAYER = (() => {
 
   // ── FAITH ────────────────────────────────────────────────────
   const faith = async (s) => {
-    const todayKey = _localDate();
+    const todayKey = HF_DB.localDate();
     const storageKey = `hf_faith_checklist_${s.userId}_${todayKey}`;
     const checked = JSON.parse(localStorage.getItem(storageKey) || "[]");
 
@@ -1236,19 +1278,23 @@ const HF_PLAYER = (() => {
     </div>`);
   };
 
-  const updateTrainingDay = async (dayIndex, type) => {
+  const updateTrainingDay = async (dayIndex, type, specificDate = null) => {
     const session = HF_DB.getSession();
-
-    // get current training data
     const existing = await HF_DB.getTraining(session.userId);
     const schedule = existing?.schedule || {};
-    schedule[dayIndex] = type;
 
-    // save to Supabase
+    if (specificDate) {
+      // store by specific date for month view
+      schedule[specificDate] = type;
+    } else {
+      // store by weekday for week/day view
+      schedule[dayIndex] = type;
+    }
+
     await HF_DB.saveTraining(session.userId, { ...existing, schedule });
 
     HF_UTILS.toast(
-      `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dayIndex]} set to ${type}`,
+      `${specificDate || ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dayIndex]} set to ${type}`,
       "success",
     );
     training(session);
@@ -2099,7 +2145,7 @@ const HF_PLAYER = (() => {
     document.getElementById("health-slider-view").style.display = "none";
   };
 
-  const showDayPicker = (dayIndex) => {
+  const showDayPicker = (dayIndex, specificDate = null) => {
     const picker = document.getElementById("day-picker");
     const label = document.getElementById("day-picker-label");
     const options = document.getElementById("day-picker-options");
@@ -2123,18 +2169,129 @@ const HF_PLAYER = (() => {
       "Match",
     ];
 
-    if (label) label.textContent = `Select session type for ${days[dayIndex]}`;
+    if (label)
+      label.textContent = specificDate
+        ? `Select session type for ${new Date(specificDate + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}`
+        : `Select session type for ${days[dayIndex]}`;
+
     picker.style.display = "block";
 
     options.innerHTML = types
       .map(
         (t) => `
     <button class="btn btn-outline btn-sm"
-      onclick="HF_PLAYER.updateTrainingDay(${dayIndex}, '${t}');document.getElementById('day-picker').style.display='none'">
+      onclick="HF_PLAYER.updateTrainingDay(${dayIndex}, '${t}', ${specificDate ? `'${specificDate}'` : "null"});document.getElementById('day-picker').style.display='none'">
       ${t}
     </button>`,
       )
       .join("");
+  };
+
+  const toggleSessionComplete = async (sessionType, date, completed) => {
+    const session = HF_DB.getSession();
+    const notes =
+      document.getElementById(`session-notes-${date}`)?.value.trim() || null;
+
+    const result = await HF_DB.logTrainingSession(
+      session.userId,
+      sessionType,
+      notes,
+      date,
+      completed,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    HF_UTILS.toast(
+      completed ? "Session marked complete! 💪" : "Session unmarked.",
+      "success",
+    );
+    training(session);
+  };
+
+  // keep old one for backward compat
+  const logSessionComplete = async (sessionType) => {
+    await toggleSessionComplete(sessionType, HF_DB.localDate(), true);
+  };
+
+  const completionSection = (specificDate = null) => {
+    const schedule = window._trainingSchedule || {};
+    const logs = window._trainingLogs || [];
+    const typeColors = window._trainingTypeColors || {};
+
+    const targetDate = specificDate || HF_DB.localDate();
+    const isToday = targetDate === HF_DB.localDate();
+    const logForDate = logs?.find((l) => l.date === targetDate);
+    const isDone = logForDate?.completed;
+    const dayOfWeek = new Date(targetDate + "T00:00:00").getDay();
+    const dayType = schedule[targetDate] || schedule[dayOfWeek];
+    const color = dayType ? typeColors[dayType] : "var(--border)";
+    const dateLabel = new Date(targetDate + "T00:00:00").toLocaleDateString(
+      "en-GB",
+      {
+        weekday: "long",
+        day: "numeric",
+        month: "short",
+      },
+    );
+
+    const content = isDone
+      ? `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:13px;color:var(--green);display:flex;align-items:center;gap:6px;">
+        <i class="ti ti-circle-check"></i>
+        ${dayType || "Session"} completed!
+        ${logForDate.notes ? `<span style="font-size:11px;color:var(--text2);">"${logForDate.notes}"</span>` : ""}
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="HF_PLAYER.toggleSessionComplete('${dayType || "Rest"}', '${targetDate}', false)">
+        <i class="ti ti-x"></i> Uncomplete
+      </button>
+    </div>`
+      : dayType
+        ? `
+    <div style="font-size:13px;color:var(--text);margin-bottom:8px;">
+      Planned: <strong style="color:${color}">${dayType}</strong>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <input type="text" id="session-notes-${targetDate}" placeholder="Add session notes (optional)..."
+        style="flex:1;min-width:150px;padding:8px 12px;background:var(--bg);border:0.5px solid var(--border);color:var(--text);font-size:13px;outline:none;font-family:var(--font);">
+      <button class="btn btn-primary btn-sm" onclick="HF_PLAYER.toggleSessionComplete('${dayType}', '${targetDate}', true)">
+        <i class="ti ti-circle-check"></i> Mark completed
+      </button>
+    </div>`
+        : `
+    <div style="font-size:13px;color:var(--text2);">
+      No session planned.
+      <span onclick="HF_PLAYER.showDayPicker(${dayOfWeek}, '${targetDate}')"
+        style="color:var(--gold);cursor:pointer;text-decoration:underline;margin-left:4px;">Set one</span>
+    </div>`;
+
+    return `
+    <div id="completion-section" style="padding:var(--sp-md);background:${isDone ? "rgba(26,122,46,.08)" : dayType ? color + "22" : "var(--bg2)"};border-left:3px solid ${isDone ? "var(--green)" : dayType ? color : "var(--border)"};margin-bottom:var(--sp-lg);">
+      <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:6px;">
+        ${isToday ? "Today" : dateLabel}
+      </div>
+      ${content}
+    </div>`;
+  };
+
+  const selectTrainingDay = async (dateStr, dayIndex) => {
+    window._trainingSelectedDate = dateStr;
+    showDayPicker(dayIndex, dateStr);
+
+    // refresh logs in case something changed
+    const { data: freshLogs } = await HF_DB.getTrainingLogs(
+      HF_DB.getSession().userId,
+    );
+    window._trainingLogs = freshLogs;
+
+    // update completion section in place
+    const completionEl = document.getElementById("completion-section");
+    if (completionEl) {
+      completionEl.outerHTML = completionSection(dateStr);
+    }
   };
 
   return {
@@ -2142,6 +2299,7 @@ const HF_PLAYER = (() => {
     training,
     updateTrainingDay,
     showDayPicker,
+    logSessionComplete,
     logHealthCheckin,
     showHealthSliders,
     showHealthCards,
@@ -2170,6 +2328,9 @@ const HF_PLAYER = (() => {
     requestTrial,
     messageCoach,
     sendCoachMessage,
+    toggleSessionComplete,
+    completionSection,
+    selectTrainingDay,
   };
 })();
 

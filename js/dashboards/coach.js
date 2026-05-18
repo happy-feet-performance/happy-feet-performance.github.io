@@ -902,7 +902,7 @@ const HF_COACH = (() => {
 
   // FAITH
   const faith = async (s) => {
-    const todayKey = _localDate();
+    const todayKey = HF_DB.localDate();
     const storageKey = `hf_faith_checklist_coach_${s.userId}_${todayKey}`;
     const checked = JSON.parse(localStorage.getItem(storageKey) || "[]");
 
@@ -1668,7 +1668,7 @@ const HF_COACH = (() => {
         ratings.physical) /
         4,
     );
-    const today = _localDate();
+    const today = HF_DB.localDate();
 
     // check if rating exists for today
     const { data: existing } = await _client
@@ -2462,7 +2462,7 @@ const HF_COACH = (() => {
                 );
                 const isToday =
                   new Date(r.created_at).toISOString().split("T")[0] ===
-                  _localDate();
+                  HF_DB.localDate();
                 const showHeader = dateStr !== lastDate;
                 lastDate = dateStr;
                 return `
@@ -2683,7 +2683,7 @@ const HF_COACH = (() => {
           <tbody>
             ${logs
               .map((l) => {
-                const isToday = l.date === _localDate();
+                const isToday = l.date === HF_DB.localDate();
                 return `
                 <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
                   <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">

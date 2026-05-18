@@ -1802,8 +1802,69 @@ const HF_DB = (() => {
     return { data };
   };
 
+  const logTrainingSession = async (
+    playerId,
+    sessionType,
+    notes = null,
+    date = null,
+    completed = true,
+  ) => {
+    const targetDate = date || _localDate();
+    const { data: existing } = await _client
+      .from("training_logs")
+      .select("id, completed")
+      .eq("player_id", playerId)
+      .eq("date", targetDate)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await _client
+        .from("training_logs")
+        .update({ session_type: sessionType, completed, notes })
+        .eq("id", existing.id);
+      if (error) return { error: error.message };
+    } else {
+      const { error } = await _client
+        .from("training_logs")
+        .insert({
+          player_id: playerId,
+          date: targetDate,
+          session_type: sessionType,
+          completed,
+          notes,
+        });
+      if (error) return { error: error.message };
+    }
+    return { success: true };
+  };
+
+  const getTrainingLogs = async (playerId, limit = 30) => {
+    const { data, error } = await _client
+      .from("training_logs")
+      .select("*")
+      .eq("player_id", playerId)
+      .eq("completed", true)
+      .order("date", { ascending: false })
+      .limit(limit);
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getTodayTrainingLog = async (playerId) => {
+    const today = _localDate();
+    const { data, error } = await _client
+      .from("training_logs")
+      .select("*")
+      .eq("player_id", playerId)
+      .eq("date", today)
+      .maybeSingle();
+    if (error) return { data: null };
+    return { data };
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
+    localDate: _localDate,
     createUser,
     findUser,
     updateUserProfile,
@@ -1897,6 +1958,9 @@ const HF_DB = (() => {
     getUnattachedPlayers,
     toggleRecruitment,
     getOpenCoaches,
+    logTrainingSession,
+    getTrainingLogs,
+    getTodayTrainingLog,
   };
 })();
 
