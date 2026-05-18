@@ -143,7 +143,7 @@ const HF_ROUTER = (() => {
     overlay.innerHTML = `
     <div class="verification-alert-card">
       <i class="ti ti-bell" style="font-size:36px;color:var(--gold);margin-bottom:var(--sp-lg);display:block;"></i>
-      <div style="font-family:var(--font-head);font-size:18px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-sm);">
+      <div style="font-family:var(--font);font-size:18px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-sm);">
         Squad verification update
       </div>
       <div style="font-size:14px;color:var(--text2);margin-bottom:var(--sp-xl);line-height:1.6;">

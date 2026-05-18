@@ -213,7 +213,7 @@ const HF_UTILS = (() => {
           <i class="ti ti-shield" style="font-size:16px;color:${!m.read ? "var(--gold)" : "var(--text2)"}"></i>
         </div>
         <div style="flex:1">
-          <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+          <div style="font-size:11px;font-family:var(--font);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
             From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : m.from_id === "admin" ? "HappyFeet Admin" : "HappyFeet")}
           </div>
           <div class="msg-name">${m.subject || "Message"}</div>
@@ -261,7 +261,7 @@ const HF_UTILS = (() => {
     ${
       unread.length > 0
         ? `
-      <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--red);margin-bottom:8px;">
+      <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--red);margin-bottom:8px;">
         Unread (${unread.length})
       </div>
       ${unread.map(msgRow).join("")}
@@ -272,7 +272,7 @@ const HF_UTILS = (() => {
     ${
       read.length > 0
         ? `
-      <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">
+      <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">
         Read (${read.length})
       </div>
       ${read.map(msgRow).join("")}`
@@ -405,19 +405,19 @@ const HF_UTILS = (() => {
         position:relative;
       ">
         ${d}
-        ${isToday ? `<div style="width:4px;height:4px;border-radius:50%;background:${hasLog ? '#fff' : 'var(--gold)'};position:absolute;bottom:4px;"></div>` : ''}
+        ${isToday ? `<div style="width:4px;height:4px;border-radius:50%;background:${hasLog ? "#fff" : "var(--gold)"};position:absolute;bottom:4px;"></div>` : ""}
       </div>`;
     }
 
     return `
-    <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);margin-bottom:var(--sp-sm);">
+    <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);margin-bottom:var(--sp-sm);">
       ${monthName}
     </div>
     <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;">
       ${days
         .map(
           (d) => `
-        <div style="text-align:center;font-size:9px;font-weight:700;color:var(--text3);font-family:var(--font-head);letter-spacing:0.06em;text-transform:uppercase;padding:4px 0;">
+        <div style="text-align:center;font-size:9px;font-weight:700;color:var(--text3);font-family:var(--font);letter-spacing:0.06em;text-transform:uppercase;padding:4px 0;">
           ${d}
         </div>`,
         )
@@ -476,7 +476,7 @@ const HF_UTILS = (() => {
           <div style="display:flex;align-items:center;gap:var(--sp-sm);">
             <div class="card-dot"></div>Highlight reel
           </div>
-          <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">Coming soon</span>
+          <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">Coming soon</span>
         </div>
         <div style="text-align:center;padding:32px;background:var(--bg2);border:0.5px dashed var(--border);">
           <i class="ti ti-video" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
@@ -504,11 +504,11 @@ const HF_UTILS = (() => {
     return `
     <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
       <div style="display:flex;align-items:center;gap:var(--sp-lg);">
-        <div style="width:72px;height:72px;background:${role === "player" ? "var(--green)" : role === "coach" ? "var(--gold)" : role === "admin" ? "var(--red)" : "var(--blue)"};display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
+        <div style="width:72px;height:72px;background:${role === "player" ? "var(--green)" : role === "coach" ? "var(--gold)" : role === "admin" ? "var(--red)" : "var(--blue)"};display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#fff;">
           ${HF_UTILS.initials(user.name)}
         </div>
         <div>
-          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;color:#fff;">${user.name}</div>
+          <div style="font-family:var(--font);font-size:22px;font-weight:700;color:#fff;">${user.name}</div>
           <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:2px;">${p.pos || p.spec || p.org || "-"}</div>
           <div style="margin-top:8px;">${badgeHTML(role, role === "player" ? "green" : role === "coach" ? "gold" : "blue")}</div>
         </div>
@@ -517,8 +517,8 @@ const HF_UTILS = (() => {
         overall !== null
           ? `
         <div style="text-align:right;">
-          <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold)">${overall}%</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.1em">Overall</div>
+          <div style="font-family:var(--font);font-size:42px;font-weight:700;color:var(--gold)">${overall}%</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font);text-transform:uppercase;letter-spacing:0.1em">Overall</div>
         </div>`
           : ""
       }

@@ -41,7 +41,7 @@ const HF_COACH = (() => {
             <div class="card-title" style="justify-content:space-between;">
               <div style="display:flex;align-items:center;gap:var(--sp-sm);">
                 <div class="card-dot"></div>Trial requests
-                <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
+                <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
                   ${trialRequests.length} pending
                 </span>
               </div>
@@ -80,7 +80,7 @@ const HF_COACH = (() => {
             <div class="card-title" style="justify-content:space-between;">
               <div style="display:flex;align-items:center;gap:var(--sp-sm);">
                 <div class="card-dot"></div>On trial
-                <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(26,122,46,.15);color:var(--green);">
+                <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(26,122,46,.15);color:var(--green);">
                   ${trialPlayers.length} players
                 </span>
               </div>
@@ -131,7 +131,7 @@ const HF_COACH = (() => {
       <div class="card-title" style="justify-content:space-between;">
         <div style="display:flex;align-items:center;gap:var(--sp-sm);">
           <div class="card-dot"></div>Squad roster: ${p.club || "Your club"}
-          <span style="font-family:var(--font-head);font-size:10px;color:var(--text3);margin-left:4px">${squadPlayers?.length || 0} players</span>
+          <span style="font-family:var(--font);font-size:10px;color:var(--text3);margin-left:4px">${squadPlayers?.length || 0} players</span>
         </div>
         <button class="btn btn-primary btn-sm" onclick="HF_COACH.showInvitePanel()">
           <i class="ti ti-plus"></i> Invite player
@@ -139,7 +139,7 @@ const HF_COACH = (() => {
       </div>
 
       <div id="invite-panel" style="display:none;margin-bottom:var(--sp-lg);padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);">
-        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;">
+        <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;">
           Invite a player
         </div>
         <div style="display:flex;gap:8px;">
@@ -255,14 +255,14 @@ const HF_COACH = (() => {
     const { data: agentConvos } = await HF_DB.getAgentConversations(s.userId);
 
     const squadStatusBadge = isVerified
-      ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">Verified</span>`
+      ? `<span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">Verified</span>`
       : isPending
-        ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(196,154,10,.15);color:var(--gold);">Pending</span>`
+        ? `<span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(196,154,10,.15);color:var(--gold);">Pending</span>`
         : isAwaitingCoach
-          ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(24,95,165,.15);color:var(--blue);">Review required</span>`
+          ? `<span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(24,95,165,.15);color:var(--blue);">Review required</span>`
           : isRejected
-            ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(200,16,46,.15);color:var(--red);">Rejected</span>`
-            : `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:var(--bg3);color:var(--text2);">Unregistered</span>`;
+            ? `<span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(200,16,46,.15);color:var(--red);">Rejected</span>`
+            : `<span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:var(--bg3);color:var(--text2);">Unregistered</span>`;
 
     setMain(`
     <div class="welcome-banner">
@@ -276,8 +276,8 @@ const HF_COACH = (() => {
         </div>
       </div>
       <div style="text-align:right;flex-shrink:0;">
-        <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold);">${isVerified ? p.teamSize || 0 : "-"}</div>
-        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,.4);">Squad size</div>
+        <div style="font-family:var(--font);font-size:42px;font-weight:700;color:var(--gold);">${isVerified ? p.teamSize || 0 : "-"}</div>
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,.4);">Squad size</div>
       </div>
     </div>
 
@@ -287,7 +287,7 @@ const HF_COACH = (() => {
       isUnregistered || isPending || isRejected || isAwaitingCoach
         ? `
   <div style="padding:var(--sp-lg);background:${isRejected ? "rgba(200,16,46,.06)" : isAwaitingCoach ? "rgba(24,95,165,.06)" : "rgba(196,154,10,.06)"};border-left:3px solid ${isRejected ? "var(--red)" : isAwaitingCoach ? "var(--blue)" : "var(--gold)"};margin-bottom:var(--sp-lg);">
-    <div style="font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isRejected ? "var(--red)" : isAwaitingCoach ? "var(--blue)" : "var(--gold)"};margin-bottom:6px;">
+    <div style="font-family:var(--font);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isRejected ? "var(--red)" : isAwaitingCoach ? "var(--blue)" : "var(--gold)"};margin-bottom:6px;">
       ${isRejected ? "Squad verification rejected" : isAwaitingCoach ? "Admin has updated your submission" : isPending ? "Squad verification pending" : "Squad not registered"}
     </div>
     <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">
@@ -333,40 +333,59 @@ const HF_COACH = (() => {
 
     <div class="metrics-grid">
       <div class="metric-card">
-        <div class="metric-val" style="color:var(--gold)">${isVerified ? p.teamSize || 0 : '-'}</div>
+        <div class="metric-val" style="color:var(--gold)">${isVerified ? p.teamSize || 0 : "-"}</div>
         <div class="metric-label">Squad size</div>
-        <div class="metric-sub" style="color:var(--text2)">${isVerified ? 'Active players' : 'Verify squad'}</div>
+        <div class="metric-sub" style="color:var(--text2)">${isVerified ? "Active players" : "Verify squad"}</div>
       </div>
       <div class="metric-card">
-        <div class="metric-val" style="color:${readiness?.score >= 75 ? 'var(--green)' : readiness?.score >= 50 ? 'var(--gold)' : 'var(--red)'}">
-          ${isVerified && readiness ? readiness.score + '%' : '-'}
+        <div class="metric-val" style="color:${readiness?.score >= 75 ? "var(--green)" : readiness?.score >= 50 ? "var(--gold)" : "var(--red)"}">
+          ${isVerified && readiness ? readiness.score + "%" : "-"}
         </div>
         <div class="metric-label">Squad readiness</div>
         <div class="metric-sub" style="color:var(--text2)">
-          ${isVerified && readiness ? `${readiness.readyCount}/${readiness.total} ready` : 'Verify squad'}
+          ${isVerified && readiness ? `${readiness.readyCount}/${readiness.total} ready` : "Verify squad"}
         </div>
       </div>
       <div class="metric-card">
-        <div class="metric-val" style="color:var(--blue)">${isVerified && readiness ? readiness.avgRating + '/100' : '-'}</div>
+        <div class="metric-val" style="color:var(--blue)">${isVerified && readiness ? readiness.avgRating + "/100" : "-"}</div>
         <div class="metric-label">Avg rating</div>
-        <div class="metric-sub" style="color:var(--text2)">${isVerified && readiness ? `${readiness.ratedCount} players rated` : 'No data yet'}</div>
+        <div class="metric-sub" style="color:var(--text2)">${isVerified && readiness ? `${readiness.ratedCount} players rated` : "No data yet"}</div>
       </div>
       <div class="metric-card">
-        <div class="metric-val" style="color:var(--green)">${isVerified && readiness ? readiness.wellnessRate + '%' : '-'}</div>
+        <div class="metric-val" style="color:var(--green)">${isVerified && readiness ? readiness.wellnessRate + "%" : "-"}</div>
         <div class="metric-label">Wellness rate</div>
-        <div class="metric-sub" style="color:var(--text2)">${isVerified && readiness ? `${readiness.checkedInCount} checked in today` : 'No data yet'}</div>
+        <div class="metric-sub" style="color:var(--text2)">${isVerified && readiness ? `${readiness.checkedInCount} checked in today` : "No data yet"}</div>
       </div>
     </div>
 
-    ${isVerified && readiness && readiness.total > 0 ? `
+    ${
+      isVerified && readiness && readiness.total > 0
+        ? `
       <div class="card">
         <div class="card-title"><div class="card-dot"></div>Squad readiness breakdown</div>
         <div style="display:flex;flex-direction:column;gap:var(--sp-sm);">
           ${[
-            { label: 'Performance',           val: readiness.avgRating,    max: 100, color: 'var(--gold)'  },
-            { label: 'Wellness participation', val: readiness.wellnessRate, max: 100, color: 'var(--blue)'  },
-            { label: 'Player readiness',       val: readiness.readyRate,    max: 100, color: 'var(--green)' },
-          ].map(item => `
+            {
+              label: "Performance",
+              val: readiness.avgRating,
+              max: 100,
+              color: "var(--gold)",
+            },
+            {
+              label: "Wellness participation",
+              val: readiness.wellnessRate,
+              max: 100,
+              color: "var(--blue)",
+            },
+            {
+              label: "Player readiness",
+              val: readiness.readyRate,
+              max: 100,
+              color: "var(--green)",
+            },
+          ]
+            .map(
+              (item) => `
             <div>
               <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
                 <span style="color:var(--text2)">${item.label}</span>
@@ -375,12 +394,16 @@ const HF_COACH = (() => {
               <div style="height:6px;background:var(--border);">
                 <div style="height:100%;width:${item.val}%;background:${item.color};transition:width 0.4s ease;"></div>
               </div>
-            </div>`).join('')}
+            </div>`,
+            )
+            .join("")}
           <div style="padding-top:var(--sp-sm);border-top:0.5px solid var(--border);font-size:11px;color:var(--text3);">
             Readiness = 40% performance + 30% wellness participation + 30% player readiness
           </div>
         </div>
-      </div>` : ''}
+      </div>`
+        : ""
+    }
 
     <div class="quick-actions">
       <button class="quick-action" onclick="${isVerified ? "HF_ROUTER.navTo('squad')" : "HF_UTILS.toast('Verify your squad first.','error')"}">
@@ -444,11 +467,11 @@ const HF_COACH = (() => {
     setMain(`
     <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
       <div style="display:flex;align-items:center;gap:var(--sp-lg);">
-        <div style="width:72px;height:72px;background:#C49A0A;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#0f0f0d;">
+        <div style="width:72px;height:72px;background:#C49A0A;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#0f0f0d;">
           ${HF_UTILS.initials(s.name)}
         </div>
         <div>
-          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${s.name}</div>
+          <div style="font-family:var(--font);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${s.name}</div>
           <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.spec || "Head coach"} · ${p.club || "-"}</div>
           <div style="margin-top:8px;">${badgeHTML("Coach", "gold")}</div>
         </div>
@@ -482,7 +505,7 @@ const HF_COACH = (() => {
     setMain(`
     <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;gap:var(--sp-lg);">
       <div style="position:relative;">
-        <div style="width:72px;height:72px;background:#C49A0A;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#0f0f0d;">
+        <div style="width:72px;height:72px;background:#C49A0A;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#0f0f0d;">
           ${HF_UTILS.initials(session.name)}
         </div>
         <button onclick="HF_UTILS.toast('Profile photo upload coming soon!','success')"
@@ -491,7 +514,7 @@ const HF_COACH = (() => {
         </button>
       </div>
       <div>
-        <div style="font-family:var(--font-head);font-size:22px;font-weight:700;color:#fff;">${session.name}</div>
+        <div style="font-family:var(--font);font-size:22px;font-weight:700;color:#fff;">${session.name}</div>
         <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.spec || "Head coach"}</div>
       </div>
     </div>
@@ -667,7 +690,7 @@ const HF_COACH = (() => {
         playerPlans.length > 0
           ? `
         <div style="margin-bottom:var(--sp-lg);">
-          <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
+          <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
             Player focus areas today
           </div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:var(--sp-sm);">
@@ -685,7 +708,7 @@ const HF_COACH = (() => {
                 return `
                 <div style="padding:var(--sp-sm) var(--sp-md);background:var(--bg2);border-left:3px solid ${color};display:flex;align-items:center;justify-content:space-between;">
                   <span style="font-size:12px;font-weight:600;color:var(--text)">${pp.player?.name?.split(" ")[0] || "Player"}</span>
-                  <span style="font-size:10px;font-weight:700;font-family:var(--font-head);letter-spacing:0.04em;text-transform:uppercase;color:${color};">${pp.todayType}</span>
+                  <span style="font-size:10px;font-weight:700;font-family:var(--font);letter-spacing:0.04em;text-transform:uppercase;color:${color};">${pp.todayType}</span>
                 </div>`;
               })
               .join("")}
@@ -731,7 +754,7 @@ const HF_COACH = (() => {
           style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
       </div>
 
-      <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
+      <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
         Drills
       </div>
       <div id="drills-list" style="margin-bottom:var(--sp-md);">
@@ -741,7 +764,7 @@ const HF_COACH = (() => {
       </div>
 
       <div style="background:var(--bg2);padding:var(--sp-md);border-left:3px solid var(--border);margin-bottom:var(--sp-lg);">
-        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:var(--sp-sm);">
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:var(--sp-sm);">
           Add a drill
         </div>
         <div class="fg" style="margin-bottom:var(--sp-sm);">
@@ -978,7 +1001,7 @@ const HF_COACH = (() => {
                 <td>${log?.soreness || "-"}</td>
                 <td>${log?.hydration || "-"}</td>
                 <td>
-                  <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;color:${statusColor};background:${statusColor}22;">
+                  <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;color:${statusColor};background:${statusColor}22;">
                     ${statusLabel}
                   </span>
                 </td>
@@ -1003,7 +1026,7 @@ const HF_COACH = (() => {
             ([icon, label, color]) => `
   <div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:var(--sp-md);background:var(--bg2);border-top:2px solid var(--border);">
     <i class="ti ${icon}" style="font-size:20px;color:${color}"></i>
-    <div style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">${label}</div>
+    <div style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">${label}</div>
   </div>`,
           )
           .join("")}
@@ -1018,7 +1041,7 @@ const HF_COACH = (() => {
             ([color, label, desc]) => `
           <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:${color}22;border-left:3px solid ${color};flex:1;min-width:100px;">
             <div>
-              <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${color};">${label}</div>
+              <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${color};">${label}</div>
               <div style="font-size:11px;color:var(--text2);margin-top:2px">${desc}</div>
             </div>
           </div>`,
@@ -1083,7 +1106,7 @@ const HF_COACH = (() => {
                 ${
                   sp.report_shared
                     ? `
-                  <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
+                  <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
                     Report available
                   </span>`
                     : ""
@@ -1127,7 +1150,7 @@ const HF_COACH = (() => {
       isAwaitingReview
         ? `
       <div style="padding:var(--sp-lg);background:rgba(24,95,165,.06);border-left:3px solid var(--blue);margin-bottom:var(--sp-lg);">
-        <div style="font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--blue);margin-bottom:6px;">
+        <div style="font-family:var(--font);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--blue);margin-bottom:6px;">
           Action required
         </div>
         <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">
@@ -1184,7 +1207,7 @@ const HF_COACH = (() => {
               <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
             </div>
             <div style="flex:1;opacity:0.6">
-              <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+              <div style="font-size:11px;font-family:var(--font);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
                 From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : "HappyFeet Admin")}
               </div>
               <div class="msg-name">${m.subject || "Message"}</div>
@@ -1250,11 +1273,11 @@ const HF_COACH = (() => {
         ${
           allChecked
             ? `
-          <span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">
+          <span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">
             <i class="ti ti-circle-check"></i> All done
           </span>`
             : `
-          <span style="font-family:var(--font-head);font-size:10px;color:var(--text3);">
+          <span style="font-family:var(--font);font-size:10px;color:var(--text3);">
             ${checked.length}/${prayers.length} completed
           </span>`
         }
@@ -1269,7 +1292,7 @@ const HF_COACH = (() => {
               ${isChecked ? '<i class="ti ti-check" style="font-size:12px;color:#fff;"></i>' : ""}
             </div>
             <div>
-              <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${isChecked ? "var(--green)" : "var(--faith)"};margin-bottom:4px;">
+              <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${isChecked ? "var(--green)" : "var(--faith)"};margin-bottom:4px;">
                 ${p.title}
               </div>
               <div style="font-size:12px;color:var(--text2);font-style:normal;line-height:1.5;${isChecked ? "opacity:0.5;" : ""}">
@@ -1527,10 +1550,10 @@ const HF_COACH = (() => {
       overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:var(--sp-xl);`;
       overlay.innerHTML = `
       <div style="background:var(--bg);border-top:3px solid var(--gold);padding:var(--sp-2xl);max-width:480px;width:100%;">
-        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
+        <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
           HappyFeet ${msg.from_id === "system" ? "System" : "Admin"}
         </div>
-        <div style="font-family:var(--font-head);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
+        <div style="font-family:var(--font);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
           ${msg.subject || "Message"}
         </div>
         <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:var(--sp-xl);">
@@ -1602,11 +1625,11 @@ const HF_COACH = (() => {
         }
 
         const statusBadge = isPending
-          ? `<span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">Invite sent</span>`
+          ? `<span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">Invite sent</span>`
           : isAccepted
-            ? `<span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(26,122,46,.15);color:var(--green);">In squad</span>`
+            ? `<span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(26,122,46,.15);color:var(--green);">In squad</span>`
             : isCoolingDown
-              ? `<span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(200,16,46,.15);color:var(--red);">Wait ${hoursLeft}h</span>`
+              ? `<span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(200,16,46,.15);color:var(--red);">Wait ${hoursLeft}h</span>`
               : "";
 
         const inviteBtn = isPending
@@ -2247,7 +2270,7 @@ const HF_COACH = (() => {
     const tags = document.getElementById("compose-tags");
     const tag = document.createElement("div");
     tag.id = `tag-${userId}`;
-    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font-head);letter-spacing:0.04em;`;
+    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font);letter-spacing:0.04em;`;
     tag.innerHTML = `
     ${userName}
     <span style="cursor:pointer;font-size:14px;font-weight:700;line-height:1;" 
@@ -2434,7 +2457,7 @@ const HF_COACH = (() => {
       <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('messages')">
         <i class="ti ti-arrow-left"></i> Back
       </button>
-      <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+      <div style="font-family:var(--font);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
         ${subject || "Conversation"}
       </div>
     </div>
@@ -2447,7 +2470,7 @@ const HF_COACH = (() => {
             const emojiOnly = isEmojiOnly(m.body);
             return `
             <div style="display:flex;flex-direction:column;align-items:${isMine ? "flex-end" : "flex-start"};">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font-head);letter-spacing:0.04em;">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font);letter-spacing:0.04em;">
                 ${isMine ? "You" : m.senderName} · ${HF_UTILS.timeAgo(m.created_at)}
               </div>
               <div style="
@@ -2609,7 +2632,7 @@ const HF_COACH = (() => {
       <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('squad')">
         <i class="ti ti-arrow-left"></i> Back to squad
       </button>
-      <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+      <div style="font-family:var(--font);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
         ${playerName}
       </div>
     </div>
@@ -2655,10 +2678,10 @@ const HF_COACH = (() => {
     <div class="card">
       <div style="background:#0f0f0d;padding:var(--sp-lg);margin:-var(--sp-lg) -var(--sp-lg) var(--sp-lg);display:flex;align-items:center;justify-content:space-between;">
         <div>
-          <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:2px;">
+          <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:2px;">
             Session rating
           </div>
-          <div style="font-family:var(--font-head);font-size:18px;font-weight:700;color:#fff;">${playerName}</div>
+          <div style="font-family:var(--font);font-size:18px;font-weight:700;color:#fff;">${playerName}</div>
           <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;">
             ${new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
           </div>
@@ -2666,7 +2689,7 @@ const HF_COACH = (() => {
         ${
           todayRating
             ? `
-          <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(196,154,10,.2);color:var(--gold);">
+          <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(196,154,10,.2);color:var(--gold);">
             Editing today
           </span>`
             : ""
@@ -2701,8 +2724,8 @@ const HF_COACH = (() => {
             (l) => `
           <div style="padding:var(--sp-md);background:var(--bg2);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-              <span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);">${l}</span>
-              <span id="cv-${l.toLowerCase()}" style="font-family:var(--font-head);font-size:18px;font-weight:700;color:var(--gold);">7</span>
+              <span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);">${l}</span>
+              <span id="cv-${l.toLowerCase()}" style="font-family:var(--font);font-size:18px;font-weight:700;color:var(--gold);">7</span>
             </div>
             <input type="range" min="1" max="10" value="7" step="1"
               style="width:100%;accent-color:var(--gold);"
@@ -2790,7 +2813,7 @@ const HF_COACH = (() => {
                   showHeader
                     ? `
                   <tr>
-                    <td colspan="7" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isToday ? "var(--gold)" : "var(--text3)"};padding:8px 0 4px;border-bottom:0.5px solid var(--border);">
+                    <td colspan="7" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isToday ? "var(--gold)" : "var(--text3)"};padding:8px 0 4px;border-bottom:0.5px solid var(--border);">
                       ${isToday ? "Today: " : ""}${dateStr}
                     </td>
                   </tr>`
@@ -2909,7 +2932,7 @@ const HF_COACH = (() => {
       <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('health')">
         <i class="ti ti-arrow-left"></i> Back to squad wellness
       </button>
-      <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+      <div style="font-family:var(--font);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
         ${playerName} Health log
       </div>
     </div>

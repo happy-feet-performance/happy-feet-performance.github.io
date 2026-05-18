@@ -63,12 +63,12 @@ const HF_SCOUT = (() => {
       : p.dest || "-";
 
     const agencyStatusBadge = isVerified
-      ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">Verified</span>`
+      ? `<span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">Verified</span>`
       : isPending
-        ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(196,154,10,.15);color:var(--gold);">Pending</span>`
+        ? `<span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(196,154,10,.15);color:var(--gold);">Pending</span>`
         : isRejected
-          ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(200,16,46,.15);color:var(--red);">Rejected</span>`
-          : `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:var(--bg3);color:var(--text2);">Unregistered</span>`;
+          ? `<span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(200,16,46,.15);color:var(--red);">Rejected</span>`
+          : `<span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:var(--bg3);color:var(--text2);">Unregistered</span>`;
 
     const activityStats = [
       {
@@ -103,8 +103,8 @@ const HF_SCOUT = (() => {
         </div>
       </div>
       <div style="text-align:right;flex-shrink:0;">
-        <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold);">${isVerified ? trackedCount : "-"}</div>
-        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,.4);">Prospects tracked</div>
+        <div style="font-family:var(--font);font-size:42px;font-weight:700;color:var(--gold);">${isVerified ? trackedCount : "-"}</div>
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,.4);">Prospects tracked</div>
       </div>
     </div>
 
@@ -114,7 +114,7 @@ const HF_SCOUT = (() => {
       isUnregistered || isPending || isRejected
         ? `
       <div style="padding:var(--sp-lg);background:${isRejected ? "rgba(200,16,46,.06)" : "rgba(196,154,10,.06)"};border-left:3px solid ${isRejected ? "var(--red)" : "var(--gold)"};margin-bottom:var(--sp-lg);">
-        <div style="font-family:var(--font-head);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isRejected ? "var(--red)" : "var(--gold)"};margin-bottom:6px;">
+        <div style="font-family:var(--font);font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isRejected ? "var(--red)" : "var(--gold)"};margin-bottom:6px;">
           ${isRejected ? "Agency verification rejected" : isPending ? "Agency verification pending" : "Agency not registered"}
         </div>
         <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">
@@ -214,8 +214,8 @@ const HF_SCOUT = (() => {
                 <i class="ti ${stat.icon}" style="font-size:16px;color:${stat.color}"></i>
               </div>
               <div>
-                <div style="font-family:var(--font-head);font-size:20px;font-weight:700;color:${stat.color}">${stat.val}</div>
-                <div style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">${stat.label}</div>
+                <div style="font-family:var(--font);font-size:20px;font-weight:700;color:${stat.color}">${stat.val}</div>
+                <div style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">${stat.label}</div>
               </div>
             </div>`,
             )
@@ -274,11 +274,11 @@ const HF_SCOUT = (() => {
     setMain(`
       <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
         <div style="display:flex;align-items:center;gap:var(--sp-lg);">
-          <div style="width:72px;height:72px;background:#185FA5;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
+          <div style="width:72px;height:72px;background:#185FA5;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#fff;">
             ${HF_UTILS.initials(s.name)}
           </div>
           <div>
-            <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${s.name}</div>
+            <div style="font-family:var(--font);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${s.name}</div>
             <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.org || "-"}</div>
             <div style="margin-top:8px;">${badgeHTML("Scout", "blue")}</div>
           </div>
@@ -381,7 +381,7 @@ const HF_SCOUT = (() => {
       </div>
       <div style="text-align:right;flex-shrink:0;">
         ${overall !== null ? `<div style="font-size:16px;font-weight:700;color:var(--gold)">${overall}%</div>` : '<div style="font-size:13px;color:var(--text3)">Unrated</div>'}
-        ${isSaved ? `<span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(26,122,46,.15);color:var(--green);">Saved</span>` : ""}
+        ${isSaved ? `<span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(26,122,46,.15);color:var(--green);">Saved</span>` : ""}
       </div>
     </div>
     <div id="player-actions-${p.id}" style="display:none;padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
@@ -736,7 +736,7 @@ const HF_SCOUT = (() => {
               <div style="margin-bottom:var(--sp-lg);">
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                   <div style="width:12px;height:12px;background:${stage.color};flex-shrink:0;"></div>
-                  <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);">
+                  <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);">
                     ${stage.label} (${players.length})
                   </div>
                 </div>
@@ -981,7 +981,7 @@ const HF_SCOUT = (() => {
         <div style="display:flex;gap:24px;padding-top:12px;border-top:0.5px solid var(--border);margin-top:12px;">
           <div>
             <div style="font-size:18px;font-weight:700;color:var(--green)">${placed.length}</div>
-            <div style="font-size:10px;color:var(--text2);text-transform:uppercase;font-family:var(--font-head);letter-spacing:0.08em">Total placements</div>
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase;font-family:var(--font);letter-spacing:0.08em">Total placements</div>
           </div>
         </div>
       </div>`);
@@ -1052,7 +1052,7 @@ const HF_SCOUT = (() => {
                 <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
               </div>
               <div style="flex:1;opacity:0.6">
-                <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+                <div style="font-size:11px;font-family:var(--font);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
                   From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : "HappyFeet Admin")}
                 </div>
                 <div class="msg-name">${m.subject || "Message"}</div>
@@ -1190,7 +1190,7 @@ const HF_SCOUT = (() => {
     setMain(`
     <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;gap:var(--sp-lg);">
       <div style="position:relative;">
-        <div style="width:72px;height:72px;background:#185FA5;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
+        <div style="width:72px;height:72px;background:#185FA5;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#fff;">
           ${HF_UTILS.initials(session.name)}
         </div>
         <button onclick="HF_UTILS.toast('Profile photo upload coming soon!','success')"
@@ -1199,7 +1199,7 @@ const HF_SCOUT = (() => {
         </button>
       </div>
       <div>
-        <div style="font-family:var(--font-head);font-size:22px;font-weight:700;color:#fff;">${session.name}</div>
+        <div style="font-family:var(--font);font-size:22px;font-weight:700;color:#fff;">${session.name}</div>
         <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.org || "-"}</div>
       </div>
     </div>
@@ -1310,24 +1310,24 @@ const HF_SCOUT = (() => {
           <label class="required">Regions you cover</label>
           <div id="rag-regions-container" style="display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:var(--bg2);border:0.5px solid var(--border);min-height:44px;"></div>
           <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
-            <button type="button" class="region-tag" data-value="Ghana" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Ghana</button>
-            <button type="button" class="region-tag" data-value="Nigeria" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Nigeria</button>
-            <button type="button" class="region-tag" data-value="Senegal" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Senegal</button>
-            <button type="button" class="region-tag" data-value="Ivory Coast" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Ivory Coast</button>
-            <button type="button" class="region-tag" data-value="Cameroon" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Cameroon</button>
-            <button type="button" class="region-tag" data-value="West Africa" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">West Africa</button>
-            <button type="button" class="region-tag" data-value="All Africa" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">All Africa</button>
+            <button type="button" class="region-tag" data-value="Ghana" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Ghana</button>
+            <button type="button" class="region-tag" data-value="Nigeria" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Nigeria</button>
+            <button type="button" class="region-tag" data-value="Senegal" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Senegal</button>
+            <button type="button" class="region-tag" data-value="Ivory Coast" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Ivory Coast</button>
+            <button type="button" class="region-tag" data-value="Cameroon" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Cameroon</button>
+            <button type="button" class="region-tag" data-value="West Africa" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">West Africa</button>
+            <button type="button" class="region-tag" data-value="All Africa" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">All Africa</button>
           </div>
         </div>
         <div class="fg">
           <label class="required">Target leagues / destinations</label>
           <div id="rag-leagues-container" style="display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:var(--bg2);border:0.5px solid var(--border);min-height:44px;"></div>
           <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
-            <button type="button" class="league-tag" data-value="Ghana Premier League" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Ghana Premier League</button>
-            <button type="button" class="league-tag" data-value="MLS" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">MLS</button>
-            <button type="button" class="league-tag" data-value="Premier League" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Premier League</button>
-            <button type="button" class="league-tag" data-value="Europe" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Europe</button>
-            <button type="button" class="league-tag" data-value="Gulf" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Gulf</button>
+            <button type="button" class="league-tag" data-value="Ghana Premier League" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Ghana Premier League</button>
+            <button type="button" class="league-tag" data-value="MLS" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">MLS</button>
+            <button type="button" class="league-tag" data-value="Premier League" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Premier League</button>
+            <button type="button" class="league-tag" data-value="Europe" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Europe</button>
+            <button type="button" class="league-tag" data-value="Gulf" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Gulf</button>
           </div>
         </div>
         <div style="display:flex;gap:8px;margin-top:var(--sp-md);">
@@ -1399,10 +1399,10 @@ const HF_SCOUT = (() => {
       overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:var(--sp-xl);`;
       overlay.innerHTML = `
       <div style="background:var(--bg);border-top:3px solid var(--gold);padding:var(--sp-2xl);max-width:480px;width:100%;">
-        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
+        <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
           HappyFeet ${msg.from_id === "system" ? "System" : "Admin"}
         </div>
-        <div style="font-family:var(--font-head);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
+        <div style="font-family:var(--font);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
           ${msg.subject || "Message"}
         </div>
         <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:var(--sp-xl);">
@@ -1618,7 +1618,7 @@ const HF_SCOUT = (() => {
     const tags = document.getElementById("compose-tags");
     const tag = document.createElement("div");
     tag.id = `tag-${userId}`;
-    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font-head);letter-spacing:0.04em;`;
+    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font);letter-spacing:0.04em;`;
     tag.innerHTML = `
     ${userName}
     <span style="cursor:pointer;font-size:14px;font-weight:700;line-height:1;" 
@@ -1806,7 +1806,7 @@ const HF_SCOUT = (() => {
       <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('messages')">
         <i class="ti ti-arrow-left"></i> Back
       </button>
-      <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+      <div style="font-family:var(--font);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
         ${subject || "Conversation"}
       </div>
     </div>
@@ -1819,7 +1819,7 @@ const HF_SCOUT = (() => {
             const emojiOnly = isEmojiOnly(m.body);
             return `
             <div style="display:flex;flex-direction:column;align-items:${isMine ? "flex-end" : "flex-start"};">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font-head);letter-spacing:0.04em;">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font);letter-spacing:0.04em;">
                 ${isMine ? "You" : m.senderName} · ${HF_UTILS.timeAgo(m.created_at)}
               </div>
               <div style="
@@ -1956,7 +1956,7 @@ const HF_SCOUT = (() => {
       <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('prospects')">
         <i class="ti ti-arrow-left"></i> Back
       </button>
-      <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+      <div style="font-family:var(--font);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
         Generate scouting report for ${playerName}
       </div>
     </div>
@@ -2185,7 +2185,7 @@ Report generated by ${session.profile?.org || "HappyFeet Scouting"}.
         <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('prospects')">
           <i class="ti ti-arrow-left"></i> Back
         </button>
-        <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+        <div style="font-family:var(--font);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
           Scouting report for ${playerName}
         </div>
       </div>
@@ -2208,7 +2208,7 @@ Report generated by ${session.profile?.org || "HappyFeet Scouting"}.
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--sp-lg);">
         <div>
-          <div style="font-family:var(--font-head);font-size:18px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+          <div style="font-family:var(--font);font-size:18px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
             ${playerName}
           </div>
           <div style="font-size:12px;color:var(--text2);margin-top:2px">
@@ -2219,8 +2219,8 @@ Report generated by ${session.profile?.org || "HappyFeet Scouting"}.
           report.avgOverall
             ? `
           <div style="text-align:right;">
-            <div style="font-family:var(--font-head);font-size:36px;font-weight:700;color:var(--gold)">${report.avgOverall}</div>
-            <div style="font-size:10px;color:var(--text3);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.1em">Avg overall</div>
+            <div style="font-family:var(--font);font-size:36px;font-weight:700;color:var(--gold)">${report.avgOverall}</div>
+            <div style="font-size:10px;color:var(--text3);font-family:var(--font);text-transform:uppercase;letter-spacing:0.1em">Avg overall</div>
           </div>`
             : ""
         }

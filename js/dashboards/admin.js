@@ -45,7 +45,7 @@ const HF_ADMIN = (() => {
     setMain(`
       <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
         <div>
-          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">Admin Dashboard</div>
+          <div style="font-family:var(--font);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">Admin Dashboard</div>
           <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">HappyFeet Platform Management</div>
         </div>
       </div>
@@ -87,7 +87,7 @@ const HF_ADMIN = (() => {
             ${
               pending?.length > 0
                 ? `
-            <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
+            <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
                 Squads
             </div>
             ${pending.map((v) => _verificationRow(v)).join("")}`
@@ -96,7 +96,7 @@ const HF_ADMIN = (() => {
             ${
               agencyPending?.length > 0
                 ? `
-            <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);margin:12px 0 8px;">
+            <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);margin:12px 0 8px;">
                 Agencies
             </div>
             ${agencyPending.map((v) => _agencyVerificationRow(v)).join("")}`
@@ -252,7 +252,7 @@ const HF_ADMIN = (() => {
     </div>`;
 
     setMain(`
-    <div style="font-family:var(--font-head);font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-lg);">
+    <div style="font-family:var(--font);font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-lg);">
       Squad Verifications
     </div>
 
@@ -333,7 +333,7 @@ const HF_ADMIN = (() => {
     </div>`;
 
     setMain(`
-    <div style="font-family:var(--font-head);font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-lg);">
+    <div style="font-family:var(--font);font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-lg);">
       Agency Verifications
     </div>
 
@@ -431,7 +431,7 @@ const HF_ADMIN = (() => {
           </button>
         </div>`
           : `
-        <div style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;background:rgba(200,16,46,.1);color:var(--red);">
+        <div style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;background:rgba(200,16,46,.1);color:var(--red);">
           Admin
         </div>`
       }
@@ -556,7 +556,7 @@ const HF_ADMIN = (() => {
                 <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
                 </div>
                 <div style="flex:1;opacity:0.6">
-                <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+                <div style="font-size:11px;font-family:var(--font);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
                     From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : "HappyFeet Admin")}
                 </div>
                 <div class="msg-name">${m.subject || "Message"}</div>
@@ -594,7 +594,7 @@ const HF_ADMIN = (() => {
         </div>
 
         <div id="edit-form-${v.id}" style="display:none;margin-bottom:12px;padding:12px;background:var(--bg);border:0.5px solid var(--border);">
-        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
             Edit verification details
         </div>
         <div class="fg">
@@ -755,7 +755,7 @@ const HF_ADMIN = (() => {
     overlay.innerHTML = `
     <div class="verification-alert-card">
       <i class="ti ti-clipboard-check" style="font-size:36px;color:var(--gold);margin-bottom:var(--sp-lg);display:block;"></i>
-      <div style="font-family:var(--font-head);font-size:18px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-sm);">
+      <div style="font-family:var(--font);font-size:18px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-sm);">
         ${count} pending verification${count > 1 ? "s" : ""}
       </div>
       <div style="font-size:14px;color:var(--text2);margin-bottom:var(--sp-xl);line-height:1.6;">
@@ -804,10 +804,10 @@ const HF_ADMIN = (() => {
       overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:var(--sp-xl);`;
       overlay.innerHTML = `
       <div style="background:var(--bg);border-top:3px solid var(--gold);padding:var(--sp-2xl);max-width:480px;width:100%;">
-        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
+        <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
           HappyFeet ${msg.from_id === "system" ? "System" : "Admin"}
         </div>
-        <div style="font-family:var(--font-head);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
+        <div style="font-family:var(--font);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
           ${msg.subject || "Message"}
         </div>
         <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:var(--sp-xl);">
@@ -914,7 +914,7 @@ const HF_ADMIN = (() => {
     const tags = document.getElementById("compose-tags");
     const tag = document.createElement("div");
     tag.id = `tag-${userId}`;
-    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font-head);letter-spacing:0.04em;`;
+    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font);letter-spacing:0.04em;`;
     tag.innerHTML = `
     ${userName}
     <span style="cursor:pointer;font-size:14px;font-weight:700;line-height:1;" 
@@ -1102,7 +1102,7 @@ const HF_ADMIN = (() => {
       <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('messages')">
         <i class="ti ti-arrow-left"></i> Back
       </button>
-      <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+      <div style="font-family:var(--font);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
         ${subject || "Conversation"}
       </div>
     </div>
@@ -1115,7 +1115,7 @@ const HF_ADMIN = (() => {
             const emojiOnly = isEmojiOnly(m.body);
             return `
             <div style="display:flex;flex-direction:column;align-items:${isMine ? "flex-end" : "flex-start"};">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font-head);letter-spacing:0.04em;">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font);letter-spacing:0.04em;">
                 ${isMine ? "You" : m.senderName} · ${HF_UTILS.timeAgo(m.created_at)}
               </div>
               <div style="

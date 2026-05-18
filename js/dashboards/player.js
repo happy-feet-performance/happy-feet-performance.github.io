@@ -120,7 +120,7 @@ const HF_PLAYER = (() => {
     <div class="card" style="margin-bottom:var(--sp-md);">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-md);">
         <div style="display:flex;align-items:center;gap:var(--sp-md);">
-          <div class="avatar avatar-lg" style="background:var(--gold);width:48px;height:48px;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:18px;font-weight:700;color:#0f0f0d;">
+          <div class="avatar avatar-lg" style="background:var(--gold);width:48px;height:48px;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:18px;font-weight:700;color:#0f0f0d;">
             ${HF_UTILS.initials(c.name)}
           </div>
           <div>
@@ -130,25 +130,25 @@ const HF_PLAYER = (() => {
           </div>
         </div>
         <div style="text-align:right;flex-shrink:0;">
-          <div style="font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--gold)">${p.teamSize || 0}</div>
-          <div style="font-size:10px;color:var(--text3);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.08em">Players</div>
+          <div style="font-family:var(--font);font-size:20px;font-weight:700;color:var(--gold)">${p.teamSize || 0}</div>
+          <div style="font-size:10px;color:var(--text3);font-family:var(--font);text-transform:uppercase;letter-spacing:0.08em">Players</div>
         </div>
       </div>
       <div style="margin-top:var(--sp-md);padding-top:var(--sp-md);border-top:0.5px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         ${
           isAccepted
             ? `
-          <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(26,122,46,.15);color:var(--green);">
+          <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(26,122,46,.15);color:var(--green);">
             <i class="ti ti-circle-check"></i> Trial accepted
           </span>`
             : isPending
               ? `
-          <span id="trial-btn-${c.id}" style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(196,154,10,.15);color:var(--gold);">
+          <span id="trial-btn-${c.id}" style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(196,154,10,.15);color:var(--gold);">
             <i class="ti ti-clock"></i> Trial request pending
           </span>`
               : declinedRecently
                 ? `
-          <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(200,16,46,.1);color:var(--red);">
+          <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(200,16,46,.1);color:var(--red);">
             <i class="ti ti-x"></i> Declined: resend in 24hrs
           </span>`
                 : `
@@ -193,7 +193,7 @@ const HF_PLAYER = (() => {
     const btn = document.getElementById(`trial-btn-${coachId}`);
     if (btn) {
       btn.outerHTML = `
-      <span id="trial-btn-${coachId}" style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(196,154,10,.15);color:var(--gold);">
+      <span id="trial-btn-${coachId}" style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(196,154,10,.15);color:var(--gold);">
         <i class="ti ti-clock"></i> Trial request pending
       </span>`;
     }
@@ -398,7 +398,7 @@ const HF_PLAYER = (() => {
       <!-- Left: avatar + name -->
       <div style="display:flex;align-items:center;gap:var(--sp-lg);">
         <div style="position:relative;">
-          <div style="width:72px;height:72px;background:#1a7a2e;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
+          <div style="width:72px;height:72px;background:#1a7a2e;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#fff;">
             ${HF_UTILS.initials(s.name)}
           </div>
           ${
@@ -412,14 +412,14 @@ const HF_PLAYER = (() => {
           }
         </div>
         <div>
-          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${s.name}</div>
+          <div style="font-family:var(--font);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${s.name}</div>
           <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.pos || "-"} · ${p.tier || "-"}</div>
           <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
             ${badgeHTML("Player", "green")}
             ${
               p.status === "unattached" || !p.club
-                ? `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:var(--bg3);color:var(--text2);">Free Agent</span>`
-                : `<span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">${p.club} <i class="ti ti-circle-check"></i></span>`
+                ? `<span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:var(--bg3);color:var(--text2);">Free Agent</span>`
+                : `<span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">${p.club} <i class="ti ti-circle-check"></i></span>`
             }
             <span style="font-size:11px;color:rgba(255,255,255,.4)">${p.hometown || "Ghana"}</span>
           </div>
@@ -428,10 +428,10 @@ const HF_PLAYER = (() => {
 
       <!-- Right: overall rating -->
       <div style="text-align:right;flex-shrink:0;">
-        <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:${unrated ? "var(--text3)" : "var(--gold)"};">
+        <div style="font-family:var(--font);font-size:42px;font-weight:700;color:${unrated ? "var(--text3)" : "var(--gold)"};">
           ${unrated ? "-" : overall + "%"}
         </div>
-        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,.4);">
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,.4);">
           ${unrated ? "Not yet rated" : "Overall rating"}
         </div>
       </div>
@@ -485,7 +485,7 @@ const HF_PLAYER = (() => {
         <div style="display:flex;align-items:center;gap:var(--sp-sm);">
           <div class="card-dot"></div>Highlight reel
         </div>
-        <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
+        <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
           Coming soon
         </span>
       </div>
@@ -680,7 +680,7 @@ const HF_PLAYER = (() => {
 
             return `
             <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-              <div style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isToday ? "var(--text)" : "var(--text3)"};">
+              <div style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isToday ? "var(--text)" : "var(--text3)"};">
                 ${day}
               </div>
               <div style="font-size:9px;color:var(--text3);">${getDateForDay(i)}</div>
@@ -689,7 +689,7 @@ const HF_PLAYER = (() => {
                 border:${isToday ? "2px solid var(--text)" : selected ? "0.5px solid " + color : "0.5px solid var(--border)"};
                 text-align:center;cursor:pointer;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;"
                 onclick="HF_PLAYER.selectTrainingDay('${getDateForDayISO(i)}', ${i})">
-                <span style="font-size:9px;font-weight:600;color:${selected ? color : "var(--text3)"};font-family:var(--font-head);letter-spacing:0.04em;text-transform:uppercase;">
+                <span style="font-size:9px;font-weight:600;color:${selected ? color : "var(--text3)"};font-family:var(--font);letter-spacing:0.04em;text-transform:uppercase;">
                   ${selected || "+"}
                 </span>
                 ${hasLog ? `<i class="ti ti-circle-check" style="font-size:10px;color:var(--green);"></i>` : ""}
@@ -758,7 +758,7 @@ const HF_PLAYER = (() => {
 
       return `
         <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:8px;">
-          ${days.map((d) => `<div style="text-align:center;font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);padding:4px 0;">${d}</div>`).join("")}
+          ${days.map((d) => `<div style="text-align:center;font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);padding:4px 0;">${d}</div>`).join("")}
         </div>
         <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:var(--sp-md);">
           ${cells}
@@ -773,10 +773,10 @@ const HF_PLAYER = (() => {
       return `
       <div style="padding:var(--sp-xl);background:${selected ? color + "22" : "var(--bg2)"};border:${selected ? "2px solid " + color : "0.5px solid var(--border)"};text-align:center;margin-bottom:var(--sp-md);cursor:pointer;"
         onclick="HF_PLAYER.showDayPicker(${today})">
-        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
+        <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
           ${new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         </div>
-        <div style="font-family:var(--font-head);font-size:32px;font-weight:700;color:${selected ? color : "var(--text3)"};">
+        <div style="font-family:var(--font);font-size:32px;font-weight:700;color:${selected ? color : "var(--text3)"};">
           ${selected || "No session planned"}
         </div>
         <div style="font-size:11px;color:var(--text3);margin-top:6px;">
@@ -816,12 +816,12 @@ const HF_PLAYER = (() => {
       ${view === "day" ? dayView() : view === "month" ? monthView() : weekView()}
 
       <div id="day-picker" style="display:none;padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-md);">
-        <div id="day-picker-label" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;"></div>
+        <div id="day-picker-label" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;"></div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;" id="day-picker-options"></div>
       </div>
 
       <div style="padding:var(--sp-md);background:var(--bg2);">
-        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">Legend</div>
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">Legend</div>
         <div style="display:flex;gap:var(--sp-md);flex-wrap:wrap;">
           ${types
             .map(
@@ -1236,8 +1236,8 @@ const HF_PLAYER = (() => {
         <div class="welcome-sub">${unlockedCount} of ${totalCount} unlocked</div>
       </div>
       <div style="text-align:right;flex-shrink:0;">
-        <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold);">${Math.round((unlockedCount / totalCount) * 100)}%</div>
-        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,.4);">Complete</div>
+        <div style="font-family:var(--font);font-size:42px;font-weight:700;color:var(--gold);">${Math.round((unlockedCount / totalCount) * 100)}%</div>
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,.4);">Complete</div>
       </div>
     </div>
 
@@ -1250,7 +1250,7 @@ const HF_PLAYER = (() => {
           const pct = Math.round((catUnlocked / cat.items.length) * 100);
           return `
           <div style="flex:1;min-width:120px;padding:var(--sp-md);background:var(--bg2);border-top:2px solid ${cat.color};">
-            <div style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${cat.color};margin-bottom:4px;">
+            <div style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${cat.color};margin-bottom:4px;">
               <i class="ti ${cat.icon}" style="margin-right:4px"></i>${cat.label}
             </div>
             <div style="font-size:18px;font-weight:700;color:var(--text)">${catUnlocked}/${cat.items.length}</div>
@@ -1335,11 +1335,11 @@ const HF_PLAYER = (() => {
           <i class="ti ${m.icon}" style="font-size:16px;color:var(--text2)"></i>
         </div>
         <div>
-          <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);">${m.label}</div>
+          <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);">${m.label}</div>
           <div style="font-size:10px;color:var(--text3)">${m.desc}</div>
         </div>
       </div>
-      <span id="hv-${m.id}" style="font-family:var(--font-head);font-size:28px;font-weight:700;color:var(--gold);">
+      <span id="hv-${m.id}" style="font-family:var(--font);font-size:28px;font-weight:700;color:var(--gold);">
         ${todayLog?.[m.id] || 5}
       </span>
     </div>
@@ -1374,7 +1374,7 @@ const HF_PLAYER = (() => {
               <i class="ti ${m.icon}" style="color:var(--text2)"></i>
               <span style="font-size:13px;font-weight:600;color:var(--text)">${m.label}</span>
             </div>
-            <span id="hv-${m.id}" style="font-family:var(--font-head);font-size:14px;font-weight:700;color:var(--gold)">
+            <span id="hv-${m.id}" style="font-family:var(--font);font-size:14px;font-weight:700;color:var(--gold)">
               ${todayLog?.[m.id] || 5}
             </span>
           </div>
@@ -1604,7 +1604,7 @@ const HF_PLAYER = (() => {
                 <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
               </div>
               <div style="flex:1;opacity:0.6">
-                <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+                <div style="font-size:11px;font-family:var(--font);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
                   From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : "HappyFeet Admin")}
                 </div>
                 <div class="msg-name">${m.subject || "Message"}</div>
@@ -1671,11 +1671,11 @@ const HF_PLAYER = (() => {
         ${
           allChecked
             ? `
-          <span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">
+          <span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">
             <i class="ti ti-circle-check"></i> All done
           </span>`
             : `
-          <span style="font-family:var(--font-head);font-size:10px;color:var(--text3);">
+          <span style="font-family:var(--font);font-size:10px;color:var(--text3);">
             ${checked.length}/${prayers.length} completed
           </span>`
         }
@@ -1812,7 +1812,7 @@ const HF_PLAYER = (() => {
     <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
       <div style="display:flex;align-items:center;gap:var(--sp-lg);">
         <div style="position:relative;">
-          <div style="width:72px;height:72px;background:#1a7a2e;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
+          <div style="width:72px;height:72px;background:#1a7a2e;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#fff;">
             ${HF_UTILS.initials(session.name)}
           </div>
           <button onclick="HF_UTILS.toast('Profile photo upload coming soon!','success')"
@@ -1821,7 +1821,7 @@ const HF_PLAYER = (() => {
           </button>
         </div>
         <div>
-          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${session.name}</div>
+          <div style="font-family:var(--font);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${session.name}</div>
           <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.pos || "-"} · ${p.tier || "-"}</div>
         </div>
       </div>
@@ -1998,10 +1998,10 @@ const HF_PLAYER = (() => {
       overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:var(--sp-xl);`;
       overlay.innerHTML = `
       <div style="background:var(--bg);border-top:3px solid var(--gold);padding:var(--sp-2xl);max-width:480px;width:100%;">
-        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
+        <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
           HappyFeet ${msg.from_id === "system" ? "System" : "Admin"}
         </div>
-        <div style="font-family:var(--font-head);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
+        <div style="font-family:var(--font);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
           ${msg.subject || "Message"}
         </div>
         <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:var(--sp-xl);">
@@ -2258,7 +2258,7 @@ const HF_PLAYER = (() => {
     const tags = document.getElementById("compose-tags");
     const tag = document.createElement("div");
     tag.id = `tag-${userId}`;
-    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font-head);letter-spacing:0.04em;`;
+    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font);letter-spacing:0.04em;`;
     tag.innerHTML = `
     ${userName}
     <span style="cursor:pointer;font-size:14px;font-weight:700;line-height:1;" 
@@ -2445,7 +2445,7 @@ const HF_PLAYER = (() => {
       <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('messages')">
         <i class="ti ti-arrow-left"></i> Back
       </button>
-      <div style="font-family:var(--font-head);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
+      <div style="font-family:var(--font);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
         ${subject || "Conversation"}
       </div>
     </div>
@@ -2458,7 +2458,7 @@ const HF_PLAYER = (() => {
             const emojiOnly = isEmojiOnly(m.body);
             return `
             <div style="display:flex;flex-direction:column;align-items:${isMine ? "flex-end" : "flex-start"};">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font-head);letter-spacing:0.04em;">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font);letter-spacing:0.04em;">
                 ${isMine ? "You" : m.senderName} · ${HF_UTILS.timeAgo(m.created_at)}
               </div>
               <div style="
@@ -2735,7 +2735,7 @@ const HF_PLAYER = (() => {
 
     return `
     <div id="completion-section" style="padding:var(--sp-md);background:${isDone ? "rgba(26,122,46,.08)" : dayType ? color + "22" : "var(--bg2)"};border-left:3px solid ${isDone ? "var(--green)" : dayType ? color : "var(--border)"};margin-bottom:var(--sp-lg);">
-      <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:6px;">
+      <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:6px;">
         ${isToday ? "Today" : dateLabel}
       </div>
       ${content}
@@ -2790,7 +2790,7 @@ const HF_PLAYER = (() => {
       <div style="display:flex;align-items:center;gap:var(--sp-md);">
         <i class="ti ti-lock" style="font-size:24px;color:var(--text3)"></i>
         <div>
-          <div style="font-family:var(--font-head);font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text3);">
+          <div style="font-family:var(--font);font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text3);">
             ???
           </div>
           <div style="font-size:12px;color:var(--text3);margin-top:2px;">
@@ -2809,7 +2809,7 @@ const HF_PLAYER = (() => {
       <div style="display:flex;align-items:center;gap:var(--sp-md);">
         <i class="ti ${item.icon}" style="font-size:24px;color:${cat.color}"></i>
         <div>
-          <div style="font-family:var(--font-head);font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:${cat.color};">
+          <div style="font-family:var(--font);font-size:13px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:${cat.color};">
             ${item.label}
           </div>
           <div style="font-size:12px;color:var(--text2);margin-top:2px;">${item.desc}</div>
@@ -2854,7 +2854,7 @@ const HF_PLAYER = (() => {
     tooltip.id = "achievement-tooltip";
     tooltip.className = "achievement-tooltip";
     tooltip.innerHTML = `
-    <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${isLocked ? "var(--text3)" : cat.color};margin-bottom:4px;">
+    <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:${isLocked ? "var(--text3)" : cat.color};margin-bottom:4px;">
       ${isLocked ? "???" : item.label}
     </div>
     <div style="font-size:11px;color:var(--text2);">
