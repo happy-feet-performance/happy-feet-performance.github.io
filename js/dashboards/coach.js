@@ -555,13 +555,13 @@ const HF_COACH = (() => {
       <div class="card-title"><div class="card-dot"></div>Log a session rating</div>
       <div class="form-row">
         <div class="fg"><label class="required">Player</label>
-          <select id="tr-player">
+          <select id="tr-player" onchange="HF_COACH.checkExistingRating()">
             <option value="">Select player</option>
             ${squadPlayers.map((sp) => `<option value="${sp.player_id}">${sp.player?.name || "Unknown"}</option>`).join("")}
           </select>
         </div>
         <div class="fg"><label class="required">Session type</label>
-          <select id="tr-type">
+          <select id="tr-type" onchange="HF_COACH.checkExistingRating()">
             <option value="">Select type</option>
             <option>Technical</option>
             <option>Tactical</option>
@@ -590,7 +590,7 @@ const HF_COACH = (() => {
         <input type="text" id="tr-notes" placeholder="e.g. Strong first touch, work on weak foot"
           style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
       </div>
-      <button class="btn btn-primary" style="margin-top:8px" onclick="HF_COACH.saveSessionRating()">
+      <button id="tr-save-btn" class="btn btn-primary" style="margin-top:8px" onclick="HF_COACH.saveSessionRatingFromTracking()">
         <i class="ti ti-circle-check"></i> Save rating
       </button>
     </div>
@@ -604,7 +604,15 @@ const HF_COACH = (() => {
           No ratings logged yet.
         </div>`
           : `<table class="table">
-          <thead><tr><th>Player</th><th>Type</th><th>Overall</th><th>Date</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Type</th>
+              <th>Overall</th>
+              <th>Notes</th>
+              <th>Date</th>
+            </tr>
+          </thead>
           <tbody>
             ${recentRatings
               .map(
@@ -612,10 +620,11 @@ const HF_COACH = (() => {
               <tr>
                 <td style="font-weight:600">${r.player?.name || "-"}</td>
                 <td>${r.session_type}</td>
-                <td style="font-weight:700;color:${r.overall >= 8 ? "var(--green)" : r.overall >= 6 ? "var(--gold)" : "var(--red)"}">
-                  ${r.overall}/10
+                <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
+                  ${r.overall}/100
                 </td>
-                <td style="color:var(--text2)">${HF_UTILS.timeAgo(r.created_at)}</td>
+                <td style="color:var(--text2);font-size:11px">${r.notes || "-"}</td>
+                <td style="color:var(--text2)">${new Date(r.created_at).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}</td>
               </tr>`,
               )
               .join("")}
@@ -756,7 +765,7 @@ const HF_COACH = (() => {
       <div style="display:flex;gap:var(--sp-md);flex-wrap:wrap;">
         ${[
           ["var(--green)", "Ready", "avg 8+"],
-          ["var(--gold)", "Monitor", "avg 6–7"],
+          ["var(--gold)", "Monitor", "avg 6-7"],
           ["var(--red)", "At risk", "avg below 6"],
         ]
           .map(
@@ -893,7 +902,7 @@ const HF_COACH = (() => {
 
   // FAITH
   const faith = async (s) => {
-    const todayKey = new Date().toISOString().split("T")[0];
+    const todayKey = _localDate();
     const storageKey = `hf_faith_checklist_coach_${s.userId}_${todayKey}`;
     const checked = JSON.parse(localStorage.getItem(storageKey) || "[]");
 
@@ -1471,48 +1480,122 @@ const HF_COACH = (() => {
     faith(HF_DB.getSession());
   };
 
-  const saveSessionRating = async () => {
-    const session = HF_DB.getSession();
-    const playerId = document.getElementById("tr-player")?.value;
-    const sessionType = document.getElementById("tr-type")?.value;
-
-    if (!playerId) {
-      HF_UTILS.toast("Please select a player.", "error");
-      return;
-    }
-    if (!sessionType) {
-      HF_UTILS.toast("Please select a session type.", "error");
-      return;
-    }
-
-    const ratings = {
-      speed:
-        parseInt(document.getElementById("cv-speed")?.textContent || 7) * 10,
-      technical:
-        parseInt(document.getElementById("cv-technical")?.textContent || 7) *
-        10,
-      tactical:
-        parseInt(document.getElementById("cv-tactical")?.textContent || 7) * 10,
-      physical:
-        parseInt(document.getElementById("cv-physical")?.textContent || 7) * 10,
-    };
-
-    const result = await HF_DB.saveSessionRating(
-      session.userId,
-      playerId,
-      sessionType,
-      ratings,
+  const saveSessionRating = async (
+    coachId,
+    playerId,
+    sessionType,
+    ratings,
+    notes = null,
+  ) => {
+    const overall = Math.round(
+      (ratings.speed +
+        ratings.technical +
+        ratings.tactical +
+        ratings.physical) /
+        4,
     );
-    if (result.error) {
-      HF_UTILS.toast(result.error, "error");
-      return;
+    const today = _localDate();
+
+    // check if rating exists for today
+    const { data: existing } = await _client
+      .from("session_ratings")
+      .select("id")
+      .eq("coach_id", coachId)
+      .eq("player_id", playerId)
+      .eq("date", today)
+      .maybeSingle();
+
+    if (existing) {
+      // update existing
+      const { error } = await _client
+        .from("session_ratings")
+        .update({
+          session_type: sessionType,
+          speed: ratings.speed,
+          technical: ratings.technical,
+          tactical: ratings.tactical,
+          physical: ratings.physical,
+          overall,
+          notes,
+        })
+        .eq("id", existing.id);
+      if (error) return { error: error.message };
+    } else {
+      // insert new
+      const { error } = await _client.from("session_ratings").insert({
+        player_id: playerId,
+        coach_id: coachId,
+        session_type: sessionType,
+        speed: ratings.speed,
+        technical: ratings.technical,
+        tactical: ratings.tactical,
+        physical: ratings.physical,
+        overall,
+        date: today,
+        notes,
+      });
+      if (error) return { error: error.message };
     }
 
-    HF_UTILS.toast(
-      `Session rating saved! Overall: ${result.overall}/100`,
-      "success",
-    );
-    tracking(session);
+    // update player profile ratings
+    const { data: player } = await _client
+      .from("users")
+      .select("profile")
+      .eq("id", playerId)
+      .single();
+
+    if (player) {
+      const updatedProfile = {
+        ...player.profile,
+        ratings: {
+          speed: ratings.speed,
+          tech: ratings.technical,
+          tact: ratings.tactical,
+          phys: ratings.physical,
+        },
+      };
+      await _client
+        .from("users")
+        .update({ profile: updatedProfile })
+        .eq("id", playerId);
+    }
+
+    // send message to player
+    const subject = `Session rating — ${today}`;
+    const body = `Your ${sessionType} session has been rated.\n\nOverall: ${overall}/100\nSpeed: ${ratings.speed}/100 · Technical: ${ratings.technical}/100 · Tactical: ${ratings.tactical}/100 · Physical: ${ratings.physical}/100${notes ? `\n\nCoach notes: ${notes}` : ""}`;
+
+    const { data: existingMsg } = await _client
+      .from("messages")
+      .select("thread_id")
+      .eq("from_id", coachId)
+      .eq("to_id", playerId)
+      .eq("subject", subject)
+      .maybeSingle();
+
+    if (existingMsg?.thread_id) {
+      await _client.from("messages").insert({
+        from_id: coachId,
+        to_id: playerId,
+        subject,
+        body,
+        read: false,
+        thread_id: existingMsg.thread_id,
+      });
+    } else {
+      const threadId = _client.rpc
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2);
+      await _client.from("messages").insert({
+        from_id: coachId,
+        to_id: playerId,
+        subject,
+        body,
+        read: false,
+        thread_id: threadId,
+      });
+    }
+
+    return { success: true, overall };
   };
 
   const contactAdmin = () => {
@@ -2153,9 +2236,9 @@ const HF_COACH = (() => {
         <input type="text" id="tr-notes" placeholder="e.g. Strong first touch, work on weak foot"
           style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
       </div>
-      <button class="btn btn-primary" style="margin-top:8px" 
+      <button class="btn btn-primary" style="margin-top:8px"
         onclick="HF_COACH.savePlayerRating('${playerId}', '${playerName.replace(/'/g, "\\'")}')">
-        <i class="ti ti-circle-check"></i> Save rating
+        <i class="ti ti-circle-check"></i> ${todayRating ? "Update rating" : "Save rating"}
       </button>
     </div>
 
@@ -2177,7 +2260,7 @@ const HF_COACH = (() => {
     })}
     <div style="display:flex;gap:var(--sp-md);margin-top:var(--sp-md);font-size:11px;color:var(--text2);">
       <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--green);"></div>80+</div>
-      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--gold);"></div>65–79</div>
+      <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--gold);"></div>65-79</div>
       <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--red);"></div>Below 65</div>
     </div>
   </div>`
@@ -2205,7 +2288,7 @@ const HF_COACH = (() => {
                 );
                 const isToday =
                   new Date(r.created_at).toISOString().split("T")[0] ===
-                  new Date().toISOString().split("T")[0];
+                  _localDate();
                 const showHeader = dateStr !== lastDate;
                 lastDate = dateStr;
                 return `
@@ -2220,7 +2303,9 @@ const HF_COACH = (() => {
                     : ""
                 }
                 <tr>
-                  <td style="color:var(--text2)">${HF_UTILS.timeAgo(r.created_at)}</td>
+                  <td style="color:${isToday ? "var(--gold)" : "var(--text2)"}">
+                    ${isToday ? "Today" : new Date(r.created_at).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}
+                  </td>
                   <td>${r.session_type}</td>
                   <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
                     ${r.overall}
@@ -2282,7 +2367,6 @@ const HF_COACH = (() => {
 
     let result;
     if (existing) {
-      // update existing
       const overall = Math.round(
         (ratings.speed +
           ratings.technical +
@@ -2297,6 +2381,7 @@ const HF_COACH = (() => {
         overall,
       );
       result = error ? { error } : { success: true, overall };
+      HF_UTILS.toast(`Session updated! Overall: ${overall}/100`, "success");
     } else {
       result = await HF_DB.saveSessionRating(
         session.userId,
@@ -2304,13 +2389,17 @@ const HF_COACH = (() => {
         sessionType,
         ratings,
       );
+      if (!result.error)
+        HF_UTILS.toast(
+          `Session logged! Overall: ${result.overall}/100`,
+          "success",
+        );
     }
 
     if (result.error) {
       HF_UTILS.toast(result.error, "error");
       return;
     }
-    HF_UTILS.toast(`Session logged! Overall: ${result.overall}/100`, "success");
     trackPlayer(playerId, playerName);
   };
 
@@ -2420,18 +2509,18 @@ const HF_COACH = (() => {
           <tbody>
             ${logs
               .map((l) => {
-                const isToday =
-                  l.date === new Date().toISOString().split("T")[0];
+                const isToday = l.date === _localDate();
                 return `
                 <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
                   <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
                     ${isToday ? "Today" : new Date(l.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
                   </td>
-                  <td>${log?.energy || "-"}</td>
-                  <td>${log?.mood || "-"}</td>
-                  <td>${log?.sleep || "-"}</td>
-                  <td>${log?.soreness || "-"}</td>
-                  <td>${log?.hydration || "-"}</td>
+                  <td>${l.energy || "-"}</td>
+                  <td>${l.mood || "-"}</td>
+                  <td>${l.sleep || "-"}</td>
+                  <td>${l.soreness || "-"}</td>
+                  <td>${l.hydration || "-"}</td>
+                  <td style="color:var(--text2);font-size:11px">${l.notes || "-"}</td>
                 </tr>`;
               })
               .join("")}
@@ -2441,6 +2530,104 @@ const HF_COACH = (() => {
         : ""
     }
   `);
+  };
+
+  const saveSessionRatingFromTracking = async () => {
+    const session = HF_DB.getSession();
+    const playerId = document.getElementById("tr-player")?.value;
+    const playerName =
+      document.getElementById("tr-player")?.selectedOptions[0]?.text ||
+      "Player";
+    const sessionType = document.getElementById("tr-type")?.value;
+    const notes = document.getElementById("tr-notes")?.value.trim() || null;
+
+    if (!playerId) {
+      HF_UTILS.toast("Please select a player.", "error");
+      return;
+    }
+    if (!sessionType) {
+      HF_UTILS.toast("Please select a session type.", "error");
+      return;
+    }
+
+    const ratings = {
+      speed:
+        parseInt(document.getElementById("cv-speed")?.textContent || 7) * 10,
+      technical:
+        parseInt(document.getElementById("cv-technical")?.textContent || 7) *
+        10,
+      tactical:
+        parseInt(document.getElementById("cv-tactical")?.textContent || 7) * 10,
+      physical:
+        parseInt(document.getElementById("cv-physical")?.textContent || 7) * 10,
+    };
+
+    const { data: existing } = await HF_DB.getTodaySessionRating(
+      session.userId,
+      playerId,
+    );
+
+    let result;
+    if (existing) {
+      const overall = Math.round(
+        (ratings.speed +
+          ratings.technical +
+          ratings.tactical +
+          ratings.physical) /
+          4,
+      );
+      const { error } = await HF_DB._updateSessionRating(
+        existing.id,
+        sessionType,
+        ratings,
+        overall,
+        notes,
+      );
+      result = error ? { error } : { success: true, overall };
+      HF_UTILS.toast(`Session updated! Overall: ${overall}/100`, "success");
+    } else {
+      result = await HF_DB.saveSessionRating(
+        session.userId,
+        playerId,
+        sessionType,
+        ratings,
+        notes,
+      );
+      if (!result.error)
+        HF_UTILS.toast(
+          `Session logged! Overall: ${result.overall}/100`,
+          "success",
+        );
+    }
+
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+    tracking(session);
+  };
+
+  const checkExistingRating = async () => {
+    const session = HF_DB.getSession();
+    const playerId = document.getElementById("tr-player")?.value;
+    const btn = document.getElementById("tr-save-btn");
+    if (!btn) return;
+
+    if (!playerId) {
+      btn.innerHTML = '<i class="ti ti-circle-check"></i> Save rating';
+      return;
+    }
+
+    const { data: existing } = await HF_DB.getTodaySessionRating(
+      session.userId,
+      playerId,
+    );
+
+    if (existing) {
+      btn.innerHTML = '<i class="ti ti-refresh"></i> Update rating';
+    } else {
+      btn.innerHTML = '<i class="ti ti-circle-check"></i> Save rating';
+    }
   };
 
   return {
@@ -2478,6 +2665,8 @@ const HF_COACH = (() => {
     trackPlayer,
     savePlayerRating,
     viewPlayerHealth,
+    saveSessionRatingFromTracking,
+    checkExistingRating,
   };
 })();
 

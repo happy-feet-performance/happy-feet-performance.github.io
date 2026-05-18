@@ -290,6 +290,20 @@ const HF_PLAYER = (() => {
       }
     </div>
 
+    ${
+      hasStats
+        ? `
+      <div class="card">
+        <div class="card-title"><div class="card-dot"></div>Session calendar</div>
+        ${HF_UTILS.miniCalendarHTML(sessions, () => "var(--blue)")}
+        <div style="display:flex;gap:var(--sp-md);margin-top:var(--sp-md);font-size:11px;color:var(--text2);">
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--blue);"></div>Session logged</div>
+          <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;background:var(--gold);border-radius:50%;"></div>Today</div>
+        </div>
+      </div>`
+        : ""
+    }
+
     <div class="card">
       <div class="card-title"><div class="card-dot"></div>Session history</div>
       ${
@@ -302,23 +316,40 @@ const HF_PLAYER = (() => {
         </div>`
           : `
         <table class="table">
-          <thead><tr><th>Date</th><th>Type</th><th>Overall</th><th>Speed</th><th>Technical</th><th>Tactical</th><th>Physical</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Overall</th>
+              <th>Speed</th>
+              <th>Technical</th>
+              <th>Tactical</th>
+              <th>Physical</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
           <tbody>
             ${sessions
-              .map(
-                (r) => `
-              <tr>
-                <td style="color:var(--text2)">${HF_UTILS.timeAgo(r.created_at)}</td>
-                <td>${r.session_type}</td>
-                <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
-                  ${r.overall}
-                </td>
-                <td>${r.speed}</td>
-                <td>${r.technical}</td>
-                <td>${r.tactical}</td>
-                <td>${r.physical}</td>
-              </tr>`,
-              )
+              .map((r) => {
+                const isToday =
+                  r.created_at?.split("T")[0] ===
+                  _localDate();
+                return `
+                <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
+                  <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
+                    ${isToday ? "Today" : HF_UTILS.timeAgo(r.created_at)}
+                  </td>
+                  <td>${r.session_type}</td>
+                  <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
+                    ${r.overall}
+                  </td>
+                  <td>${r.speed}</td>
+                  <td>${r.technical}</td>
+                  <td>${r.tactical}</td>
+                  <td>${r.physical}</td>
+                  <td>${r.notes}</td>
+                </tr>`;
+              })
               .join("")}
           </tbody>
         </table>`
@@ -708,13 +739,14 @@ const HF_PLAYER = (() => {
               <th title="Sleep"><i class="ti ti-moon"></i></th>
               <th title="Soreness"><i class="ti ti-activity"></i></th>
               <th title="Hydration"><i class="ti ti-droplet"></i></th>
+              <th>Notes</th>
             </tr>
           </thead>
           <tbody>
             ${logs
               .map((l) => {
                 const isToday =
-                  l.date === new Date().toISOString().split("T")[0];
+                  l.date === _localDate();
                 return `
                 <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
                   <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
@@ -725,6 +757,7 @@ const HF_PLAYER = (() => {
                   <td>${l.sleep || "-"}</td>
                   <td>${l.soreness || "-"}</td>
                   <td>${l.hydration || "-"}</td>
+                  <td style="color:var(--text2);font-size:11px">${l.notes || "-"}</td>
                 </tr>`;
               })
               .join("")}
@@ -873,7 +906,7 @@ const HF_PLAYER = (() => {
 
   // ── FAITH ────────────────────────────────────────────────────
   const faith = async (s) => {
-    const todayKey = new Date().toISOString().split("T")[0];
+    const todayKey = _localDate();
     const storageKey = `hf_faith_checklist_${s.userId}_${todayKey}`;
     const checked = JSON.parse(localStorage.getItem(storageKey) || "[]");
 

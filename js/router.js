@@ -673,6 +673,8 @@ const HF_ROUTER = (() => {
 
   const resetSubscriptions = () => {
     _subscriptionsActive = false;
+    // remove all existing Supabase channels
+    HF_DB.removeAllChannels();
   };
 
   return {
