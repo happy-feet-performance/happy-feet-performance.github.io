@@ -548,30 +548,51 @@ const HF_COACH = (() => {
     setMain(`
     <div class="card">
       <div class="card-title" style="justify-content:space-between;">
-        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-          <div class="card-dot"></div>Session builder
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+            <div class="card-dot"></div>Session builder
+          </div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--font);text-transform:none;letter-spacing:0;font-weight:400;">
+            Plan today's session and notify your squad
+          </div>
         </div>
         <span style="font-size:11px;color:var(--text3);">
           ${new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
         </span>
       </div>
 
-      <div style="padding:10px 12px;background:var(--bg2);border-left:2px solid var(--border);font-size:12px;color:var(--text2);margin-bottom:var(--sp-lg);">
-        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:6px;">
-          Player focus areas today
-        </div>
-        ${playerPlans
-          .map(
-            (pp) => `
-          <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid var(--border);">
-            <span style="font-weight:600;color:var(--text)">${pp.player?.name || "Player"}</span>
-            <span style="color:${pp.todayType === "Not set" ? "var(--text3)" : "var(--gold)"};">${pp.todayType}</span>
-          </div>`,
-          )
-          .join("")}
-      </div>
+      ${
+        playerPlans.length > 0
+          ? `
+        <div style="margin-bottom:var(--sp-lg);">
+          <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
+            Player focus areas today
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:var(--sp-sm);">
+            ${playerPlans
+              .map((pp) => {
+                const typeColors = {
+                  Technical: "var(--gold)",
+                  Tactical: "var(--blue)",
+                  Physical: "var(--red)",
+                  Recovery: "var(--green)",
+                  Match: "var(--faith)",
+                  Rest: "var(--text3)",
+                };
+                const color = typeColors[pp.todayType] || "var(--text3)";
+                return `
+                <div style="padding:var(--sp-sm) var(--sp-md);background:var(--bg2);border-left:3px solid ${color};display:flex;align-items:center;justify-content:space-between;">
+                  <span style="font-size:12px;font-weight:600;color:var(--text)">${pp.player?.name?.split(" ")[0] || "Player"}</span>
+                  <span style="font-size:10px;font-weight:700;font-family:var(--font-head);letter-spacing:0.04em;text-transform:uppercase;color:${color};">${pp.todayType}</span>
+                </div>`;
+              })
+              .join("")}
+          </div>
+        </div>`
+          : ""
+      }
 
-      <div class="form-row">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-md);margin-bottom:var(--sp-md);">
         <div class="fg">
           <label class="required">Session name</label>
           <input type="text" id="session-name" placeholder="e.g. Tuesday technical block"
@@ -581,23 +602,18 @@ const HF_COACH = (() => {
           <label class="required">Category</label>
           <select id="session-category"
             style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-            <option>Technical</option>
-            <option>Tactical</option>
-            <option>Physical</option>
-            <option>Recovery</option>
-            <option>Match prep</option>
-            <option>Faith & devotion</option>
+            <option>Technical</option><option>Tactical</option><option>Physical</option>
+            <option>Recovery</option><option>Match prep</option><option>Faith & devotion</option>
           </select>
         </div>
       </div>
-      <div class="form-row">
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-md);margin-bottom:var(--sp-md);">
         <div class="fg">
           <label>Intensity</label>
           <select id="session-intensity"
             style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-            <option>Low</option>
-            <option selected>Medium</option>
-            <option>High</option>
+            <option>Low</option><option selected>Medium</option><option>High</option>
           </select>
         </div>
         <div class="fg">
@@ -606,51 +622,46 @@ const HF_COACH = (() => {
             style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
         </div>
       </div>
-      <div class="fg">
+
+      <div class="fg" style="margin-bottom:var(--sp-lg);">
         <label>Coaching intent</label>
         <input type="text" id="session-intent" placeholder="e.g. Focus on press triggers and compact shape"
           style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
       </div>
 
-      <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin:var(--sp-md) 0 8px;">
+      <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
         Drills
       </div>
       <div id="drills-list" style="margin-bottom:var(--sp-md);">
-        <div style="text-align:center;padding:20px;background:var(--bg2);border:0.5px dashed var(--border);color:var(--text2);font-size:13px">
-          No drills yet: add below.
+        <div style="text-align:center;padding:24px;background:var(--bg2);border:0.5px dashed var(--border);color:var(--text3);font-size:13px;">
+          No drills yet — add one below.
         </div>
       </div>
 
-      <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--border);margin-bottom:var(--sp-md);">
-        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">Add a drill</div>
-        <div class="fg">
+      <div style="background:var(--bg2);padding:var(--sp-md);border-left:3px solid var(--border);margin-bottom:var(--sp-lg);">
+        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:var(--sp-sm);">
+          Add a drill
+        </div>
+        <div class="fg" style="margin-bottom:var(--sp-sm);">
           <input type="text" id="drill-name" placeholder="e.g. 4v4 rondo: possession under pressure"
             style="padding:8px 12px;background:var(--bg);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
         </div>
-        <div class="form-row">
-          <div class="fg">
-            <input type="number" id="drill-dur" value="10" min="1" max="60" placeholder="Duration (min)"
-              style="padding:8px 12px;background:var(--bg);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
-          </div>
-          <div class="fg">
-            <select id="drill-type"
-              style="padding:8px 12px;background:var(--bg);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
-              <option>Warm-up</option>
-              <option>Technical drill</option>
-              <option>Tactical shape</option>
-              <option>Small-sided game</option>
-              <option>Conditioning</option>
-              <option>Cooldown</option>
-              <option>Prayer & devotion</option>
-            </select>
-          </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-sm);margin-bottom:var(--sp-sm);">
+          <input type="number" id="drill-dur" value="10" min="1" max="60" placeholder="Duration (min)"
+            style="padding:8px 12px;background:var(--bg);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
+          <select id="drill-type"
+            style="padding:8px 12px;background:var(--bg);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
+            <option>Warm-up</option><option>Technical drill</option><option>Tactical shape</option>
+            <option>Small-sided game</option><option>Conditioning</option><option>Cooldown</option>
+            <option>Prayer & devotion</option>
+          </select>
         </div>
         <button class="btn btn-outline btn-sm" onclick="HF_COACH.addDrill()">
           <i class="ti ti-plus"></i> Add drill
         </button>
       </div>
 
-      <div style="display:flex;gap:8px;margin-top:var(--sp-md);">
+      <div style="display:flex;gap:8px;">
         <button class="btn btn-primary" onclick="HF_COACH.saveSession()">
           <i class="ti ti-send"></i> Save and notify squad
         </button>
@@ -756,7 +767,7 @@ const HF_COACH = (() => {
                 <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
                   ${r.overall}/100
                 </td>
-                <td style="color:var(--text2);font-size:11px">${r.notes || "-"}</td>
+                <td style="color:var(--text2);font-size:11px">${r.notes && r.notes !== "null" ? r.notes : "None"}</td>
                 <td style="color:var(--text2)">${new Date(r.created_at).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}</td>
               </tr>`,
               )
@@ -2433,55 +2444,21 @@ const HF_COACH = (() => {
   };
 
   const viewSenderProfile = async (userId) => {
-    const { data: user } = await HF_DB.getUserById(userId);
-    if (!user) {
-      HF_UTILS.toast("User not found.", "error");
-      return;
-    }
-    const p = user.profile || {};
-    const overall = p.ratings
-      ? Math.round(
-          (p.ratings.speed + p.ratings.tech + p.ratings.tact + p.ratings.phys) /
-            4,
-        )
-      : null;
+    const html = await HF_UTILS.viewProfile(
+      userId,
+      "HF_ROUTER.navTo('messages')",
+    );
+    if (!html) return;
+    setMain(html);
+  };
 
-    setMain(`
-    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
-        <div style="width:72px;height:72px;background:var(--green);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
-          ${HF_UTILS.initials(user.name)}
-        </div>
-        <div>
-          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;color:#fff;">${user.name}</div>
-          <div style="font-size:13px;color:rgba(255,255,255,.55)">${p.pos || p.org || "-"} · ${p.tier || p.exp + " yrs exp" || "-"}</div>
-          <div style="margin-top:8px">${HF_UTILS.badgeHTML(user.role, user.role === "player" ? "green" : user.role === "coach" ? "gold" : "blue")}</div>
-        </div>
-      </div>
-      ${
-        overall !== null
-          ? `
-        <div style="text-align:right">
-          <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold)">${overall}%</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.1em">Overall</div>
-        </div>`
-          : ""
-      }
-    </div>
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Details</div>
-      <div class="info-grid">
-        ${p.pos ? `<div class="info-cell"><div class="info-label">Position</div><div class="info-val">${p.pos}</div></div>` : ""}
-        ${p.tier ? `<div class="info-cell"><div class="info-label">Tier</div><div class="info-val">${p.tier}</div></div>` : ""}
-        ${p.hometown ? `<div class="info-cell"><div class="info-label">Hometown</div><div class="info-val">${p.hometown}</div></div>` : ""}
-        ${p.org ? `<div class="info-cell"><div class="info-label">Organisation</div><div class="info-val">${p.org}</div></div>` : ""}
-        ${p.exp ? `<div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp} years</div></div>` : ""}
-        ${p.club ? `<div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club}</div></div>` : ""}
-      </div>
-    </div>
-    <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')" style="margin-top:8px">
-      <i class="ti ti-arrow-left"></i> Back to messages
-    </button>`);
+  const viewPlayerProfile = async (playerId) => {
+    const html = await HF_UTILS.viewProfile(
+      playerId,
+      "HF_ROUTER.navTo('discover')",
+    );
+    if (!html) return;
+    setMain(html);
   };
 
   const reportToAdmin = async (fromId, senderName) => {
@@ -2574,18 +2551,21 @@ const HF_COACH = (() => {
     }
 
     <div class="card">
-      <div class="card-title" style="justify-content:space-between;">
-        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-          <div class="card-dot"></div>Log session rating
-          <span style="font-size:11px;color:var(--text3);">
-            ${new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
-          </span>
+      <div style="background:#0f0f0d;padding:var(--sp-lg);margin:-var(--sp-lg) -var(--sp-lg) var(--sp-lg);display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:rgba(255,255,255,.4);margin-bottom:2px;">
+            Session rating
+          </div>
+          <div style="font-family:var(--font-head);font-size:18px;font-weight:700;color:#fff;">${playerName}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px;">
+            ${new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+          </div>
         </div>
         ${
           todayRating
             ? `
-          <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
-            Editing today's rating
+          <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:rgba(196,154,10,.2);color:var(--gold);">
+            Editing today
           </span>`
             : ""
         }
@@ -2593,7 +2573,8 @@ const HF_COACH = (() => {
 
       <div class="fg">
         <label class="required">Session type</label>
-        <select id="tr-type" style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+        <select id="tr-type"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
           <option value="">Select type</option>
           <option ${playerTodayType === "Technical" || todayRating?.session_type === "Technical" ? "selected" : ""}>Technical</option>
           <option ${playerTodayType === "Tactical" || todayRating?.session_type === "Tactical" ? "selected" : ""}>Tactical</option>
@@ -2611,6 +2592,38 @@ const HF_COACH = (() => {
             : ""
         }
       </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-md);margin:var(--sp-md) 0;">
+        ${["Speed", "Technical", "Tactical", "Physical"]
+          .map(
+            (l) => `
+          <div style="padding:var(--sp-md);background:var(--bg2);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);">${l}</span>
+              <span id="cv-${l.toLowerCase()}" style="font-family:var(--font-head);font-size:18px;font-weight:700;color:var(--gold);">7</span>
+            </div>
+            <input type="range" min="1" max="10" value="7" step="1"
+              style="width:100%;accent-color:var(--gold);"
+              oninput="document.getElementById('cv-${l.toLowerCase()}').textContent=this.value">
+            <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:4px;">
+              <span>1</span><span>10</span>
+            </div>
+          </div>`,
+          )
+          .join("")}
+      </div>
+
+      <div class="fg">
+        <label>Notes</label>
+        <input type="text" id="tr-notes" placeholder="e.g. Strong first touch, work on weak foot"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+
+      <button class="btn btn-primary" style="margin-top:var(--sp-md);width:100%;"
+        onclick="HF_COACH.savePlayerRating('${playerId}', '${playerName.replace(/'/g, "\\'")}')">
+        <i class="ti ti-circle-check"></i> ${todayRating ? "Update rating" : "Save rating"}
+      </button>
+    </div>
 
       ${["Speed", "Technical", "Tactical", "Physical"]
         .map(
@@ -3214,6 +3227,7 @@ const HF_COACH = (() => {
     replyToMessage,
     sendReply,
     viewSenderProfile,
+    viewPlayerProfile,
     reportToAdmin,
     filterPlayers,
     toggleRecruitment,

@@ -409,6 +409,9 @@ const HF_ADMIN = (() => {
         showActions
           ? `
         <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.viewUserProfile('${u.id}')">
+            <i class="ti ti-user"></i> Profile
+        </button>
           ${
             u.banned
               ? `
@@ -1211,55 +1214,13 @@ const HF_ADMIN = (() => {
   };
 
   const viewSenderProfile = async (userId) => {
-    const { data: user } = await HF_DB.getUserById(userId);
-    if (!user) {
-      HF_UTILS.toast("User not found.", "error");
-      return;
-    }
-    const p = user.profile || {};
-    const overall = p.ratings
-      ? Math.round(
-          (p.ratings.speed + p.ratings.tech + p.ratings.tact + p.ratings.phys) /
-            4,
-        )
-      : null;
-
-    setMain(`
-    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
-        <div style="width:72px;height:72px;background:var(--green);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
-          ${HF_UTILS.initials(user.name)}
-        </div>
-        <div>
-          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;color:#fff;">${user.name}</div>
-          <div style="font-size:13px;color:rgba(255,255,255,.55)">${p.pos || p.org || "-"} · ${p.tier || p.exp + " yrs exp" || "-"}</div>
-          <div style="margin-top:8px">${HF_UTILS.badgeHTML(user.role, user.role === "player" ? "green" : user.role === "coach" ? "gold" : "blue")}</div>
-        </div>
-      </div>
-      ${
-        overall !== null
-          ? `
-        <div style="text-align:right">
-          <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold)">${overall}%</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.1em">Overall</div>
-        </div>`
-          : ""
-      }
-    </div>
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Details</div>
-      <div class="info-grid">
-        ${p.pos ? `<div class="info-cell"><div class="info-label">Position</div><div class="info-val">${p.pos}</div></div>` : ""}
-        ${p.tier ? `<div class="info-cell"><div class="info-label">Tier</div><div class="info-val">${p.tier}</div></div>` : ""}
-        ${p.hometown ? `<div class="info-cell"><div class="info-label">Hometown</div><div class="info-val">${p.hometown}</div></div>` : ""}
-        ${p.org ? `<div class="info-cell"><div class="info-label">Organisation</div><div class="info-val">${p.org}</div></div>` : ""}
-        ${p.exp ? `<div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp} years</div></div>` : ""}
-        ${p.club ? `<div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club}</div></div>` : ""}
-      </div>
-    </div>
-    <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')" style="margin-top:8px">
-      <i class="ti ti-arrow-left"></i> Back to messages
-    </button>`);
+    const session = HF_DB.getSession();
+    const html = await HF_UTILS.viewProfile(
+      userId,
+      "HF_ROUTER.navTo('messages')",
+    );
+    if (!html) return;
+    setMain(html);
   };
 
   const reportToAdmin = async (fromId, senderName) => {
@@ -1280,6 +1241,12 @@ const HF_ADMIN = (() => {
     }
 
     HF_UTILS.toast(`${senderName} has been reported to admin.`, "success");
+  };
+
+  const viewUserProfile = async (userId) => {
+    const html = await HF_UTILS.viewProfile(userId, "HF_ROUTER.navTo('users')");
+    if (!html) return;
+    setMain(html);
   };
 
   return {
@@ -1307,6 +1274,7 @@ const HF_ADMIN = (() => {
     replyToMessage,
     sendReply,
     viewSenderProfile,
+    viewUserProfile,
     reportToAdmin,
     viewThread,
   };

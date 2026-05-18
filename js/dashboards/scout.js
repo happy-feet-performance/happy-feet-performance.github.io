@@ -454,74 +454,6 @@ const HF_SCOUT = (() => {
     discover(session);
   };
 
-  const viewPlayerProfile = async (playerId) => {
-    const { data: player } = await HF_DB.getUserById(playerId);
-    if (!player) {
-      toast("Player not found.", "error");
-      return;
-    }
-    const p = player.profile || {};
-    const overall = p.ratings
-      ? Math.round(
-          (p.ratings.speed + p.ratings.tech + p.ratings.tact + p.ratings.phys) /
-            4,
-        )
-      : null;
-
-    setMain(`
-      <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;">
-        <div style="display:flex;align-items:center;gap:var(--sp-lg);">
-          <div style="width:72px;height:72px;background:var(--green);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
-            ${HF_UTILS.initials(player.name)}
-          </div>
-          <div>
-            <div style="font-family:var(--font-head);font-size:22px;font-weight:700;color:#fff;">${player.name}</div>
-            <div style="font-size:13px;color:rgba(255,255,255,.55)">${p.pos || "-"} · ${p.tier || "-"} · ${p.hometown || "-"}</div>
-            <div style="margin-top:8px">${badgeHTML("Player", "green")}</div>
-          </div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:${overall ? "var(--gold)" : "var(--text3)"}">
-            ${overall !== null ? overall + "%" : "-"}
-          </div>
-          <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.1em">
-            ${overall !== null ? "Overall rating" : "Unrated"}
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Player details</div>
-        <div class="info-grid">
-          <div class="info-cell"><div class="info-label">Position</div><div class="info-val">${p.pos || "-"}</div></div>
-          <div class="info-cell"><div class="info-label">Age tier</div><div class="info-val">${p.tier || "-"}</div></div>
-          <div class="info-cell"><div class="info-label">Hometown</div><div class="info-val">${p.hometown || "-"}</div></div>
-          <div class="info-cell"><div class="info-label">Club status</div>
-            <div class="info-val" style="color:${!p.club ? "var(--green)" : "var(--text)"}">
-              ${p.club || "Unattached"}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      ${
-        p.ratings
-          ? `
-        <div class="card">
-          <div class="card-title"><div class="card-dot"></div>Ability ratings</div>
-          ${HF_UTILS.barHTML("Speed", p.ratings.speed || 0, "#c8102e")}
-          ${HF_UTILS.barHTML("Technical", p.ratings.tech || 0, "var(--gold)")}
-          ${HF_UTILS.barHTML("Tactical", p.ratings.tact || 0, "var(--blue)")}
-          ${HF_UTILS.barHTML("Physical", p.ratings.phys || 0, "var(--green)")}
-        </div>`
-          : ""
-      }
-
-      <button class="btn btn-outline" onclick="HF_ROUTER.navTo('discover')" style="margin-top:8px">
-        <i class="ti ti-arrow-left"></i> Back to discover
-      </button>`);
-  };
-
   const messagePlayer = async (playerId, playerName) => {
     const session = HF_DB.getSession();
     const safeName = playerName.replace(/'/g, "\\'");
@@ -946,10 +878,6 @@ const HF_SCOUT = (() => {
                 })
                 .join("")
         }
-        <div style="margin-top:12px;font-size:12px;color:var(--text3)">
-          <i class="ti ti-info-circle" style="margin-right:4px"></i>
-          PDF report generation coming soon.
-        </div>
       </div>`);
   };
 
@@ -1989,58 +1917,6 @@ const HF_SCOUT = (() => {
     }, 100);
   };
 
-  const viewSenderProfile = async (userId) => {
-    const { data: user } = await HF_DB.getUserById(userId);
-    if (!user) {
-      HF_UTILS.toast("User not found.", "error");
-      return;
-    }
-    const p = user.profile || {};
-    const overall = p.ratings
-      ? Math.round(
-          (p.ratings.speed + p.ratings.tech + p.ratings.tact + p.ratings.phys) /
-            4,
-        )
-      : null;
-
-    setMain(`
-    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
-        <div style="width:72px;height:72px;background:var(--green);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
-          ${HF_UTILS.initials(user.name)}
-        </div>
-        <div>
-          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;color:#fff;">${user.name}</div>
-          <div style="font-size:13px;color:rgba(255,255,255,.55)">${p.pos || p.org || "-"} · ${p.tier || p.exp + " yrs exp" || "-"}</div>
-          <div style="margin-top:8px">${HF_UTILS.badgeHTML(user.role, user.role === "player" ? "green" : user.role === "coach" ? "gold" : "blue")}</div>
-        </div>
-      </div>
-      ${
-        overall !== null
-          ? `
-        <div style="text-align:right">
-          <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold)">${overall}%</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.1em">Overall</div>
-        </div>`
-          : ""
-      }
-    </div>
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Details</div>
-      <div class="info-grid">
-        ${p.pos ? `<div class="info-cell"><div class="info-label">Position</div><div class="info-val">${p.pos}</div></div>` : ""}
-        ${p.tier ? `<div class="info-cell"><div class="info-label">Tier</div><div class="info-val">${p.tier}</div></div>` : ""}
-        ${p.hometown ? `<div class="info-cell"><div class="info-label">Hometown</div><div class="info-val">${p.hometown}</div></div>` : ""}
-        ${p.org ? `<div class="info-cell"><div class="info-label">Organisation</div><div class="info-val">${p.org}</div></div>` : ""}
-        ${p.exp ? `<div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp} years</div></div>` : ""}
-        ${p.club ? `<div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club}</div></div>` : ""}
-      </div>
-    </div>
-    <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')" style="margin-top:8px">
-      <i class="ti ti-arrow-left"></i> Back to messages
-    </button>`);
-  };
-
   const reportToAdmin = async (fromId, senderName) => {
     const session = HF_DB.getSession();
     const reason = prompt(
@@ -2672,6 +2548,24 @@ ${reportEl.textContent.trim()}
     prospects(HF_DB.getSession());
   };
 
+  const viewSenderProfile = async (userId) => {
+    const html = await HF_UTILS.viewProfile(
+      userId,
+      "HF_ROUTER.navTo('messages')",
+    );
+    if (!html) return;
+    setMain(html);
+  };
+
+  const viewPlayerProfile = async (playerId) => {
+    const html = await HF_UTILS.viewProfile(
+      playerId,
+      "HF_ROUTER.navTo('discover')",
+    );
+    if (!html) return;
+    setMain(html);
+  };
+
   return {
     render,
     resubmitAgency,
@@ -2681,6 +2575,7 @@ ${reportEl.textContent.trim()}
     unarchiveMessage,
     filterPlayers,
     savePlayer,
+    viewSenderProfile,
     viewPlayerProfile,
     messagePlayer,
     sendMessage,
@@ -2706,7 +2601,6 @@ ${reportEl.textContent.trim()}
     toggleMsgActions,
     replyToMessage,
     sendReply,
-    viewSenderProfile,
     reportToAdmin,
     generateReport,
     submitGenerateReport,

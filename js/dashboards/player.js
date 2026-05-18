@@ -420,6 +420,24 @@ const HF_PLAYER = (() => {
         ${barHTML("Tactical", r.tact || 0, "var(--blue)")}
         ${barHTML("Physical", r.phys || 0, "var(--green)")}`
       }
+    </div>
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Highlight reel
+        </div>
+        <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
+          Coming soon
+        </span>
+      </div>
+      <div style="text-align:center;padding:32px;background:var(--bg2);border:0.5px dashed var(--border);">
+        <i class="ti ti-video" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No highlights yet</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Upload your best moments to showcase your talent to scouts and coaches.</div>
+        <button class="btn btn-outline btn-sm" disabled style="opacity:0.5;cursor:not-allowed;">
+          <i class="ti ti-upload"></i> Upload highlight (coming soon)
+        </button>
+      </div>
     </div>`);
   };
 
@@ -995,7 +1013,7 @@ const HF_PLAYER = (() => {
       const maxTier = Math.max(...Object.keys(tiers).map(Number));
       const maxPerTier = Math.max(...Object.values(tiers).map((t) => t.length));
       const svgW = maxTier * hGap + nodeSize + 40;
-      const svgH = maxPerTier * vGap + nodeSize + 20;
+      const svgH = maxPerTier * vGap + nodeSize + 40;
 
       // calculate node positions
       const positions = {};
@@ -1090,15 +1108,13 @@ const HF_PLAYER = (() => {
               <i class="ti ${isLocked ? "ti-lock" : item.icon}"></i>
             </div>
           </foreignObject>
-          <text x="${nodeSize / 2}" y="${nodeSize - 8}"
+          <text x="${nodeSize / 2}" y="${nodeSize + 14}"
             text-anchor="middle"
             font-family="Inter, sans-serif"
-            font-size="8"
+            font-size="9"
             font-weight="700"
-            letter-spacing="0.5"
-            text-transform="uppercase"
             fill="${textColor}">
-            ${isLocked ? "???" : item.label.length > 12 ? item.label.toUpperCase().slice(0, 12) + "..." : item.label.toUpperCase()}
+            ${isLocked ? "???" : item.label.length > 10 ? item.label.slice(0, 9) + ".." : item.label}
           </text>
           ${
             isUnlocked
@@ -1241,22 +1257,31 @@ const HF_PLAYER = (() => {
     </div>
     <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:var(--sp-sm);">
       ${metrics
-        .map((m) => {
-          const val = todayLog[m.id] || 0;
-          const pct = (val / 10) * 100;
-          return `
-          <div style="padding:var(--sp-md);background:var(--bg2);border-top:2px solid var(--border);">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-              <i class="ti ${m.icon}" style="color:var(--text2)"></i>
-              <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">${m.label}</span>
-            </div>
-            <div style="font-family:var(--font-head);font-size:28px;font-weight:700;color:var(--text);line-height:1;">${val}</div>
-            <div style="height:3px;background:var(--border);margin-top:8px;">
-              <div style="height:100%;width:${pct}%;background:var(--gold);"></div>
-            </div>
-            <div style="font-size:10px;color:var(--text3);margin-top:4px">${m.desc}</div>
-          </div>`;
-        })
+        .map(
+          (m) => `
+  <div style="padding:var(--sp-md);background:var(--bg2);margin-bottom:var(--sp-sm);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:32px;height:32px;background:var(--bg);display:flex;align-items:center;justify-content:center;">
+          <i class="ti ${m.icon}" style="font-size:16px;color:var(--text2)"></i>
+        </div>
+        <div>
+          <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);">${m.label}</div>
+          <div style="font-size:10px;color:var(--text3)">${m.desc}</div>
+        </div>
+      </div>
+      <span id="hv-${m.id}" style="font-family:var(--font-head);font-size:28px;font-weight:700;color:var(--gold);">
+        ${todayLog?.[m.id] || 5}
+      </span>
+    </div>
+    <input type="range" min="1" max="10" value="${todayLog?.[m.id] || 5}" step="1"
+      style="width:100%;accent-color:var(--gold);"
+      oninput="document.getElementById('hv-${m.id}').textContent=this.value">
+    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:4px;">
+      <span>1 — Low</span><span>10 — High</span>
+    </div>
+  </div>`,
+        )
         .join("")}
     </div>
     ${
@@ -1385,7 +1410,7 @@ const HF_PLAYER = (() => {
                   <td>${l.sleep || "-"}</td>
                   <td>${l.soreness || "-"}</td>
                   <td>${l.hydration || "-"}</td>
-                  <td style="color:var(--text2);font-size:11px">${l.notes || "-"}</td>
+                  <td style="color:var(--text2);font-size:11px">${r.notes && r.notes !== "null" ? r.notes : "None"}</td>
                 </tr>`;
               })
               .join("")}
@@ -2464,55 +2489,13 @@ const HF_PLAYER = (() => {
   };
 
   const viewSenderProfile = async (userId) => {
-    const { data: user } = await HF_DB.getUserById(userId);
-    if (!user) {
-      HF_UTILS.toast("User not found.", "error");
-      return;
-    }
-    const p = user.profile || {};
-    const overall = p.ratings
-      ? Math.round(
-          (p.ratings.speed + p.ratings.tech + p.ratings.tact + p.ratings.phys) /
-            4,
-        )
-      : null;
-
-    setMain(`
-    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
-        <div style="width:72px;height:72px;background:var(--green);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
-          ${HF_UTILS.initials(user.name)}
-        </div>
-        <div>
-          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;color:#fff;">${user.name}</div>
-          <div style="font-size:13px;color:rgba(255,255,255,.55)">${p.pos || p.org || "-"} · ${p.tier || p.exp + " yrs exp" || "-"}</div>
-          <div style="margin-top:8px">${HF_UTILS.badgeHTML(user.role, user.role === "player" ? "green" : user.role === "coach" ? "gold" : "blue")}</div>
-        </div>
-      </div>
-      ${
-        overall !== null
-          ? `
-        <div style="text-align:right">
-          <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold)">${overall}%</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.1em">Overall</div>
-        </div>`
-          : ""
-      }
-    </div>
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Details</div>
-      <div class="info-grid">
-        ${p.pos ? `<div class="info-cell"><div class="info-label">Position</div><div class="info-val">${p.pos}</div></div>` : ""}
-        ${p.tier ? `<div class="info-cell"><div class="info-label">Tier</div><div class="info-val">${p.tier}</div></div>` : ""}
-        ${p.hometown ? `<div class="info-cell"><div class="info-label">Hometown</div><div class="info-val">${p.hometown}</div></div>` : ""}
-        ${p.org ? `<div class="info-cell"><div class="info-label">Organisation</div><div class="info-val">${p.org}</div></div>` : ""}
-        ${p.exp ? `<div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp} years</div></div>` : ""}
-        ${p.club ? `<div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club}</div></div>` : ""}
-      </div>
-    </div>
-    <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')" style="margin-top:8px">
-      <i class="ti ti-arrow-left"></i> Back to messages
-    </button>`);
+    const session = HF_DB.getSession();
+    const html = await HF_UTILS.viewProfile(
+      userId,
+      "HF_ROUTER.navTo('messages')",
+    );
+    if (!html) return;
+    setMain(html);
   };
 
   const reportToAdmin = async (fromId, senderName) => {

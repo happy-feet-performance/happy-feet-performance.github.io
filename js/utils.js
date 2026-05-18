@@ -414,6 +414,108 @@ const HF_UTILS = (() => {
     </div>`;
   };
 
+  const viewProfile = async (userId, backFn) => {
+    const { data: user } = await HF_DB.getUserById(userId);
+    if (!user) {
+      toast("User not found.", "error");
+      return;
+    }
+
+    const p = user.profile || {};
+    const role = user.role;
+    const overall = p.ratings
+      ? Math.round(
+          (p.ratings.speed + p.ratings.tech + p.ratings.tact + p.ratings.phys) /
+            4,
+        )
+      : null;
+
+    const sections = {
+      player: `
+      <div class="info-grid">
+        ${p.pos ? `<div class="info-cell"><div class="info-label">Position</div><div class="info-val">${p.pos}</div></div>` : ""}
+        ${p.tier ? `<div class="info-cell"><div class="info-label">Tier</div><div class="info-val">${p.tier}</div></div>` : ""}
+        ${p.hometown ? `<div class="info-cell"><div class="info-label">Hometown</div><div class="info-val">${p.hometown}</div></div>` : ""}
+        ${p.club ? `<div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club}</div></div>` : ""}
+      </div>
+      ${
+        overall !== null
+          ? `
+        <div class="card" style="margin-top:var(--sp-md);">
+          <div class="card-title"><div class="card-dot"></div>Performance ratings</div>
+          <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr)">
+            ${["speed", "tech", "tact", "phys"]
+              .map(
+                (k) => `
+              <div class="metric-card">
+                <div class="metric-val" style="color:var(--gold)">${p.ratings[k]}</div>
+                <div class="metric-label">${{ speed: "Speed", tech: "Technical", tact: "Tactical", phys: "Physical" }[k]}</div>
+              </div>`,
+              )
+              .join("")}
+          </div>
+        </div>`
+          : ""
+      }
+      <div class="card" style="margin-top:var(--sp-md);">
+        <div class="card-title" style="justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+            <div class="card-dot"></div>Highlight reel
+          </div>
+          <span style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">Coming soon</span>
+        </div>
+        <div style="text-align:center;padding:32px;background:var(--bg2);border:0.5px dashed var(--border);">
+          <i class="ti ti-video" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No highlights yet</div>
+          <div style="font-size:13px;color:var(--text2)">This player hasn't uploaded any highlights yet.</div>
+        </div>
+      </div>`,
+      coach: `
+      <div class="info-grid">
+        ${p.spec ? `<div class="info-cell"><div class="info-label">Specialisation</div><div class="info-val">${p.spec}</div></div>` : ""}
+        ${p.licence ? `<div class="info-cell"><div class="info-label">Licence</div><div class="info-val">${p.licence}</div></div>` : ""}
+        ${p.club ? `<div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club}</div></div>` : ""}
+        ${p.exp ? `<div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp} years</div></div>` : ""}
+      </div>`,
+      scout: `
+      <div class="info-grid">
+        ${p.org ? `<div class="info-cell"><div class="info-label">Agency</div><div class="info-val">${p.org}</div></div>` : ""}
+        ${p.region ? `<div class="info-cell"><div class="info-label">Home region</div><div class="info-val">${p.region}</div></div>` : ""}
+        ${p.regionsCovered ? `<div class="info-cell"><div class="info-label">Regions covered</div><div class="info-val">${Array.isArray(p.regionsCovered) ? p.regionsCovered.join(", ") : p.regionsCovered}</div></div>` : ""}
+        ${p.targetLeagues ? `<div class="info-cell"><div class="info-label">Target leagues</div><div class="info-val">${Array.isArray(p.targetLeagues) ? p.targetLeagues.join(", ") : p.targetLeagues}</div></div>` : ""}
+        ${p.exp ? `<div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp} years</div></div>` : ""}
+      </div>`,
+    };
+
+    return `
+    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
+      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
+        <div style="width:72px;height:72px;background:${role === "player" ? "var(--green)" : role === "coach" ? "var(--gold)" : role === "admin" ? "var(--red)" : "var(--blue)"};display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:26px;font-weight:700;color:#fff;">
+          ${HF_UTILS.initials(user.name)}
+        </div>
+        <div>
+          <div style="font-family:var(--font-head);font-size:22px;font-weight:700;color:#fff;">${user.name}</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:2px;">${p.pos || p.spec || p.org || "-"}</div>
+          <div style="margin-top:8px;">${badgeHTML(role, role === "player" ? "green" : role === "coach" ? "gold" : "blue")}</div>
+        </div>
+      </div>
+      ${
+        overall !== null
+          ? `
+        <div style="text-align:right;">
+          <div style="font-family:var(--font-head);font-size:42px;font-weight:700;color:var(--gold)">${overall}%</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.1em">Overall</div>
+        </div>`
+          : ""
+      }
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Profile details</div>
+      ${sections[role] || ""}
+    </div>
+    ${backFn ? `<button class="btn btn-outline" onclick="${backFn}" style="margin-top:8px"><i class="ti ti-arrow-left"></i> Back</button>` : ""}`;
+  };
+
   return {
     initials,
     age,
@@ -444,6 +546,7 @@ const HF_UTILS = (() => {
     isNewUser,
     launchConfetti,
     launchEmojiConfetti,
+    viewProfile,
   };
 })();
 

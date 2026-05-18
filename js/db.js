@@ -1317,7 +1317,7 @@ const HF_DB = (() => {
   const getUserById = async (userId) => {
     const { data, error } = await _client
       .from("users")
-      .select("id, name, profile")
+      .select("id, name, role, profile, squad_status, agency_status")
       .eq("id", userId)
       .single();
     if (error) return { data: null };
