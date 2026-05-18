@@ -244,6 +244,7 @@ const HF_ROUTER = (() => {
               unreadCount,
               "var(--red)",
             );
+
             const activeNav = document.querySelector(".nav-item.active");
             if (activeNav?.dataset.view === "messages") {
               const s = HF_DB.getSession();
@@ -252,9 +253,25 @@ const HF_ROUTER = (() => {
                 coach: window.HF_COACH,
                 scout: window.HF_SCOUT,
               };
-              handlers[s.role]?.messages?.(s);
+
+              // check if user is currently in a thread view
+              const threadMessages = document.getElementById("thread-messages");
+              if (threadMessages) {
+                // user is in a thread — check if this message belongs to the same thread
+                if (newMessage.thread_id) {
+                  handlers[s.role]?.viewThread?.(
+                    newMessage.thread_id,
+                    newMessage.from_id,
+                    newMessage.subject,
+                  );
+                }
+              } else {
+                // user is on messages list — refresh it
+                handlers[s.role]?.messages?.(s);
+              }
             }
           });
+
           HF_UTILS.toast(
             `New message: ${newMessage.subject || "You have a new message"}`,
             "success",
@@ -271,11 +288,22 @@ const HF_ROUTER = (() => {
               unreadCount,
               "var(--red)",
             );
+
             const activeNav = document.querySelector(".nav-item.active");
             if (activeNav?.dataset.view === "messages") {
-              window.HF_ADMIN?.messages?.(HF_DB.getSession());
+              const threadMessages = document.getElementById("thread-messages");
+              if (threadMessages && newMessage.thread_id) {
+                window.HF_ADMIN?.viewThread?.(
+                  newMessage.thread_id,
+                  newMessage.from_id,
+                  newMessage.subject,
+                );
+              } else {
+                window.HF_ADMIN?.messages?.(HF_DB.getSession());
+              }
             }
           });
+
           HF_UTILS.toast(
             `New message: ${newMessage.subject || "You have a new message"}`,
             "success",

@@ -700,7 +700,7 @@ const HF_PLAYER = (() => {
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No messages yet</div>
           <div style="font-size:13px">Messages will appear here.</div>
         </div>`
-          : HF_UTILS.messageListHTML(msgs, "player")
+          : HF_UTILS.messageListHTML(enriched, "player")
       }
     </div>
 
@@ -718,19 +718,22 @@ const HF_PLAYER = (() => {
           ${enrichedArchived
             .map(
               (m) => `
-            <div class="msg-item" id="archived-msg-${m.id}">
+            <div class="msg-item" id="archived-msg-${m.id}" style="cursor:pointer;" 
+              onclick="HF_PLAYER.viewThread('${m.thread_id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')">
               <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
                 <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
               </div>
               <div style="flex:1;opacity:0.6">
-                <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">From: ${m.senderName || "HappyFeet Admin"}</div>
+                <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+                  From: ${m.senderName || "HappyFeet Admin"}
+                </div>
                 <div class="msg-name">${m.subject || "Message"}</div>
                 <div class="msg-preview">${m.body}</div>
                 <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
               </div>
               <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;flex-shrink:0;"
                 title="Move back to inbox"
-                onclick="HF_PLAYER.unarchiveMessage('${m.id}')">
+                onclick="event.stopPropagation();HF_PLAYER.unarchiveMessage('${m.id}')">
                 <i class="ti ti-inbox"></i>
               </button>
             </div>`,
@@ -1482,7 +1485,8 @@ const HF_PLAYER = (() => {
     const renderMessageBody = (body) => {
       return body.replace(
         /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu,
-        '<span class="emoji-animate" style="font-size:1.3em;">$1</span>',
+        `<span class="emoji-animate" style="font-size:1.3em;cursor:pointer;display:inline-block;"
+      onclick="HF_UTILS.launchEmojiConfetti('$1');this.style.transform='scale(1.8)';setTimeout(()=>this.style.transform='scale(1)',200)">$1</span>`,
       );
     };
 
@@ -1595,10 +1599,23 @@ const HF_PLAYER = (() => {
       </div>
     </div>`);
 
-    // scroll to bottom of thread
     setTimeout(() => {
       const threadEl = document.getElementById("thread-messages");
       if (threadEl) threadEl.scrollTop = threadEl.scrollHeight;
+
+      // enter key sends message
+      const replyInput = document.getElementById("reply-body");
+      if (replyInput) {
+        replyInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            HF_DB.getSession() &&
+              window[
+                `HF_${HF_DB.getSession().role.toUpperCase()}`
+              ]?.sendReply?.(otherUserId, subject, threadId);
+          }
+        });
+      }
     }, 100);
   };
 

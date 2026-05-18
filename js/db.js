@@ -838,14 +838,53 @@ const HF_DB = (() => {
   };
 
   const getMessages = async (userId) => {
-    const { data, error } = await _client
+    // get all messages where user is recipient
+    const { data: received, error: recvError } = await _client
       .from("messages")
       .select("*")
       .eq("to_id", userId)
       .eq("archived", false)
       .order("created_at", { ascending: false });
-    if (error) return { data: [] };
-    return { data };
+    if (recvError) return { data: [] };
+
+    // get thread IDs the user has participated in
+    const threadIds = [
+      ...new Set(received.map((m) => m.thread_id).filter(Boolean)),
+    ];
+
+    // get latest message per thread across all participants
+    let allThreadMessages = [];
+    if (threadIds.length > 0) {
+      const { data: threadMsgs } = await _client
+        .from("messages")
+        .select("*")
+        .in("thread_id", threadIds)
+        .order("created_at", { ascending: false });
+      allThreadMessages = threadMsgs || [];
+    }
+
+    // deduplicate by thread_id: keep only the latest per thread
+    const seen = new Set();
+    const deduped = [];
+
+    // combine and sort by created_at descending
+    const combined = [...received];
+    for (const tm of allThreadMessages) {
+      if (!combined.find((m) => m.id === tm.id)) combined.push(tm);
+    }
+    combined.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    for (const m of combined) {
+      const key = m.thread_id || m.id;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      // only include if user is a participant
+      if (m.to_id === userId || m.from_id === userId) {
+        deduped.push(m);
+      }
+    }
+
+    return { data: deduped };
   };
 
   const getArchivedMessages = async (userId) => {
@@ -1226,7 +1265,8 @@ const HF_DB = (() => {
 
   const getUserNameById = async (userId) => {
     if (!userId) return "HappyFeet";
-    if (userId === "admin" || userId === "system") return "HappyFeet Admin";
+    if (userId === "system") return "HappyFeet System";
+    if (userId === "admin") return "HappyFeet Admin";
 
     const { data, error } = await _client
       .from("users")

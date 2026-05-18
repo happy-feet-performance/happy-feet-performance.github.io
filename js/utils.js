@@ -204,7 +204,7 @@ const HF_UTILS = (() => {
     };
 
     const msgRow = (m) => `
-      <div class="msg-item" id="msg-${m.id}" onclick="HF_${role.toUpperCase()}.viewThread('${m.thread_id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')">
+      <div class="msg-item" id="msg-${m.id}" onclick="HF_${role.toUpperCase()}.viewThread('${m.thread_id || m.id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')">
         <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
           <i class="ti ti-shield" style="font-size:16px;color:${!m.read ? "var(--gold)" : "var(--text2)"}"></i>
         </div>
@@ -232,7 +232,7 @@ const HF_UTILS = (() => {
       </div>
       <div id="msg-actions-${m.id}" style="display:none;padding:var(--sp-sm);background:var(--bg2);border-left:2px solid var(--border);margin-bottom:4px;">
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          <button class="btn btn-outline btn-sm" onclick="HF_${role.toUpperCase()}.replyToMessage('${m.id}', '${m.from_id}', '${(m.senderName || "HappyFeet").replace(/'/g, "\\'")}', '${(m.subject || "").replace(/'/g, "\\'")}', '${m.thread_id}')">
+          <button class="btn btn-outline btn-sm" onclick="HF_${role.toUpperCase()}.replyToMessage('${m.id}', '${m.from_id}', '${(m.senderName || "HappyFeet").replace(/'/g, "\\'")}', '${(m.subject || "").replace(/'/g, "\\'")}', '${m.thread_id || m.id}')">
             <i class="ti ti-arrow-back-up"></i> Reply
           </button>
           ${
