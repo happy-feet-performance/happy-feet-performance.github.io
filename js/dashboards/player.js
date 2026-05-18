@@ -1129,16 +1129,12 @@ const HF_PLAYER = (() => {
           const prereqsMet = requires.every((r) => unlockedIds.has(r));
           const isLocked = !prereqsMet && !isUnlocked;
 
-          const bgColor = isUnlocked
-            ? cat.color
-            : isLocked
-              ? "#1a1a18"
-              : "#1a1a18";
+          const bgColor = isUnlocked ? cat.color : "var(--bg2)";
           const borderColor = isUnlocked
             ? cat.color
             : prereqsMet
               ? cat.color
-              : "#333";
+              : "var(--border)";
           const borderWidth = isUnlocked ? 2 : prereqsMet ? 2 : 1;
           const borderDash = prereqsMet && !isUnlocked ? "4,3" : "none";
           const iconColor = isUnlocked
@@ -1269,8 +1265,8 @@ const HF_PLAYER = (() => {
 
     <div style="display:flex;gap:var(--sp-lg);flex-wrap:wrap;padding:var(--sp-md);background:var(--bg2);font-size:11px;color:var(--text2);">
       <div style="display:flex;align-items:center;gap:6px;"><div style="width:16px;height:16px;background:var(--gold);"></div>Unlocked</div>
-      <div style="display:flex;align-items:center;gap:6px;"><div style="width:16px;height:16px;background:#1a1a18;border:1px solid var(--gold);"></div>Available</div>
-      <div style="display:flex;align-items:center;gap:6px;"><div style="width:16px;height:16px;background:#1a1a18;border:1px solid #333;opacity:0.4;"></div>Locked</div>
+      <div style="display:flex;align-items:center;gap:6px;"><div style="width:16px;height:16px;background:var(--bg2);border:1px solid var(--gold);"></div>Available</div>
+      <div style="display:flex;align-items:center;gap:6px;"><div style="width:16px;height:16px;background:var(--bg2);border:1px solid var(--border);opacity:0.4;"></div>Locked</div>
     </div>
   `);
   };
