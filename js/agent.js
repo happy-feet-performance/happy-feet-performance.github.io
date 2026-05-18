@@ -60,30 +60,43 @@ If asked about something unrelated to football, gently redirect the conversation
     _showTyping();
 
     try {
-      const response = await fetch("/.netlify/functions/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system: _systemPrompt,
-          messages: _history,
-        }),
-      });
+      // use Netlify function in production, skip locally
+      const isLocal =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1" ||
+        window.location.protocol === "file:";
 
-      const data = await response.json();
-      const reply =
-        data.content?.map((c) => c.text || "").join("") ||
-        "Sorry I could not process that. Please try again.";
+      let reply;
+
+      if (isLocal) {
+        // local mock
+        await new Promise((r) => setTimeout(r, 800));
+        reply =
+          "AI agent is only available on the live site. Push to main to test the full AI experience.";
+      } else {
+        const response = await fetch("/.netlify/functions/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            system: _systemPrompt,
+            messages: _history,
+          }),
+        });
+        const data = await response.json();
+        reply =
+          data.content?.map((c) => c.text || "").join("") ||
+          "Sorry I could not process that.";
+      }
 
       _hideTyping();
       _addMessage("agent", reply);
       _history.push({ role: "assistant", content: reply });
-
       if (_history.length > 20) _history = _history.slice(-20);
     } catch (err) {
       _hideTyping();
       _addMessage(
         "agent",
-        "Sorry, I had trouble connecting. Please check your connection and try again.",
+        "Sorry, I had trouble connecting. Please try again.",
       );
     }
 
