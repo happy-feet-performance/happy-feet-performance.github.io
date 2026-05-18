@@ -506,107 +506,175 @@ const HF_PLAYER = (() => {
   };
 
   // ── TRAINING ─────────────────────────────────────────────────
+
+  const getDateForDay = (dayIndex) => {
+    const now = new Date();
+    const today = now.getDay();
+    const diff = dayIndex - today;
+    const date = new Date(now);
+    date.setDate(now.getDate() + diff);
+    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  };
+
   const training = async (s) => {
+    const saved = await HF_DB.getTraining(s.userId);
+    const schedule = saved?.schedule || {};
+    const today = new Date().getDay();
+    const todayStr = new Date().toISOString().split("T")[0];
+
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const types = [
-      "rest",
-      "recovery",
-      "technical",
-      "tactical",
-      "match",
-      "analysis",
-      "match prep",
+      "Rest",
+      "Technical",
+      "Tactical",
+      "Physical",
+      "Recovery",
+      "Match",
     ];
     const typeColors = {
-      rest: "var(--text3)",
-      recovery: "var(--green)",
-      technical: "var(--gold)",
-      tactical: "var(--blue)",
-      match: "var(--red)",
-      analysis: "var(--purple)",
-      "match prep": "var(--faith)",
-    };
-    const typeLabels = {
-      rest: "Rest",
-      recovery: "Recovery",
-      technical: "Technical",
-      tactical: "Tactical",
-      match: "Match",
-      analysis: "Analysis",
-      "match prep": "Match Prep",
+      Rest: "var(--text3)",
+      Technical: "var(--gold)",
+      Tactical: "var(--blue)",
+      Physical: "var(--red)",
+      Recovery: "var(--green)",
+      Match: "var(--faith)",
     };
 
-    const key = `hf_training_plan_${s.userId}`;
-    const saved = await HF_DB.getTraining(s.userId);
-    const plan =
-      saved?.weeklyPlan || JSON.parse(localStorage.getItem(key) || "{}");
-    const today = new Date().getDay();
+    // get current view from window state or default to week
+    const view = window._trainingView || "week";
 
-    const dayCards = days
-      .map((day, i) => {
-        const isToday = i === today;
-        const selectedType = plan[i] || "rest";
-        const color = typeColors[selectedType];
-        return `
-      <div style="
-        padding:10px 8px;
-        background:var(--bg);
-        border:0.5px solid var(--border);
-        border-top:2px solid ${isToday ? "var(--gold)" : color};
-        text-align:center;
-        ${isToday ? "background:rgba(196,154,10,.06);" : ""}
-      ">
-        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:${isToday ? "var(--gold)" : "var(--text2)"}">
-          ${day}${isToday ? " · Today" : ""}
-        </div>
-        <div style="font-size:10px;font-weight:600;color:${color};margin-top:4px;text-transform:uppercase;letter-spacing:0.05em">
-          ${typeLabels[selectedType]}
-        </div>
-        <select
-          style="margin-top:6px;width:100%;padding:4px 2px;background:var(--bg2);border:0.5px solid var(--border);border-radius:0;color:var(--text);font-size:9px;font-family:var(--font-head);text-transform:uppercase;letter-spacing:0.04em;outline:none;"
-          onchange="HF_PLAYER.updateTrainingDay(${i}, this.value)">
-          ${types
-            .map(
-              (t) => `
-            <option value="${t}" ${selectedType === t ? "selected" : ""}>${typeLabels[t]}</option>
-          `,
-            )
-            .join("")}
-        </select>
+    const weekView = () => `
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:var(--sp-lg);">
+      ${days
+        .map((day, i) => {
+          const isToday = i === today;
+          const selected = schedule[i];
+          const color = selected ? typeColors[selected] : null;
+          return `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+            <div style="font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isToday ? "var(--text)" : "var(--text3)"};">
+              ${day}
+            </div>
+            <div style="font-size:9px;color:var(--text3);">${getDateForDay(i)}</div>
+            <div style="width:100%;padding:8px 4px;
+              background:${selected ? color + "33" : isToday ? "var(--bg2)" : "transparent"};
+              border:${isToday ? "2px solid var(--text)" : selected ? "0.5px solid " + color : "0.5px solid var(--border)"};
+              text-align:center;cursor:pointer;min-height:60px;display:flex;align-items:center;justify-content:center;"
+              onclick="HF_PLAYER.showDayPicker(${i})">
+              <span style="font-size:9px;font-weight:600;color:${selected ? color : "var(--text3)"};font-family:var(--font-head);letter-spacing:0.04em;text-transform:uppercase;">
+                ${selected || "+"}
+              </span>
+            </div>
+          </div>`;
+        })
+        .join("")}
+    </div>`;
+
+    const monthView = () => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const firstDay = new Date(year, month, 1).getDay();
+
+      let cells = "";
+      for (let i = 0; i < firstDay; i++) cells += "<div></div>";
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const date = new Date(year, month, d);
+        const dayOfWeek = date.getDay();
+        const isToday = d === now.getDate();
+        const selected = schedule[dayOfWeek];
+        const color = selected ? typeColors[selected] : null;
+        const isFuture = date > now;
+
+        cells += `
+        <div style="
+          display:flex;flex-direction:column;align-items:center;justify-content:center;
+          height:40px;
+          background:${isToday ? "var(--text)" : selected ? color + "33" : "transparent"};
+          border:${isToday ? "none" : selected ? "0.5px solid " + color : "0.5px solid transparent"};
+          opacity:${isFuture ? 0.4 : 1};
+          cursor:${!isFuture ? "pointer" : "default"};
+          font-size:11px;
+          color:${isToday ? "var(--bg)" : selected ? color : "var(--text2)"};
+          font-weight:${isToday ? "700" : "400"};
+        " onclick="${!isFuture ? `HF_PLAYER.showDayPicker(${dayOfWeek})` : ""}">
+          ${d}
+          ${selected && !isToday ? `<div style="width:4px;height:4px;background:${color};margin-top:2px;"></div>` : ""}
+        </div>`;
+      }
+
+      return `
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:8px;">
+        ${days.map((d) => `<div style="text-align:center;font-family:var(--font-head);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);padding:4px 0;">${d}</div>`).join("")}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:var(--sp-lg);">
+        ${cells}
       </div>`;
-      })
-      .join("");
+    };
+
+    const dayView = () => {
+      const selected = schedule[today];
+      const color = selected ? typeColors[selected] : "var(--border)";
+      return `
+      <div style="padding:var(--sp-xl);background:${selected ? color + "22" : "var(--bg2)"};border:${selected ? "2px solid " + color : "0.5px solid var(--border)"};text-align:center;margin-bottom:var(--sp-lg);">
+        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Today</div>
+        <div style="font-family:var(--font-head);font-size:32px;font-weight:700;color:${selected ? color : "var(--text3)"};">
+          ${selected || "No session planned"}
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-top:4px;">
+          ${new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        </div>
+        <button class="btn btn-outline btn-sm" style="margin-top:var(--sp-md);" onclick="HF_PLAYER.showDayPicker(${today})">
+          <i class="ti ti-edit"></i> ${selected ? "Change session" : "Set session"}
+        </button>
+      </div>`;
+    };
 
     setMain(`
     <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Weekly training plan</div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:var(--sp-lg)">
-        ${dayCards}
-      </div>
-      <div style="font-size:11px;color:var(--text2);text-align:center">
-        <i class="ti ti-info-circle"></i> Select a session type for each day. Changes save automatically.
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Today's focus: ${typeLabels[plan[today] || "rest"]}</div>
-      ${
-        plan[today] === "rest" || !plan[today]
-          ? `
-        <div style="text-align:center;padding:32px;color:var(--text2)">
-          <i class="ti ti-zzz" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Rest day</div>
-          <div style="font-size:13px">Recovery is part of the process. Rest well.</div>
-        </div>`
-          : `
-        <div style="font-size:13px;color:var(--text2);margin-bottom:12px">
-          Your coach will assign drills for today's ${typeLabels[plan[today]]} session.
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Training plan
+          <span style="font-size:11px;color:var(--text3);">
+            ${new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
+          </span>
         </div>
-        <div style="padding:12px;background:var(--bg2);border-left:2px solid ${typeColors[plan[today]]};font-size:13px;color:var(--text2)">
-          <i class="ti ti-clock" style="margin-right:6px"></i>
-          Session details will appear here once your coach builds today's plan.
-        </div>`
-      }
+        <div style="display:flex;gap:4px;">
+          ${["day", "week", "month"]
+            .map(
+              (v) => `
+            <button class="btn ${view === v ? "btn-primary" : "btn-outline"} btn-sm"
+              onclick="window._trainingView='${v}';HF_PLAYER.training(HF_DB.getSession())">
+              ${v.charAt(0).toUpperCase() + v.slice(1)}
+            </button>`,
+            )
+            .join("")}
+        </div>
+      </div>
+
+      ${view === "day" ? dayView() : view === "month" ? monthView() : weekView()}
+
+      <div id="day-picker" style="display:none;padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-md);">
+        <div id="day-picker-label" style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;"></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;" id="day-picker-options"></div>
+      </div>
+
+      <div style="padding:var(--sp-md);background:var(--bg2);">
+        <div style="font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">Legend</div>
+        <div style="display:flex;gap:var(--sp-md);flex-wrap:wrap;">
+          ${types
+            .map(
+              (t) => `
+            <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);">
+              <div style="width:10px;height:10px;background:${typeColors[t]};"></div>
+              ${t}
+            </div>`,
+            )
+            .join("")}
+        </div>
+      </div>
     </div>`);
   };
 
@@ -1170,16 +1238,14 @@ const HF_PLAYER = (() => {
 
   const updateTrainingDay = async (dayIndex, type) => {
     const session = HF_DB.getSession();
-    const key = `hf_training_plan_${session.userId}`;
-    const saved = JSON.parse(localStorage.getItem(key) || "{}");
-    saved[dayIndex] = type;
-    localStorage.setItem(key, JSON.stringify(saved));
 
+    // get current training data
     const existing = await HF_DB.getTraining(session.userId);
-    await HF_DB.saveTraining(session.userId, {
-      ...existing,
-      weeklyPlan: saved,
-    });
+    const schedule = existing?.schedule || {};
+    schedule[dayIndex] = type;
+
+    // save to Supabase
+    await HF_DB.saveTraining(session.userId, { ...existing, schedule });
 
     HF_UTILS.toast(
       `${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dayIndex]} set to ${type}`,
@@ -2033,9 +2099,49 @@ const HF_PLAYER = (() => {
     document.getElementById("health-slider-view").style.display = "none";
   };
 
+  const showDayPicker = (dayIndex) => {
+    const picker = document.getElementById("day-picker");
+    const label = document.getElementById("day-picker-label");
+    const options = document.getElementById("day-picker-options");
+    if (!picker || !options) return;
+
+    const days = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const types = [
+      "Rest",
+      "Technical",
+      "Tactical",
+      "Physical",
+      "Recovery",
+      "Match",
+    ];
+
+    if (label) label.textContent = `Select session type for ${days[dayIndex]}`;
+    picker.style.display = "block";
+
+    options.innerHTML = types
+      .map(
+        (t) => `
+    <button class="btn btn-outline btn-sm"
+      onclick="HF_PLAYER.updateTrainingDay(${dayIndex}, '${t}');document.getElementById('day-picker').style.display='none'">
+      ${t}
+    </button>`,
+      )
+      .join("");
+  };
+
   return {
     render,
+    training,
     updateTrainingDay,
+    showDayPicker,
     logHealthCheckin,
     showHealthSliders,
     showHealthCards,

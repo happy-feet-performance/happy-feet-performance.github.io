@@ -241,7 +241,12 @@ const HF_DB = (() => {
 
   // ─── Training ──────────────────────────────────────────────
   const getTraining = async (userId) =>
-    (await _getData("training", userId)) || { sessions: [], schedule: {} };
+    (await _getData("training", userId)) || {
+      sessions: [],
+      schedule: {},
+      currentPlan: null,
+    };
+
   const saveTraining = async (userId, data) =>
     await _saveData("training", userId, data);
 
