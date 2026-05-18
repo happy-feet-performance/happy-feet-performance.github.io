@@ -886,68 +886,264 @@ const HF_SCOUT = (() => {
     const { data: myClubs } = await HF_DB.getScoutClubs(s.userId);
     const { data: verifiedClubs } = await HF_DB.getVerifiedClubs();
 
-    // filter out clubs already in network
     const myClubNames = new Set(myClubs?.map((c) => c.club_name) || []);
     const available =
       verifiedClubs?.filter((c) => !myClubNames.has(c.team_name)) || [];
 
+    // get unique leagues from my clubs for filter
+    const myLeagues = [
+      ...new Set(myClubs?.map((c) => c.league).filter(Boolean) || []),
+    ];
+
     setMain(`
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>My club network</div>
-        ${
-          !myClubs || myClubs.length === 0
-            ? `
-          <div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">
-            No clubs in your network yet. Add from verified clubs below.
-          </div>`
-            : myClubs
-                .map(
-                  (c) => `
-            <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--green);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
-              <div>
-                <div style="font-size:13px;font-weight:600">${c.club_name}</div>
-                <div style="font-size:11px;color:var(--text2)">${c.league || "-"}</div>
-              </div>
-              ${badgeHTML("Verified", "green")}
-            </div>`,
-                )
-                .join("")
-        }
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>My club network
+          <span style="font-size:11px;color:var(--text3)">${myClubs?.length || 0} clubs</span>
+        </div>
       </div>
 
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Add from verified clubs</div>
-        ${
-          available.length === 0
-            ? `
-          <div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">
-            No verified clubs available to add yet.
-          </div>`
-            : available
-                .map(
-                  (c) => `
-            <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--border);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
-              <div>
-                <div style="font-size:13px;font-weight:600">${c.team_name}</div>
-                <div style="font-size:11px;color:var(--text2)">${c.league || "-"}</div>
-              </div>
-              <button class="btn btn-primary btn-sm" onclick="HF_SCOUT.addClub('${s.userId}', '${c.coach_id}', '${c.team_name}', '${c.league || ""}')">
-                <i class="ti ti-plus"></i> Add
-              </button>
-            </div>`,
-                )
-                .join("")
-        }
-      </div>`);
+      ${
+        !myClubs || myClubs.length === 0
+          ? `
+        <div style="text-align:center;padding:32px;color:var(--text2)">
+          <i class="ti ti-building" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No clubs yet</div>
+          <div style="font-size:13px">Add verified clubs to your network below.</div>
+        </div>`
+          : `
+        <div style="display:flex;gap:8px;margin-bottom:var(--sp-md);flex-wrap:wrap;">
+          <select id="my-clubs-league" onchange="HF_SCOUT.filterMyClubs()"
+            style="padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
+            <option value="">All leagues</option>
+            ${myLeagues.map((l) => `<option>${l}</option>`).join("")}
+          </select>
+          <input type="text" id="my-clubs-search" placeholder="Search clubs..."
+            oninput="HF_SCOUT.filterMyClubs()"
+            style="flex:1;min-width:120px;padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
+        </div>
+        <div id="my-clubs-list">
+          ${myClubs.map((c) => _clubNetworkRow(c, s.userId)).join("")}
+        </div>`
+      }
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Add from verified clubs
+          <span style="font-size:11px;color:var(--text3)">${available.length} available</span>
+        </div>
+      </div>
+
+      ${
+        available.length === 0
+          ? `
+        <div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">
+          All verified clubs are already in your network.
+        </div>`
+          : `
+        <div style="margin-bottom:var(--sp-md);">
+          <input type="text" id="available-clubs-search" placeholder="Search by club name or league..."
+            oninput="HF_SCOUT.filterAvailableClubs()"
+            style="width:100%;padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
+        </div>
+        <div id="available-clubs-list">
+          ${available.map((c) => _availableClubRow(c, s.userId)).join("")}
+        </div>`
+      }
+    </div>
+
+    <div id="club-detail-panel" style="display:none;"></div>`);
+
+    window._myClubsData = myClubs || [];
+    window._availableClubsData = available;
+    window._scoutUserId = s.userId;
+  };
+
+  const _clubNetworkRow = (c, scoutId) => `
+    <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:3px solid var(--green);margin-bottom:var(--sp-sm);cursor:pointer;"
+      onclick="HF_SCOUT.toggleClubDetail('${c.coach_id}', '${c.club_name.replace(/'/g, "\\'")}', '${c.league || ""}')">
+      <div style="width:40px;height:40px;background:var(--green);display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;font-size:14px;flex-shrink:0;">
+        ${c.club_name.charAt(0).toUpperCase()}
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${c.club_name}</div>
+        <div style="font-size:11px;color:var(--text2)">${c.league || "-"}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${HF_UTILS.badgeHTML("In network", "green")}
+        <i id="chevron-${c.coach_id}" class="ti ti-chevron-right" style="color:var(--text3);font-size:14px;transition:transform 0.2s ease;"></i>
+      </div>
+    </div>`;
+
+  const _availableClubRow = (c, scoutId) => `
+    <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:3px solid var(--border);margin-bottom:var(--sp-sm);">
+      <div style="width:40px;height:40px;background:var(--bg);border:0.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--text2);font-size:14px;flex-shrink:0;">
+        ${c.team_name.charAt(0).toUpperCase()}
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;color:var(--text)">${c.team_name}</div>
+        <div style="font-size:11px;color:var(--text2)">${c.league || "-"}</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="HF_SCOUT.addClub('${scoutId}', '${c.coach_id}', '${c.team_name.replace(/'/g, "\\'")}', '${c.league || ""}')">
+        <i class="ti ti-plus"></i> Add
+      </button>
+    </div>`;
+
+  const filterMyClubs = () => {
+    const league = document.getElementById("my-clubs-league")?.value;
+    const search = document
+      .getElementById("my-clubs-search")
+      ?.value.toLowerCase();
+    const list = document.getElementById("my-clubs-list");
+    if (!list) return;
+
+    const filtered = (window._myClubsData || []).filter((c) => {
+      const matchLeague = !league || c.league === league;
+      const matchSearch = !search || c.club_name.toLowerCase().includes(search);
+      return matchLeague && matchSearch;
+    });
+
+    list.innerHTML =
+      filtered.length === 0
+        ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No clubs match your filters.</div>`
+        : filtered.map((c) => _clubNetworkRow(c, window._scoutUserId)).join("");
+  };
+
+  const filterAvailableClubs = () => {
+    const search = document
+      .getElementById("available-clubs-search")
+      ?.value.toLowerCase();
+    const list = document.getElementById("available-clubs-list");
+    if (!list) return;
+
+    const filtered = (window._availableClubsData || []).filter((c) => {
+      return (
+        !search ||
+        c.team_name.toLowerCase().includes(search) ||
+        (c.league || "").toLowerCase().includes(search)
+      );
+    });
+
+    list.innerHTML =
+      filtered.length === 0
+        ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No clubs match your search.</div>`
+        : filtered
+            .map((c) => _availableClubRow(c, window._scoutUserId))
+            .join("");
+  };
+
+  const viewClubDetail = async (coachId, clubName, league) => {
+    const { data: squadPlayers } = await HF_DB.getCoachSquadDetails(coachId);
+    const { data: coachUser } = await HF_DB.getUserById(coachId);
+    const { data: readiness } = await HF_DB.getSquadReadiness(coachId);
+    const coachProfile = coachUser?.profile || {};
+
+    const panel = document.getElementById("club-detail-panel");
+    if (!panel) return;
+    panel.style.display = "block";
+    panel.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    const readinessColor = !readiness
+      ? "var(--text3)"
+      : readiness.score >= 75
+        ? "var(--green)"
+        : readiness.score >= 50
+          ? "var(--gold)"
+          : "var(--red)";
+
+    panel.innerHTML = `
+    <div class="card">
+      <div style="background:#0f0f0d;padding:var(--sp-xl);margin:-var(--sp-lg) -var(--sp-lg) var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
+        <div style="display:flex;align-items:center;gap:var(--sp-lg);">
+          <div style="width:56px;height:56px;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#fff;flex-shrink:0;">
+            ${clubName.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div style="font-size:20px;font-weight:700;color:#fff;">${clubName}</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px;">${league || "-"} · ${coachProfile.spec || "Football Club"}</div>
+            <div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,.4);">
+              Coach: ${coachUser?.name || "-"} · ${coachProfile.licence || "-"} licence
+            </div>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:32px;font-weight:700;color:${readinessColor};">${readiness ? readiness.score + "%" : "-"}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:0.08em;">Squad readiness</div>
+        </div>
+      </div>
+
+      <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:var(--sp-lg);">
+        <div class="metric-card">
+          <div class="metric-val" style="color:var(--gold)">${squadPlayers?.length || 0}</div>
+          <div class="metric-label">Players</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" style="color:var(--blue)">${readiness?.avgRating || "-"}</div>
+          <div class="metric-label">Avg rating</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-val" style="color:var(--green)">${readiness?.wellnessRate || "-"}%</div>
+          <div class="metric-label">Wellness</div>
+        </div>
+      </div>
+
+      ${
+        squadPlayers && squadPlayers.length > 0
+          ? `
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text2);margin-bottom:var(--sp-sm);">
+          Squad
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:var(--sp-sm);">
+          ${squadPlayers
+            .map((sp) => {
+              const p = sp.player?.profile || {};
+              const overall = p.ratings
+                ? Math.round(
+                    (p.ratings.speed +
+                      p.ratings.tech +
+                      p.ratings.tact +
+                      p.ratings.phys) /
+                      4,
+                  )
+                : null;
+              return `
+              <div style="padding:var(--sp-md);background:var(--bg2);border-top:2px solid var(--border);display:flex;align-items:center;gap:var(--sp-sm);">
+                <div class="avatar avatar-sm" style="background:var(--green);flex-shrink:0;">${HF_UTILS.initials(sp.player?.name || "?")}</div>
+                <div style="min-width:0;">
+                  <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${sp.player?.name || "-"}</div>
+                  <div style="font-size:10px;color:var(--text2);">${p.pos || "-"} · ${overall !== null ? overall + "%" : "Unrated"}</div>
+                </div>
+              </div>`;
+            })
+            .join("")}
+        </div>`
+          : `
+        <div style="text-align:center;padding:24px;color:var(--text2);font-size:13px;">
+          No players in squad yet.
+        </div>`
+      }
+
+      <div style="margin-top:var(--sp-lg);display:flex;gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.messagePlayer('${coachId}', '${coachUser?.name?.replace(/'/g, "\\'") || ""}')">
+          <i class="ti ti-message"></i> Message coach
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('club-detail-panel').style.display='none'">
+          <i class="ti ti-x"></i> Close
+        </button>
+      </div>
+    </div>`;
   };
 
   const addClub = async (scoutId, coachId, clubName, league) => {
     const result = await HF_DB.addScoutClub(scoutId, coachId, clubName, league);
     if (result.error) {
-      toast(result.error, "error");
+      HF_UTILS.toast(result.error, "error");
       return;
     }
-    toast(`${clubName} added to your network!`, "success");
+    HF_UTILS.toast(`${clubName} added to your network!`, "success");
     clubs(HF_DB.getSession());
   };
 
@@ -1090,96 +1286,179 @@ const HF_SCOUT = (() => {
   // ── FIND MY TEAM ───────────────────────────────────────────
   const findmyteam = async (s) => {
     const { data: coaches } = await HF_DB.getVerifiedCoaches();
+    const { data: approved } = await HF_DB.getApprovedClubNetwork(s.userId);
+
+    const approvedIds = new Set(approved?.map((a) => a.coach_id) || []);
+
+    // fetch network request status for each coach
+    const coachesWithStatus = await Promise.all(
+      (coaches || []).map(async (c) => {
+        const { data: req } = await HF_DB.getClubNetworkStatus(s.userId, c.id);
+        return { ...c, networkRequest: req, isApproved: approvedIds.has(c.id) };
+      }),
+    );
 
     setMain(`
     <div class="welcome-banner">
       <div>
-        <div class="welcome-title">Find my team</div>
-        <div class="welcome-sub">Browse verified coaches and squads</div>
+        <div class="welcome-title">Club network</div>
+        <div class="welcome-sub">Browse verified squads — request access to see full details</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-size:32px;font-weight:700;color:var(--gold);">${approvedIds.size}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:0.08em;">In network</div>
       </div>
     </div>
 
     <div style="display:flex;gap:8px;margin-bottom:var(--sp-lg);flex-wrap:wrap;">
+      <select id="fmt-filter" onchange="HF_SCOUT.filterFMTCoaches()"
+        style="padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
+        <option value="">All clubs</option>
+        <option value="approved">In my network</option>
+        <option value="pending">Pending</option>
+      </select>
       <input type="text" id="fmt-search" placeholder="Search by coach or club name..."
         oninput="HF_SCOUT.filterFMTCoaches()"
-        style="flex:1;padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
+        style="flex:1;min-width:150px;padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
     </div>
 
     <div id="fmt-coaches-list">
       ${
-        !coaches || coaches.length === 0
+        !coachesWithStatus || coachesWithStatus.length === 0
           ? `
         <div class="card">
           <div style="text-align:center;padding:32px;color:var(--text2)">
             <i class="ti ti-building" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No verified coaches yet</div>
-            <div style="font-size:13px">Verified coaches will appear here.</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No verified clubs yet</div>
+            <div style="font-size:13px">Verified clubs will appear here as coaches register.</div>
           </div>
         </div>`
-          : coaches
-              .map(
-                (c) => `
-          <div class="card" style="margin-bottom:var(--sp-md);">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-md);">
-              <div style="display:flex;align-items:center;gap:var(--sp-md);">
-                <div class="avatar avatar-md" style="background:var(--gold)">${HF_UTILS.initials(c.name)}</div>
-                <div>
-                  <div style="font-size:13px;font-weight:600;color:var(--text)">${c.name}</div>
-                  <div style="font-size:12px;color:var(--text2)">${c.profile?.club || "-"}</div>
-                  <div style="font-size:11px;color:var(--text3)">${c.profile?.spec || "Head coach"} · ${c.profile?.exp || "-"} yrs</div>
-                </div>
-              </div>
-              <div style="display:flex;gap:6px;">
-                <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.messagePlayer('${c.id}', '${c.name.replace(/'/g, "\\'")}')">
-                  <i class="ti ti-message"></i> Message
-                </button>
-              </div>
-            </div>
-          </div>`,
-              )
-              .join("")
+          : coachesWithStatus.map((c) => _scoutClubCard(c, s.userId)).join("")
       }
-    </div>`);
+    </div>
 
-    window._fmtScoutCoaches = coaches;
+    <div id="club-detail-panel" style="display:none;margin-top:var(--sp-lg);"></div>`);
+
+    window._fmtScoutCoaches = coachesWithStatus;
+    window._scoutUserId = s.userId;
+  };
+
+  const _scoutClubCard = (c, scoutId) => {
+    const p = c.profile || {};
+    const req = c.networkRequest;
+    const isApproved = c.isApproved;
+    const isPending = req?.status === "pending";
+    const isDeclined = req?.status === "declined";
+    const safeName = c.name.replace(/'/g, "\\'");
+    const safeClub = (p.club || "").replace(/'/g, "\\'");
+
+    return `
+    <div class="card" style="margin-bottom:var(--sp-md);">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-md);">
+        <div style="display:flex;align-items:center;gap:var(--sp-md);">
+          <div style="width:48px;height:48px;background:${isApproved ? "var(--green)" : "var(--bg2)"};border:2px solid ${isApproved ? "var(--green)" : "var(--border)"};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:${isApproved ? "#fff" : "var(--text2)"};flex-shrink:0;">
+            ${(p.club || c.name).charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text)">${p.club || "-"}</div>
+            <div style="font-size:12px;color:var(--text2)">${p.league || "-"} · ${c.name}</div>
+            <div style="font-size:11px;color:var(--text3)">${p.spec || "Head coach"} · ${p.exp || "-"} yrs exp</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          ${
+            isApproved
+              ? `
+            <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">
+              In network
+            </span>`
+              : isPending
+                ? `
+            <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;background:rgba(196,154,10,.15);color:var(--gold);">
+              Request pending
+            </span>`
+                : isDeclined
+                  ? `
+            <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;background:rgba(200,16,46,.1);color:var(--red);">
+              Declined
+            </span>`
+                  : ""
+          }
+        </div>
+      </div>
+
+      ${
+        isApproved
+          ? `
+        <div style="margin-top:var(--sp-md);padding-top:var(--sp-md);border-top:0.5px solid var(--border);display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.toggleClubDetail('${c.id}', '${safeClub}', '${p.league || ""}')">
+            <i class="ti ti-chart-bar"></i> View details
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.messagePlayer('${c.id}', '${safeName}')">
+            <i class="ti ti-message"></i> Message coach
+          </button>
+        </div>`
+          : `
+        <div style="margin-top:var(--sp-md);padding-top:var(--sp-md);border-top:0.5px solid var(--border);display:flex;gap:8px;align-items:center;">
+          <div style="flex:1;font-size:12px;color:var(--text3);">
+            <i class="ti ti-lock" style="margin-right:4px"></i>
+            Request network access to see squad details, ratings, and wellness data.
+          </div>
+          ${
+            !isPending
+              ? `
+            <button class="btn btn-primary btn-sm" onclick="HF_SCOUT.requestNetwork('${c.id}', '${safeName}')">
+              <i class="ti ti-network"></i> Request access
+            </button>`
+              : ""
+          }
+        </div>`
+      }
+    </div>`;
   };
 
   const filterFMTCoaches = () => {
+    const filter = document.getElementById("fmt-filter")?.value;
     const search = document.getElementById("fmt-search")?.value.toLowerCase();
     const list = document.getElementById("fmt-coaches-list");
     if (!list || !window._fmtScoutCoaches) return;
 
     const filtered = window._fmtScoutCoaches.filter((c) => {
+      const p = c.profile || {};
+      const matchFilter =
+        !filter ||
+        (filter === "approved" && c.isApproved) ||
+        (filter === "pending" && c.networkRequest?.status === "pending");
       const matchSearch =
         !search ||
         c.name.toLowerCase().includes(search) ||
-        (c.profile?.club || "").toLowerCase().includes(search);
-      return matchSearch;
+        (p.club || "").toLowerCase().includes(search);
+      return matchFilter && matchSearch;
     });
 
     list.innerHTML =
       filtered.length === 0
-        ? `<div class="card"><div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No coaches match your search.</div></div>`
-        : filtered
-            .map(
-              (c) => `
-        <div class="card" style="margin-bottom:var(--sp-md);">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-md);">
-            <div style="display:flex;align-items:center;gap:var(--sp-md);">
-              <div class="avatar avatar-md" style="background:var(--gold)">${HF_UTILS.initials(c.name)}</div>
-              <div>
-                <div style="font-size:13px;font-weight:600;color:var(--text)">${c.name}</div>
-                <div style="font-size:12px;color:var(--text2)">${c.profile?.club || "-"}</div>
-                <div style="font-size:11px;color:var(--text3)">${c.profile?.spec || "Head coach"} · ${c.profile?.exp || "-"} yrs</div>
-              </div>
-            </div>
-            <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.messagePlayer('${c.id}', '${c.name.replace(/'/g, "\\'")}')">
-              <i class="ti ti-message"></i> Message
-            </button>
-          </div>
-        </div>`,
-            )
-            .join("");
+        ? `<div class="card"><div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No clubs match your filters.</div></div>`
+        : filtered.map((c) => _scoutClubCard(c, window._scoutUserId)).join("");
+  };
+
+  const requestNetwork = async (coachId, coachName) => {
+    const session = HF_DB.getSession();
+    const result = await HF_DB.requestClubNetwork(session.userId, coachId);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    await HF_DB._sendMessage(
+      "system",
+      coachId,
+      "Scout network request",
+      `${session.name} from ${session.profile?.org || "HappyFeet Scouting"} has requested to add your club to their scouting network. You can approve or decline from your squad page.`,
+    );
+
+    HF_UTILS.toast(`Network request sent to ${coachName}!`, "success");
+    findmyteam(session);
   };
 
   // ── EDIT PROFILE ───────────────────────────────────────────
@@ -2566,6 +2845,36 @@ ${reportEl.textContent.trim()}
     setMain(html);
   };
 
+  const toggleClubDetail = async (coachId, clubName, league) => {
+    const panel = document.getElementById("club-detail-panel");
+    const chevron = document.getElementById(`chevron-${coachId}`);
+
+    // if same club is open — close it
+    if (
+      panel &&
+      panel.dataset.openCoach === coachId &&
+      panel.style.display !== "none"
+    ) {
+      panel.style.display = "none";
+      panel.dataset.openCoach = "";
+      if (chevron) chevron.style.transform = "rotate(0deg)";
+      return;
+    }
+
+    // close any open panel and reset all chevrons
+    document
+      .querySelectorAll('[id^="chevron-"]')
+      .forEach((el) => (el.style.transform = "rotate(0deg)"));
+    if (panel) panel.style.display = "none";
+
+    // rotate this chevron
+    if (chevron) chevron.style.transform = "rotate(90deg)";
+
+    // open new panel
+    if (panel) panel.dataset.openCoach = coachId;
+    await viewClubDetail(coachId, clubName, league);
+  };
+
   return {
     render,
     resubmitAgency,
@@ -2614,6 +2923,11 @@ ${reportEl.textContent.trim()}
     downloadReportPDF,
     filterFMTCoaches,
     unflagProspect,
+    filterMyClubs,
+    filterAvailableClubs,
+    viewClubDetail,
+    toggleClubDetail,
+    requestNetwork,
   };
 })();
 

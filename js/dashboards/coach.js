@@ -28,105 +28,152 @@ const HF_COACH = (() => {
       s.userId,
     );
     const { data: trialPlayers } = await HF_DB.getTrialPlayers(s.userId);
+    const { data: networkRequests } = await HF_DB.getPendingClubRequests(
+      s.userId,
+    );
     const isVerified = s.squadStatus === "verified";
-    const squadStatus = s.squadStatus || "unregistered";
     const p = s.profile || {};
+
+    // shared sections for both verified and unverified
+    const trialRequestsHTML =
+      trialRequests?.length > 0
+        ? `
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Trial requests
+          <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
+            ${trialRequests.length} pending
+          </span>
+        </div>
+      </div>
+      ${trialRequests
+        .map((req) => {
+          const rp = req.player?.profile || {};
+          const safeName = (req.player?.name || "").replace(/'/g, "\\'");
+          return `
+          <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
+            <div class="avatar avatar-md" style="background:var(--green)">${HF_UTILS.initials(req.player?.name || "?")}</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${req.player?.name || "-"}</div>
+              <div style="font-size:11px;color:var(--text2)">${rp.pos || "-"} · ${rp.tier || "-"} · ${rp.hometown || "-"}</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:2px">${HF_UTILS.timeAgo(req.created_at)}</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button class="btn btn-primary btn-sm" onclick="HF_COACH.acceptTrialRequest('${req.id}', '${req.player_id}', '${safeName}')">
+                <i class="ti ti-circle-check"></i> Accept to trial
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="HF_COACH.declineTrialRequest('${req.id}', '${req.player_id}', '${safeName}')">
+                <i class="ti ti-x"></i> Decline
+              </button>
+            </div>
+          </div>`;
+        })
+        .join("")}
+    </div>`
+        : "";
+
+    const networkRequestsHTML =
+      networkRequests?.length > 0
+        ? `
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Scout network requests
+          <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
+            ${networkRequests.length} pending
+          </span>
+        </div>
+      </div>
+      ${networkRequests
+        .map((req) => {
+          const rp = req.scout?.profile || {};
+          const safeName = (req.scout?.name || "").replace(/'/g, "\\'");
+          return `
+          <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--blue);margin-bottom:var(--sp-sm);">
+            <div class="avatar avatar-md" style="background:var(--blue)">${HF_UTILS.initials(req.scout?.name || "?")}</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${req.scout?.name || "-"}</div>
+              <div style="font-size:11px;color:var(--text2)">${rp.org || "Scout"} · ${rp.region || "-"}</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:2px">${HF_UTILS.timeAgo(req.created_at)}</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button class="btn btn-primary btn-sm" onclick="HF_COACH.approveNetworkRequest('${req.id}', '${req.scout_id}', '${safeName}')">
+                <i class="ti ti-circle-check"></i> Approve
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="HF_COACH.declineNetworkRequest('${req.id}', '${req.scout_id}', '${safeName}')">
+                <i class="ti ti-x"></i> Decline
+              </button>
+            </div>
+          </div>`;
+        })
+        .join("")}
+    </div>`
+        : "";
+
+    const trialPlayersHTML =
+      trialPlayers?.length > 0
+        ? `
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>On trial
+          <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(26,122,46,.15);color:var(--green);">
+            ${trialPlayers.length} players
+          </span>
+        </div>
+      </div>
+      ${trialPlayers
+        .map((req) => {
+          const rp = req.player?.profile || {};
+          const safeName = (req.player?.name || "").replace(/'/g, "\\'");
+          return `
+          <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--green);margin-bottom:var(--sp-sm);">
+            <div class="avatar avatar-md" style="background:var(--green)">${HF_UTILS.initials(req.player?.name || "?")}</div>
+            <div style="flex:1">
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${req.player?.name || "-"}</div>
+              <div style="font-size:11px;color:var(--text2)">${rp.pos || "-"} · ${rp.tier || "-"} · ${rp.hometown || "-"}</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:2px">On trial since ${HF_UTILS.timeAgo(req.responded_at)}</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+              <button class="btn btn-primary btn-sm" onclick="HF_COACH.approveTrialPlayer('${req.id}', '${req.player_id}', '${safeName}')">
+                <i class="ti ti-user-plus"></i> Add to squad
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="HF_COACH.removeTrialPlayer('${req.id}', '${req.player_id}', '${safeName}')">
+                <i class="ti ti-x"></i> Remove
+              </button>
+            </div>
+          </div>`;
+        })
+        .join("")}
+    </div>`
+        : "";
 
     if (!isVerified) {
       setMain(`
-        ${
-          trialRequests && trialRequests.length > 0
-            ? `
-          <div class="card">
-            <div class="card-title" style="justify-content:space-between;">
-              <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-                <div class="card-dot"></div>Trial requests
-                <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
-                  ${trialRequests.length} pending
-                </span>
-              </div>
-            </div>
-            ${trialRequests
-              .map((req) => {
-                const p = req.player?.profile || {};
-                const safeName = (req.player?.name || "").replace(/'/g, "\\'");
-                return `
-                <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
-                  <div class="avatar avatar-md" style="background:var(--green)">${HF_UTILS.initials(req.player?.name || "?")}</div>
-                  <div style="flex:1">
-                    <div style="font-size:13px;font-weight:600;color:var(--text)">${req.player?.name || "-"}</div>
-                    <div style="font-size:11px;color:var(--text2)">${p.pos || "-"} · ${p.tier || "-"} · ${p.hometown || "-"}</div>
-                    <div style="font-size:10px;color:var(--text3);margin-top:2px">${HF_UTILS.timeAgo(req.created_at)}</div>
-                  </div>
-                  <div style="display:flex;gap:6px;flex-shrink:0;">
-                    <button class="btn btn-primary btn-sm" onclick="HF_COACH.acceptTrialRequest('${req.id}', '${req.player_id}', '${safeName}')">
-                      <i class="ti ti-circle-check"></i> Accept to trial
-                    </button>
-                    <button class="btn btn-danger btn-sm" onclick="HF_COACH.declineTrialRequest('${req.id}', '${req.player_id}', '${safeName}')">
-                      <i class="ti ti-x"></i> Decline
-                    </button>
-                  </div>
-                </div>`;
-              })
-              .join("")}
-          </div>`
-            : ""
-        }
-
-        ${
-          trialPlayers && trialPlayers.length > 0
-            ? `
-          <div class="card">
-            <div class="card-title" style="justify-content:space-between;">
-              <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-                <div class="card-dot"></div>On trial
-                <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(26,122,46,.15);color:var(--green);">
-                  ${trialPlayers.length} players
-                </span>
-              </div>
-            </div>
-            ${trialPlayers
-              .map((req) => {
-                const p = req.player?.profile || {};
-                const safeName = (req.player?.name || "").replace(/'/g, "\\'");
-                return `
-                <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--green);margin-bottom:var(--sp-sm);">
-                  <div class="avatar avatar-md" style="background:var(--green)">${HF_UTILS.initials(req.player?.name || "?")}</div>
-                  <div style="flex:1">
-                    <div style="font-size:13px;font-weight:600;color:var(--text)">${req.player?.name || "-"}</div>
-                    <div style="font-size:11px;color:var(--text2)">${p.pos || "-"} · ${p.tier || "-"} · ${p.hometown || "-"}</div>
-                    <div style="font-size:10px;color:var(--text3);margin-top:2px">On trial since ${HF_UTILS.timeAgo(req.responded_at)}</div>
-                  </div>
-                  <div style="display:flex;gap:6px;flex-shrink:0;">
-                    <button class="btn btn-primary btn-sm" onclick="HF_COACH.approveTrialPlayer('${req.id}', '${req.player_id}', '${safeName}')">
-                      <i class="ti ti-user-plus"></i> Add to squad
-                    </button>
-                    <button class="btn btn-danger btn-sm" onclick="HF_COACH.removeTrialPlayer('${req.id}', '${req.player_id}', '${safeName}')">
-                      <i class="ti ti-x"></i> Remove
-                    </button>
-                  </div>
-                </div>`;
-              })
-              .join("")}
-          </div>`
-            : ""
-        }
-        <div class="card">
-          <div style="text-align:center;padding:32px;color:var(--text2)">
-            <i class="ti ti-lock" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Squad locked</div>
-            <div style="font-size:13px">Register and verify your squad to start adding players.</div>
-            <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="HF_COACH.resubmitSquad()">
-              <i class="ti ti-clipboard-check"></i> Register your squad
-            </button>
-          </div>
-        </div>`);
+      ${trialRequestsHTML}
+      ${networkRequestsHTML}
+      ${trialPlayersHTML}
+      <div class="card">
+        <div style="text-align:center;padding:32px;color:var(--text2)">
+          <i class="ti ti-lock" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">Squad locked</div>
+          <div style="font-size:13px">Register and verify your squad to start adding players.</div>
+          <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="HF_COACH.resubmitSquad()">
+            <i class="ti ti-clipboard-check"></i> Register your squad
+          </button>
+        </div>
+      </div>`);
       return;
     }
 
     const hasPlayers = squadPlayers?.length > 0;
 
     setMain(`
+    ${trialRequestsHTML}
+    ${networkRequestsHTML}
+    ${trialPlayersHTML}
+
     <div class="card">
       <div class="card-title" style="justify-content:space-between;">
         <div style="display:flex;align-items:center;gap:var(--sp-sm);">
@@ -176,51 +223,45 @@ const HF_COACH = (() => {
           <tbody>
             ${squadPlayers
               .map((sp) => {
-                const p = sp.player?.profile || {};
+                const rp = sp.player?.profile || {};
                 const name = sp.player?.name || "Unknown";
                 const safeName = name.replace(/'/g, "\\'");
-                const overall = p.ratings
+                const overall = rp.ratings
                   ? Math.round(
-                      (p.ratings.speed +
-                        p.ratings.tech +
-                        p.ratings.tact +
-                        p.ratings.phys) /
+                      (rp.ratings.speed +
+                        rp.ratings.tech +
+                        rp.ratings.tact +
+                        rp.ratings.phys) /
                         4,
                     )
                   : null;
                 return `
-                  <tr style="cursor:pointer;" onclick="HF_COACH.trackPlayer('${sp.player_id}', '${safeName}')">
-                    <td style="font-weight:600">${name}</td>
-                    <td>${p.pos || "-"}</td>
-                    <td>${p.tier || "-"}</td>
-                    <td>
-                      <span style="font-size:10px;padding:1px 7px;font-weight:600;
-                        background:${p.status === "signed" ? "rgba(26,122,46,.1)" : "rgba(196,154,10,.1)"};
-                        color:${p.status === "signed" ? "var(--green)" : "var(--gold)"}">
-                        ${p.status === "signed" ? "Signed" : "Unattached"}
-                      </span>
-                    </td>
-                    <td style="font-weight:700;color:${overall ? "var(--gold)" : "var(--text3)"}">
-                      ${overall !== null ? overall + "%" : "-"}
-                    </td>
-                    <td onclick="event.stopPropagation()">
-                      <button class="btn btn-danger btn-sm" onclick="HF_COACH.confirmKickPlayer('${sp.player_id}', '${safeName}')">
-                        <i class="ti ti-logout"></i> Remove
-                      </button>
-                    </td>
-                  </tr>`;
+                <tr style="cursor:pointer;" onclick="HF_COACH.trackPlayer('${sp.player_id}', '${safeName}')">
+                  <td style="font-weight:600">${name}</td>
+                  <td>${rp.pos || "-"}</td>
+                  <td>${rp.tier || "-"}</td>
+                  <td>
+                    <span style="font-size:10px;padding:1px 7px;font-weight:600;
+                      background:${rp.status === "signed" ? "rgba(26,122,46,.1)" : "rgba(196,154,10,.1)"};
+                      color:${rp.status === "signed" ? "var(--green)" : "var(--gold)"}">
+                      ${rp.status === "signed" ? "Signed" : "Unattached"}
+                    </span>
+                  </td>
+                  <td style="font-weight:700;color:${overall ? "var(--gold)" : "var(--text3)"}">
+                    ${overall !== null ? overall + "%" : "-"}
+                  </td>
+                  <td onclick="event.stopPropagation()">
+                    <button class="btn btn-danger btn-sm" onclick="HF_COACH.confirmKickPlayer('${sp.player_id}', '${safeName}')">
+                      <i class="ti ti-logout"></i> Remove
+                    </button>
+                  </td>
+                </tr>`;
               })
               .join("")}
           </tbody>
         </table>`
       }
     </div>`);
-  };
-
-  const statusBadge = (st) => {
-    const map = { fit: "green", monitor: "gold", alert: "red" };
-    const lbl = { fit: "Fit", monitor: "Monitor", alert: "Alert" };
-    return badgeHTML(lbl[st] || st, map[st] || "gold");
   };
 
   const render = (view, session) => {
@@ -3430,6 +3471,44 @@ const HF_COACH = (() => {
     squad(session);
   };
 
+  const approveNetworkRequest = async (requestId, scoutId, scoutName) => {
+    const session = HF_DB.getSession();
+    const result = await HF_DB.respondClubRequest(requestId, "approved");
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    await HF_DB._sendMessage(
+      "system",
+      scoutId,
+      "Network request approved",
+      `${session.name} has approved your request to add ${session.profile?.club || "their club"} to your scouting network. You can now view full squad details.`,
+    );
+
+    HF_UTILS.toast(`${scoutName} added to your network!`, "success");
+    squad(session);
+  };
+
+  const declineNetworkRequest = async (requestId, scoutId, scoutName) => {
+    const session = HF_DB.getSession();
+    const result = await HF_DB.respondClubRequest(requestId, "declined");
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    await HF_DB._sendMessage(
+      "system",
+      scoutId,
+      "Network request declined",
+      `${session.name} has declined your request to add their club to your scouting network at this time.`,
+    );
+
+    HF_UTILS.toast(`${scoutName}'s request declined.`, "error");
+    squad(session);
+  };
+
   return {
     render,
     readMessage,
@@ -3480,6 +3559,8 @@ const HF_COACH = (() => {
     declineTrialRequest,
     approveTrialPlayer,
     removeTrialPlayer,
+    approveNetworkRequest,
+    declineNetworkRequest,
   };
 })();
 

@@ -2224,6 +2224,92 @@ const HF_DB = (() => {
     };
   };
 
+  const getCoachSquadDetails = async (coachId) => {
+    const { data: squadPlayers, error } = await _client
+      .from("squad_invites")
+      .select(
+        "player_id, player:users!squad_invites_player_id_fkey(id, name, profile)",
+      )
+      .eq("coach_id", coachId)
+      .eq("status", "accepted");
+    if (error) return { data: [] };
+    return { data: squadPlayers || [] };
+  };
+
+  const requestClubNetwork = async (scoutId, coachId) => {
+    const { data: existing } = await _client
+      .from("scout_club_requests")
+      .select("*")
+      .eq("scout_id", scoutId)
+      .eq("coach_id", coachId)
+      .maybeSingle();
+
+    if (existing) {
+      if (existing.status === "pending")
+        return { error: "Request already pending." };
+      if (existing.status === "approved")
+        return { error: "Already in your network." };
+    }
+
+    const { error } = await _client.from("scout_club_requests").upsert(
+      {
+        scout_id: scoutId,
+        coach_id: coachId,
+        status: "pending",
+        responded_at: null,
+      },
+      { onConflict: "scout_id,coach_id" },
+    );
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const respondClubRequest = async (requestId, status) => {
+    const { error } = await _client
+      .from("scout_club_requests")
+      .update({ status, responded_at: new Date().toISOString() })
+      .eq("id", requestId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const getClubNetworkStatus = async (scoutId, coachId) => {
+    const { data, error } = await _client
+      .from("scout_club_requests")
+      .select("*")
+      .eq("scout_id", scoutId)
+      .eq("coach_id", coachId)
+      .maybeSingle();
+    if (error) return { data: null };
+    return { data };
+  };
+
+  const getPendingClubRequests = async (coachId) => {
+    const { data, error } = await _client
+      .from("scout_club_requests")
+      .select(
+        "*, scout:users!scout_club_requests_scout_id_fkey(id, name, profile)",
+      )
+      .eq("coach_id", coachId)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const getApprovedClubNetwork = async (scoutId) => {
+    const { data, error } = await _client
+      .from("scout_club_requests")
+      .select(
+        "*, coach:users!scout_club_requests_coach_id_fkey(id, name, profile)",
+      )
+      .eq("scout_id", scoutId)
+      .eq("status", "approved")
+      .order("created_at", { ascending: false });
+    if (error) return { data: [] };
+    return { data };
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     localDate: _localDate,
@@ -2308,6 +2394,7 @@ const HF_DB = (() => {
     getTodaySessionRating,
     getPlayerSessionRatings,
     getSquadSessionRatings,
+    getCoachSquadDetails,
     searchAllUsers,
     _updateSessionRating,
     saveHealthLog,
@@ -2335,6 +2422,11 @@ const HF_DB = (() => {
     getPendingTrialRequests,
     getTrialPlayers,
     getSquadReadiness,
+    requestClubNetwork,
+    respondClubRequest,
+    getClubNetworkStatus,
+    getPendingClubRequests,
+    getApprovedClubNetwork,
   };
 })();
 

@@ -98,7 +98,6 @@ const HF_ROUTER = (() => {
           { view: "pipeline", icon: "ti-chart-line", label: "Pipeline" },
           { section: "Reports" },
           { view: "reports", icon: "ti-file-text", label: "Scout reports" },
-          { view: "clubs", icon: "ti-building", label: "Club network" },
           { view: "placements", icon: "ti-circle-check", label: "Placements" },
         );
       }
