@@ -784,7 +784,7 @@ const HF_COACH = (() => {
             </div>
             <div style="flex:1;opacity:0.6">
               <div style="font-size:11px;font-family:var(--font-head);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
-                From: ${m.senderName || "HappyFeet Admin"}
+                From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : "HappyFeet Admin")}
               </div>
               <div class="msg-name">${m.subject || "Message"}</div>
               <div class="msg-preview">${m.body}</div>
@@ -943,6 +943,30 @@ const HF_COACH = (() => {
     const { data: msgs } = await HF_DB.getMessages(session.userId);
     const unreadCount = msgs?.filter((m) => !m.read).length || 0;
     HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
+
+    // find the message and show body in a modal
+    const msg = msgs?.find((m) => m.id === messageId);
+    if (msg) {
+      const overlay = document.createElement("div");
+      overlay.id = `msg-modal-${messageId}`;
+      overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:var(--sp-xl);`;
+      overlay.innerHTML = `
+      <div style="background:var(--bg);border-top:3px solid var(--gold);padding:var(--sp-2xl);max-width:480px;width:100%;">
+        <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
+          HappyFeet ${msg.from_id === "system" ? "System" : "Admin"}
+        </div>
+        <div style="font-family:var(--font-head);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
+          ${msg.subject || "Message"}
+        </div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:var(--sp-xl);">
+          ${msg.body}
+        </div>
+        <button class="btn btn-primary" onclick="document.getElementById('msg-modal-${messageId}').remove();HF_ROUTER.navTo('messages');">
+          <i class="ti ti-circle-check"></i> Got it
+        </button>
+      </div>`;
+      document.body.appendChild(overlay);
+    }
 
     messages(session);
   };
@@ -1417,6 +1441,7 @@ const HF_COACH = (() => {
         <label class="required">Subject</label>
         <select id="contact-subject" style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
           <option value="">Select a subject</option>
+          <option>Account issue</option>
           <option>Change squad name</option>
           <option>Change league / division</option>
           <option>Update home ground</option>

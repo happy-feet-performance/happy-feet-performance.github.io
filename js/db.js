@@ -824,17 +824,49 @@ const HF_DB = (() => {
   };
 
   const archiveMessage = async (messageId) => {
-    await _client
+    // get the thread_id for this message first
+    const { data: msg } = await _client
       .from("messages")
-      .update({ archived: true, read: true })
-      .eq("id", messageId);
+      .select("thread_id")
+      .eq("id", messageId)
+      .single();
+
+    if (msg?.thread_id) {
+      // archive all messages in the thread
+      await _client
+        .from("messages")
+        .update({ archived: true, read: true })
+        .eq("thread_id", msg.thread_id);
+    } else {
+      // fallback:archive just this message
+      await _client
+        .from("messages")
+        .update({ archived: true, read: true })
+        .eq("id", messageId);
+    }
   };
 
   const unarchiveMessage = async (messageId) => {
-    await _client
+    // get the thread_id for this message first
+    const { data: msg } = await _client
       .from("messages")
-      .update({ archived: false })
-      .eq("id", messageId);
+      .select("thread_id")
+      .eq("id", messageId)
+      .single();
+
+    if (msg?.thread_id) {
+      // unarchive all messages in the thread
+      await _client
+        .from("messages")
+        .update({ archived: false })
+        .eq("thread_id", msg.thread_id);
+    } else {
+      // fallback: unarchive just this message
+      await _client
+        .from("messages")
+        .update({ archived: false })
+        .eq("id", messageId);
+    }
   };
 
   const getMessages = async (userId) => {

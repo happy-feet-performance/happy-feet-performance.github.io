@@ -257,7 +257,7 @@ const HF_ROUTER = (() => {
               // check if user is currently in a thread view
               const threadMessages = document.getElementById("thread-messages");
               if (threadMessages) {
-                // user is in a thread — check if this message belongs to the same thread
+                // check if this message belongs to the same thread
                 if (newMessage.thread_id) {
                   handlers[s.role]?.viewThread?.(
                     newMessage.thread_id,
@@ -266,7 +266,7 @@ const HF_ROUTER = (() => {
                   );
                 }
               } else {
-                // user is on messages list — refresh it
+                // user is on messages list so refresh it
                 handlers[s.role]?.messages?.(s);
               }
             }
