@@ -235,7 +235,13 @@ const HF_SCOUT = (() => {
   };
 
   // ── PROFILE ────────────────────────────────────────────────
-  const profile = (s) => {
+  const profile = async (s) => {
+    // fetch fresh profile from db
+    const { data: freshUser } = await HF_DB.getUserById(s.userId);
+    if (freshUser?.profile) {
+      s.profile = freshUser.profile;
+      HF_DB.saveSession(s);
+    }
     const p = s.profile || {};
     const regionsDisplay = Array.isArray(p.regionsCovered)
       ? p.regionsCovered.join(", ")
@@ -245,41 +251,45 @@ const HF_SCOUT = (() => {
       : p.dest || "-";
 
     setMain(`
-      <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
-        <div style="display:flex;align-items:center;gap:var(--sp-lg);">
-          <div style="width:72px;height:72px;background:#185FA5;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#fff;">
-            ${HF_UTILS.initials(s.name)}
-          </div>
-          <div>
-            <div style="font-family:var(--font);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${s.name}</div>
-            <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.org || "-"}</div>
-            <div style="margin-top:8px;">${badgeHTML("Scout", "blue")}</div>
+    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
+      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
+        <div style="width:72px;height:72px;overflow:hidden;background:#185FA5;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;">
+          ${
+            p.avatarUrl
+              ? `<img src="${p.avatarUrl}?cb=${Date.now()}" style="width:100%;height:100%;object-fit:cover;">`
+              : HF_UTILS.initials(s.name)
+          }
+        </div>
+        <div>
+          <div style="font-family:var(--font);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${s.name}</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.org || "-"}</div>
+          <div style="margin-top:8px;">${badgeHTML("Scout", "blue")}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Scout details
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.editProfile()">
+          <i class="ti ti-edit"></i> Edit
+        </button>
+      </div>
+      <div class="info-grid">
+        <div class="info-cell"><div class="info-label">Organisation</div><div class="info-val">${p.org || "-"}</div></div>
+        <div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp || "-"} years</div></div>
+        <div class="info-cell"><div class="info-label">Regions covered</div><div class="info-val">${regionsDisplay}</div></div>
+        <div class="info-cell"><div class="info-label">Target destinations</div><div class="info-val">${leaguesDisplay}</div></div>
+        <div class="info-cell"><div class="info-label">${s.contactType === "phone" ? "Phone" : "Email"}</div><div class="info-val">${s.displayContact || s.contact}</div></div>
+        <div class="info-cell"><div class="info-label">Agency status</div>
+          <div class="info-val" style="color:${s.agencyStatus === "verified" ? "var(--green)" : "var(--text2)"}">
+            ${s.agencyStatus === "verified" ? "Verified" : s.agencyStatus || "Unregistered"}
           </div>
         </div>
       </div>
-
-      <div class="card">
-        <div class="card-title" style="justify-content:space-between;">
-          <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-            <div class="card-dot"></div>Scout details
-          </div>
-          <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.editProfile()">
-            <i class="ti ti-edit"></i> Edit
-          </button>
-        </div>
-        <div class="info-grid">
-          <div class="info-cell"><div class="info-label">Organisation</div><div class="info-val">${p.org || "-"}</div></div>
-          <div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp || "-"} years</div></div>
-          <div class="info-cell"><div class="info-label">Regions covered</div><div class="info-val">${regionsDisplay}</div></div>
-          <div class="info-cell"><div class="info-label">Target destinations</div><div class="info-val">${leaguesDisplay}</div></div>
-          <div class="info-cell"><div class="info-label">${s.contactType === "phone" ? "Phone" : "Email"}</div><div class="info-val">${s.displayContact || s.contact}</div></div>
-          <div class="info-cell"><div class="info-label">Agency status</div>
-            <div class="info-val" style="color:${s.agencyStatus === "verified" ? "var(--green)" : "var(--text2)"}">
-              ${s.agencyStatus === "verified" ? "Verified" : s.agencyStatus || "Unregistered"}
-            </div>
-          </div>
-        </div>
-      </div>`);
+    </div>`);
   };
 
   // ── DISCOVER ───────────────────────────────────────────────
