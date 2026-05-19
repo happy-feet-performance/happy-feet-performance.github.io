@@ -504,17 +504,18 @@ const HF_ROUTER = (() => {
     nav.innerHTML = `
     <div class="sidenav-scroll">${navHTML}</div>
     <div class="sidenav-footer" onclick="HF_ROUTER.navTo('profile')" style="cursor:pointer;">
-      <div style="display:flex;align-items:center;gap:10px;padding:var(--sp-md);border-top:0.5px solid var(--border);">
-          ${HF_UTILS.avatarHTML(
-            session.name,
-            session.profile?.avatarUrl,
-            "sm",
-            session.role === "player"
-              ? "var(--green)"
-              : session.role === "coach"
-                ? "var(--gold)"
-                : "var(--blue)",
-          )}
+      ${HF_UTILS.avatarHTML(
+        session.name,
+        session.profile?.avatarUrl,
+        "sm",
+        session.role === "player"
+          ? "var(--green)"
+          : session.role === "coach"
+            ? "var(--gold)"
+            : "var(--blue)",
+      )}
+      <div>
+        <div class="sidenav-footer-name">${session.name}</div>
         <div class="sidenav-footer-role">${session.displayContact || session.contact}</div>
       </div>
     </div>`;
