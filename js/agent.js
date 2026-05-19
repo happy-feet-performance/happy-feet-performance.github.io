@@ -50,7 +50,7 @@ Keep responses concise, practical, and encouraging. You understand African footb
       if (!hasGreeted) {
         _addMessage(
           "agent",
-          "Hello! I'm HappyFeet AI ⚽ Ask me anything about football — tactics, training, positions, African leagues, player development, or anything else football related!",
+          "Hello! I'm HappyFeet AI ⚽ Ask me anything about football (tactics, training, positions, African leagues, player development, or anything else football related)!",
         );
         localStorage.setItem(greetKey, "1");
       }
@@ -252,7 +252,7 @@ Keep responses concise, practical, and encouraging. You understand African footb
           return;
         }
 
-        // section headers — ALL CAPS ending with colon
+        // section headers
         if (/^[A-Z][A-Z\s]{2,}:$/.test(line)) {
           if (inList) {
             html += "</div>";
