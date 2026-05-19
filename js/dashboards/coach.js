@@ -306,13 +306,22 @@ const HF_COACH = (() => {
 
     setMain(`
     <div class="welcome-banner">
-      <div>
-        <div class="welcome-title">${newUser ? "Welcome" : "Welcome back"}, Coach ${s.name.split(" ").pop()}!</div>
-        <div class="welcome-sub">${p.spec || "Head coach"} · ${p.licence || "-"} licence</div>
-        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
-          ${badgeHTML("Coach", "gold")}
-          <span style="font-size:11px;color:rgba(255,255,255,.4)">${p.club || "-"}</span>
-          ${squadStatusBadge}
+      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
+        <div style="width:72px;height:72px;overflow:hidden;background:var(--gold);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;">
+          ${
+            p.avatarUrl
+              ? `<img src="${p.avatarUrl}?cb=${Date.now()}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
+              : HF_UTILS.initials(s.name)
+          }
+        </div>
+        <div>
+          <div class="welcome-title">${newUser ? "Welcome" : "Welcome back"}, Coach ${s.name.split(" ")[0]}!</div>
+            <div class="welcome-sub">${p.spec || "Head coach"} · ${p.licence || "-"} licence</div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+              ${badgeHTML("Coach", "gold")}
+              <span style="font-size:11px;color:rgba(255,255,255,.4)">${p.club || "-"}</span>
+              ${squadStatusBadge}
+            </div>
         </div>
       </div>
       <div style="text-align:right;flex-shrink:0;">
@@ -508,9 +517,7 @@ const HF_COACH = (() => {
     setMain(`
     <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
       <div style="display:flex;align-items:center;gap:var(--sp-lg);">
-        <div style="width:72px;height:72px;background:#C49A0A;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#0f0f0d;">
-          ${HF_UTILS.initials(s.name)}
-        </div>
+        ${HF_UTILS.avatarHTML(s.name, p.avatarUrl, "xl", "var(--gold)")}
         <div>
           <div style="font-family:var(--font);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${s.name}</div>
           <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.spec || "Head coach"} · ${p.club || "-"}</div>
@@ -546,13 +553,18 @@ const HF_COACH = (() => {
     setMain(`
     <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;gap:var(--sp-lg);">
       <div style="position:relative;">
-        <div style="width:72px;height:72px;background:#C49A0A;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#0f0f0d;">
-          ${HF_UTILS.initials(session.name)}
+        <div id="avatar-banner" style="width:72px;height:72px;overflow:hidden;background:#C49A0A;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#0f0f0d;">
+          ${
+            p.avatarUrl
+              ? `<img src="${p.avatarUrl}?cb=${Date.now()}" style="width:100%;height:100%;object-fit:cover;">`
+              : HF_UTILS.initials(session.name)
+          }
         </div>
-        <button onclick="HF_UTILS.toast('Profile photo upload coming soon!','success')"
-          style="position:absolute;bottom:-8px;right:-8px;width:24px;height:24px;background:var(--gold);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0f0f0d;">
+        <label style="position:absolute;bottom:-8px;right:-8px;width:24px;height:24px;background:var(--gold);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0f0f0d;">
           <i class="ti ti-camera" style="font-size:12px"></i>
-        </button>
+          <input type="file" id="avatar-input" accept="image/*" style="display:none;"
+            onchange="HF_COACH.previewAvatar(this)">
+        </label>
       </div>
       <div>
         <div style="font-family:var(--font);font-size:22px;font-weight:700;color:#fff;">${session.name}</div>
@@ -641,6 +653,20 @@ const HF_COACH = (() => {
       return;
     }
 
+    // handle avatar upload
+    const file = window._pendingAvatarFile || null;
+    let avatarUrl = p.avatarUrl || null;
+    if (file) {
+      HF_UTILS.toast("Uploading photo...", "success");
+      const uploadResult = await HF_DB.uploadAvatar(session.userId, file);
+      if (uploadResult.error) {
+        HF_UTILS.toast(uploadResult.error, "error");
+        return;
+      }
+      avatarUrl = uploadResult.url;
+      window._pendingAvatarFile = null;
+    }
+
     if (name !== session.name) {
       const nameResult = await HF_DB.updateUserName(session.userId, name);
       if (nameResult.error) {
@@ -650,7 +676,7 @@ const HF_COACH = (() => {
       session.name = name;
     }
 
-    const updatedProfile = { ...p, licence, exp, spec };
+    const updatedProfile = { ...p, licence, exp, spec, avatarUrl };
     const result = await HF_DB.updateUserProfile(
       session.userId,
       updatedProfile,
@@ -3138,6 +3164,25 @@ const HF_COACH = (() => {
     trackPlayer(playerId, playerName);
   };
 
+  const previewAvatar = (input) => {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      HF_UTILS.toast("Image must be under 2MB.", "error");
+      return;
+    }
+    window._pendingAvatarFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      ["avatar-preview", "avatar-banner"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el)
+          el.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   const viewPlayerHealth = async (playerId, playerName) => {
     const { data: logs } = await HF_DB.getPlayerHealthLogs(playerId, 14);
     const { data: todayLog } = await HF_DB.getTodayHealthLog(playerId);
@@ -3735,6 +3780,7 @@ const HF_COACH = (() => {
     removeTrialPlayer,
     approveNetworkRequest,
     declineNetworkRequest,
+    previewAvatar,
   };
 })();
 

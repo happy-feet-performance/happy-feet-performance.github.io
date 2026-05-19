@@ -89,9 +89,24 @@ const HF_UTILS = (() => {
   };
 
   // ─── Avatar HTML ───────────────────────────────────────────
-  const avatarHTML = (name, size = "md", color = null) => {
-    const bg = color || avatarColor(name);
-    return `<div class="avatar avatar-${size}" style="background:${bg}">${initials(name)}</div>`;
+  const avatarHTML = (name, avatarUrl, size = "md", color = "var(--gold)") => {
+    const sizes = { sm: "32px", md: "40px", lg: "56px", xl: "72px" };
+    const px = sizes[size] || sizes.md;
+    const font = { sm: "12px", md: "14px", lg: "20px", xl: "26px" };
+    const fs = font[size] || font.md;
+    const url = avatarUrl ? `${avatarUrl}?cb=${Date.now()}` : null;
+
+    if (url) {
+      return `<div style="width:${px};height:${px};flex-shrink:0;overflow:hidden;">
+      <img src="${url}" alt="${name}" 
+        style="width:100%;height:100%;object-fit:cover;"
+        onerror="this.parentElement.innerHTML='${HF_UTILS.initials(name)}'">
+    </div>`;
+    }
+
+    return `<div style="width:${px};height:${px};background:${color};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:${fs};color:#fff;flex-shrink:0;">
+    ${initials(name)}
+  </div>`;
   };
 
   // ─── Bar HTML ──────────────────────────────────────────────

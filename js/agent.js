@@ -9,23 +9,33 @@ const HF_AGENT = (() => {
   let _history = [];
   let _sessionId = null;
 
-  const _systemPrompt = `You are DribbleBot, a football expert assistant for the HappyFeet Performance Hub, an athletic performance platform focused on African football, particularly Ghana and West Africa.
+  const _systemPrompt = `You are DribbleBot, a football expert assistant for the HappyFeet Performance Hub — an athletic performance platform focused on African football, particularly Ghana and West Africa.
 
-You help players, coaches, and scouts with anything and everything football related:
-- Football rules, tactics, formations, and strategy
-- Player development, training advice, and fitness tips
-- Position-specific guidance (GK, CB, LB, RB, DM, CM, CAM, LW, RW, ST)
-- Age tier development (U10 through Professional)
-- African football leagues, clubs, and competitions (Ghana Premier League, CAF Champions League, etc.)
-- Coaching methodology, session planning, and squad management
-- Scouting techniques, player evaluation, and recruitment
-- Football culture in Ghana, Nigeria, Senegal, and across Africa
-- Injury prevention, recovery, and wellness
-- Mental preparation and faith in sport
+You help players, coaches, and scouts with anything and everything football related.
 
-Keep responses concise, practical, and encouraging. You understand the African football context deeply. Use football terminology naturally. Be enthusiastic about African talent and its potential on the world stage.
+IMPORTANT — FORMAT YOUR RESPONSES EXACTLY LIKE THIS:
+- Use SECTION: to start a new section (e.g. "THE BASICS:")
+- Use • for bullet points
+- Keep sentences short and clear
+- End with a FOLLOW UP: section containing one question for the user
+- Never use markdown like ** or # or _ 
+- Never use emoji except ⚽ at the very end of your response
 
-If asked about something unrelated to football, gently redirect the conversation back to football topics.`;
+Example format:
+Opening sentence about the topic.
+
+SECTION NAME:
+- Point one
+- Point two
+
+ANOTHER SECTION:
+- Point one
+- Point two
+
+FOLLOW UP:
+What aspect interests you most?
+
+Keep responses concise, practical, and encouraging. You understand African football deeply.`;
 
   const toggle = () => {
     const panel = document.getElementById("ai-agent-panel");
@@ -127,13 +137,13 @@ If asked about something unrelated to football, gently redirect the conversation
 
   const stripMarkdown = (text) => {
     return text
-      .replace(/\*\*(.*?)\*\*/g, "$1")
-      .replace(/\*(.*?)\*/g, "$1")
-      .replace(/#{1,6}\s/g, "")
-      .replace(/`{1,3}(.*?)`{1,3}/g, "$1")
-      .replace(/\[(.*?)\]\(.*?\)/g, "$1")
-      .replace(/^\s*[-*+]\s/gm, "• ")
-      .replace(/^\s*\d+\.\s/gm, "")
+      .replace(/\*\*(.*?)\*\*/g, "$1") // remove bold markers
+      .replace(/\*(.*?)\*/g, "$1") // remove italic markers
+      .replace(/#{1,6}\s+(.*)/g, "$1:") // convert # Header to Header:
+      .replace(/`{1,3}(.*?)`{1,3}/g, "$1") // remove code markers
+      .replace(/\[(.*?)\]\(.*?\)/g, "$1") // remove links
+      .replace(/^[-*+]\s/gm, "• ") // convert - item to • item
+      .replace(/^\d+\.\s/gm, "• ") // convert 1. item to • item
       .trim();
   };
 
@@ -196,12 +206,96 @@ If asked about something unrelated to football, gently redirect the conversation
     }
   };
 
+  const formatAgentResponse = (text) => {
+    return text
+      .replace(/[\u{1F1E0}-\u{1F1FF}]{2}/gu, "") // remove flags
+      .replace(/\*\*(.*?)\*\*/g, "$1") // remove bold
+      .replace(/\*(.*?)\*/g, "$1") // remove italic
+      .replace(/#{1,6}\s/g, "") // remove headers
+      .replace(/\s*•\s*/g, "\n• ") // normalize bullets
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  };
+
   const _addMessage = (role, text) => {
     const container = document.getElementById("ai-agent-messages");
     if (!container) return;
     const div = document.createElement("div");
     div.className = role === "user" ? "ai-msg-user" : "ai-msg-agent";
-    div.textContent = text;
+
+    if (role === "agent") {
+      const structured = formatAgentResponse(text);
+      const lines = structured.split("\n");
+      let html = "";
+      let inList = false;
+      let inFollowUp = false;
+
+      lines.forEach((line) => {
+        line = line.trim();
+        if (!line) {
+          if (inList) {
+            html += "</div>";
+            inList = false;
+          }
+          html += '<div style="height:6px;"></div>';
+          return;
+        }
+
+        // FOLLOW UP section
+        if (line === "FOLLOW UP:") {
+          if (inList) {
+            html += "</div>";
+            inList = false;
+          }
+          inFollowUp = true;
+          html += `<div style="margin-top:12px;padding:10px 12px;background:rgba(196,154,10,.08);border-left:2px solid var(--gold);">`;
+          return;
+        }
+
+        // section headers — ALL CAPS ending with colon
+        if (/^[A-Z][A-Z\s]{2,}:$/.test(line)) {
+          if (inList) {
+            html += "</div>";
+            inList = false;
+          }
+          if (inFollowUp) {
+            html += "</div>";
+            inFollowUp = false;
+          }
+          html += `<div style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;color:var(--gold);margin-top:12px;margin-bottom:4px;">${line.slice(0, -1)}</div>`;
+          return;
+        }
+
+        // bullet points
+        if (line.startsWith("•")) {
+          if (!inList && !inFollowUp) {
+            html += '<div style="display:flex;flex-direction:column;gap:4px;">';
+            inList = true;
+          }
+          html += `
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <span style="color:var(--gold);font-weight:700;flex-shrink:0;">•</span>
+            <span style="line-height:1.5;">${line.slice(1).trim()}</span>
+          </div>`;
+          return;
+        }
+
+        // regular text or follow up question
+        if (inList) {
+          html += "</div>";
+          inList = false;
+        }
+        html += `<div style="line-height:1.6;margin:2px 0;${inFollowUp ? "color:var(--text2);font-size:12px;" : ""}">${line}</div>`;
+      });
+
+      if (inList) html += "</div>";
+      if (inFollowUp) html += "</div>";
+
+      div.innerHTML = html;
+    } else {
+      div.textContent = text;
+    }
+
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
   };
@@ -211,8 +305,16 @@ If asked about something unrelated to football, gently redirect the conversation
     if (!container) return;
     const typing = document.createElement("div");
     typing.id = "ai-typing";
-    typing.className = "ai-msg-typing";
-    typing.innerHTML = "<span></span><span></span><span></span>";
+    typing.className = "ai-msg-agent";
+    typing.style.cssText =
+      "display:flex;align-items:center;gap:8px;opacity:0.6;font-style:italic;font-size:12px;";
+    typing.innerHTML = `
+    <span>DribbleBot is thinking</span>
+    <span style="display:flex;gap:3px;align-items:center;">
+      <span style="width:4px;height:4px;border-radius:50%;background:var(--text2);animation:typingDot 1.2s ease-in-out infinite;"></span>
+      <span style="width:4px;height:4px;border-radius:50%;background:var(--text2);animation:typingDot 1.2s ease-in-out infinite;animation-delay:0.2s;"></span>
+      <span style="width:4px;height:4px;border-radius:50%;background:var(--text2);animation:typingDot 1.2s ease-in-out infinite;animation-delay:0.4s;"></span>
+    </span>`;
     container.appendChild(typing);
     container.scrollTop = container.scrollHeight;
   };

@@ -504,9 +504,17 @@ const HF_ROUTER = (() => {
     nav.innerHTML = `
     <div class="sidenav-scroll">${navHTML}</div>
     <div class="sidenav-footer" onclick="HF_ROUTER.navTo('profile')" style="cursor:pointer;">
-      <div class="avatar avatar-sm" style="background:${ROLE_COLORS[session.role] || "#C49A0A"}">${initials(session.name)}</div>
-      <div>
-        <div class="sidenav-footer-name">${session.name}</div>
+      <div style="display:flex;align-items:center;gap:10px;padding:var(--sp-md);border-top:0.5px solid var(--border);">
+          ${HF_UTILS.avatarHTML(
+            session.name,
+            session.profile?.avatarUrl,
+            "sm",
+            session.role === "player"
+              ? "var(--green)"
+              : session.role === "coach"
+                ? "var(--gold)"
+                : "var(--blue)",
+          )}
         <div class="sidenav-footer-role">${session.displayContact || session.contact}</div>
       </div>
     </div>`;

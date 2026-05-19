@@ -94,12 +94,21 @@ const HF_SCOUT = (() => {
 
     setMain(`
     <div class="welcome-banner">
-      <div>
-        <div class="welcome-title">${newUser ? "Welcome" : "Welcome back"}, Scout ${s.name.split(" ").pop()}!</div>
-        <div class="welcome-sub">${p.org || "-"} · ${p.region || "-"}</div>
-        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
-          ${badgeHTML("Scout", "blue")}
-          ${agencyStatusBadge}
+      <div style="display:flex;align-items:center;gap:var(--sp-xl);">
+        <div style="width:72px;height:72px;overflow:hidden;background:var(--blue);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;">
+          ${
+            p.avatarUrl
+              ? `<img src="${p.avatarUrl}?cb=${Date.now()}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
+              : HF_UTILS.initials(s.name)
+          }
+        </div>
+        <div>
+          <div class="welcome-title">${newUser ? "Welcome" : "Welcome back"}, Scout ${s.name.split(" ")[0]}!</div>
+            <div class="welcome-sub">${p.org || "-"} · ${p.region || "-"}</div>
+            <div style="margin-top:8px;display:flex;align-items:center;gap:8px;">
+              ${badgeHTML("Scout", "blue")}
+              ${agencyStatusBadge}
+            </div>
         </div>
       </div>
       <div style="text-align:right;flex-shrink:0;">
@@ -1438,13 +1447,18 @@ const HF_SCOUT = (() => {
     setMain(`
     <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;gap:var(--sp-lg);">
       <div style="position:relative;">
-        <div style="width:72px;height:72px;background:#185FA5;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#fff;">
-          ${HF_UTILS.initials(session.name)}
+        <div id="avatar-banner" style="width:72px;height:72px;overflow:hidden;background:#185FA5;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;">
+          ${
+            p.avatarUrl
+              ? `<img src="${p.avatarUrl}?cb=${Date.now()}" style="width:100%;height:100%;object-fit:cover;">`
+              : HF_UTILS.initials(session.name)
+          }
         </div>
-        <button onclick="HF_UTILS.toast('Profile photo upload coming soon!','success')"
-          style="position:absolute;bottom:-8px;right:-8px;width:24px;height:24px;background:var(--gold);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0f0f0d;">
+        <label style="position:absolute;bottom:-8px;right:-8px;width:24px;height:24px;background:var(--gold);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0f0f0d;">
           <i class="ti ti-camera" style="font-size:12px"></i>
-        </button>
+          <input type="file" id="avatar-input" accept="image/*" style="display:none;"
+            onchange="HF_SCOUT.previewAvatar(this)">
+        </label>
       </div>
       <div>
         <div style="font-family:var(--font);font-size:22px;font-weight:700;color:#fff;">${session.name}</div>
@@ -1512,6 +1526,20 @@ const HF_SCOUT = (() => {
       return;
     }
 
+    // handle avatar upload
+    const file = window._pendingAvatarFile || null;
+    let avatarUrl = p.avatarUrl || null;
+    if (file) {
+      HF_UTILS.toast("Uploading photo...", "success");
+      const uploadResult = await HF_DB.uploadAvatar(session.userId, file);
+      if (uploadResult.error) {
+        HF_UTILS.toast(uploadResult.error, "error");
+        return;
+      }
+      avatarUrl = uploadResult.url;
+      window._pendingAvatarFile = null;
+    }
+
     if (name !== session.name) {
       const nameResult = await HF_DB.updateUserName(session.userId, name);
       if (nameResult.error) {
@@ -1521,7 +1549,7 @@ const HF_SCOUT = (() => {
       session.name = name;
     }
 
-    const updatedProfile = { ...p, org, exp };
+    const updatedProfile = { ...p, org, exp, avatarUrl };
     const result = await HF_DB.updateUserProfile(
       session.userId,
       updatedProfile,
@@ -1539,6 +1567,25 @@ const HF_SCOUT = (() => {
 
     HF_UTILS.toast("Profile updated!", "success");
     HF_ROUTER.navTo("profile");
+  };
+
+  const previewAvatar = (input) => {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      HF_UTILS.toast("Image must be under 2MB.", "error");
+      return;
+    }
+    window._pendingAvatarFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      ["avatar-preview", "avatar-banner"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el)
+          el.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
   // ── RESUBMIT AGENCY ────────────────────────────────────────
@@ -2924,6 +2971,7 @@ ${reportEl.textContent.trim()}
     viewClubDetail,
     toggleClubDetail,
     requestNetwork,
+    previewAvatar,
   };
 })();
 

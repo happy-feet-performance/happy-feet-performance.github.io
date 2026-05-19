@@ -1813,7 +1813,6 @@ const HF_DB = (() => {
     try {
       _client.removeAllChannels();
     } catch (e) {
-      console.log("channel cleanup:", e.message);
     }
   };
 
@@ -2350,6 +2349,40 @@ const HF_DB = (() => {
     return { data };
   };
 
+  const uploadAvatar = async (userId, file) => {
+    const ext = file.name.split(".").pop();
+    const path = `${userId}/avatar.${ext}`;
+
+    const { error: uploadError } = await _client.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true });
+
+    if (uploadError) {
+      console.error("upload error:", uploadError);
+      return { error: uploadError.message };
+    }
+
+    const { data } = _client.storage.from("avatars").getPublicUrl(path);
+
+    const { data: user } = await _client
+      .from("users")
+      .select("profile")
+      .eq("id", userId)
+      .single();
+
+    const updatedProfile = {
+      ...user?.profile,
+      avatarUrl: data.publicUrl + "?t=" + Date.now(),
+    };
+
+    const { error: updateError } = await _client
+      .from("users")
+      .update({ profile: updatedProfile })
+      .eq("id", userId);
+
+    return { success: true, url: data.publicUrl };
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     localDate: _localDate,
@@ -2470,6 +2503,7 @@ const HF_DB = (() => {
     getPendingClubRequests,
     getApprovedClubNetwork,
     getAgentThread,
+    uploadAvatar,
   };
 })();
 

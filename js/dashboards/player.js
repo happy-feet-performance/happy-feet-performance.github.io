@@ -282,9 +282,18 @@ const HF_PLAYER = (() => {
 
     setMain(`
     <div class="welcome-banner">
-      <div>
-        <div class="welcome-title">${newUser ? "Welcome" : "Welcome back"}, ${s.name.split(" ")[0]}!</div>
-        <div class="welcome-sub">${p.pos || "Player"} · ${p.tier || "U21"} · ${p.status === "unattached" ? "Free Agent" : p.club || "Unattached"}</div>
+      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
+        <div style="width:72px;height:72px;overflow:hidden;background:var(--green);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;">
+          ${
+            p.avatarUrl
+              ? `<img src="${p.avatarUrl}?cb=${Date.now()}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none'">`
+              : HF_UTILS.initials(s.name)
+          }
+        </div>
+        <div>
+          <div class="welcome-title">${newUser ? "Welcome" : "Welcome back"}, ${s.name.split(" ")[0]}!</div>
+          <div class="welcome-sub">${p.pos || "Player"} · ${p.tier || "U21"} · ${p.status === "unattached" ? "Free Agent" : p.club || "Unattached"}</div>
+        </div>
       </div>
       <div style="text-align:right">
         <div style="font-size:32px;font-weight:700;color:var(--gold)">${overall !== null ? overall + "%" : "-"}</div>
@@ -387,7 +396,12 @@ const HF_PLAYER = (() => {
   };
 
   // ── PROFILE ─────────────────────────────────────────────────
-  const profile = (s, editing = false) => {
+  const profile = async (s, editing = false) => {
+    const { data: freshUser } = await HF_DB.getUserById(s.userId);
+    if (freshUser?.profile) {
+      s.profile = freshUser.profile;
+      HF_DB.saveSession(s);
+    }
     const p = s.profile || {};
     const r = p.ratings || {};
     const overall = calcRating(r);
@@ -396,21 +410,14 @@ const HF_PLAYER = (() => {
     setMain(`
     <!-- ── PROFILE HEADER ── -->
     <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
-      
-      <!-- Left: avatar + name -->
+  
+      <!-- Left: avatar + name wrapped together -->
       <div style="display:flex;align-items:center;gap:var(--sp-lg);">
-        <div style="position:relative;">
-          <div style="width:72px;height:72px;background:#1a7a2e;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#fff;">
-            ${HF_UTILS.initials(s.name)}
-          </div>
+        <div style="width:72px;height:72px;overflow:hidden;background:#1a7a2e;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;">
           ${
-            editing
-              ? `
-            <button onclick="HF_UTILS.toast('Profile photo upload coming soon!','success')"
-              style="position:absolute;bottom:-8px;right:-8px;width:24px;height:24px;background:var(--gold);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0f0f0d;">
-              <i class="ti ti-camera" style="font-size:12px"></i>
-            </button>`
-              : ""
+            p.avatarUrl
+              ? `<img src="${p.avatarUrl}?cb=${Date.now()}" style="width:100%;height:100%;object-fit:cover;">`
+              : HF_UTILS.initials(s.name)
           }
         </div>
         <div>
@@ -1805,125 +1812,133 @@ const HF_PLAYER = (() => {
     health(session);
   };
 
-  const editProfile = (editing = true) => {
+  const editProfile = async (editing = true) => {
     const session = HF_DB.getSession();
     const p = session.profile || {};
 
     setMain(`
-    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
-      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
-        <div style="position:relative;">
-          <div style="width:72px;height:72px;background:#1a7a2e;display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#fff;">
-            ${HF_UTILS.initials(session.name)}
+      <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
+        <div style="display:flex;align-items:center;gap:var(--sp-lg);">
+          <div style="position:relative;">
+            <div id="avatar-banner" style="width:72px;height:72px;overflow:hidden;background:#1a7a2e;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;">
+              ${
+                p.avatarUrl
+                  ? `<img src="${p.avatarUrl}" style="width:100%;height:100%;object-fit:cover;">`
+                  : HF_UTILS.initials(session.name)
+              }
+            </div>
+            <label style="position:absolute;bottom:-8px;right:-8px;width:24px;height:24px;background:var(--gold);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0f0f0d;">
+              <i class="ti ti-camera" style="font-size:12px"></i>
+              <input type="file" id="avatar-input" accept="image/*" style="display:none;"
+                onchange="HF_PLAYER.previewAvatar(this)">
+            </label>
           </div>
-          <button onclick="HF_UTILS.toast('Profile photo upload coming soon!','success')"
-            style="position:absolute;bottom:-8px;right:-8px;width:24px;height:24px;background:var(--gold);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0f0f0d;">
-            <i class="ti ti-camera" style="font-size:12px"></i>
-          </button>
-        </div>
-        <div>
-          <div style="font-family:var(--font);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${session.name}</div>
-          <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.pos || "-"} · ${p.tier || "-"}</div>
+          <div>
+            <div style="font-family:var(--font);font-size:22px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#fff;">${session.name}</div>
+            <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.pos || "-"} · ${p.tier || "-"}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.3);margin-top:4px;">Click camera to change photo</div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Edit profile</div>
-      <div class="fg">
-        <label class="required">Full name</label>
-        <input type="text" id="ep-name" value="${session.name || ""}" placeholder="Your full name"
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-      </div>
-      <div class="form-row">
-        <div class="fg"><label class="required">Position</label>
-          <select id="ep-pos">
-            <option value="">Select position</option>
-            <option ${p.pos === "GK" ? "selected" : ""}>GK</option>
-            <option ${p.pos === "CB" ? "selected" : ""}>CB</option>
-            <option ${p.pos === "LB" ? "selected" : ""}>LB</option>
-            <option ${p.pos === "RB" ? "selected" : ""}>RB</option>
-            <option ${p.pos === "DM" ? "selected" : ""}>DM</option>
-            <option ${p.pos === "CM" ? "selected" : ""}>CM</option>
-            <option ${p.pos === "CAM" ? "selected" : ""}>CAM</option>
-            <option ${p.pos === "LW" ? "selected" : ""}>LW</option>
-            <option ${p.pos === "RW" ? "selected" : ""}>RW</option>
-            <option ${p.pos === "ST" ? "selected" : ""}>ST</option>
-          </select>
+      <div class="card">
+        <div class="card-title"><div class="card-dot"></div>Edit profile</div>
+        <div class="fg">
+          <label class="required">Full name</label>
+          <input type="text" id="ep-name" value="${session.name || ""}" placeholder="Your full name"
+            style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
         </div>
-        <div class="fg"><label>Age tier</label>
-          <select id="ep-tier">
-            <option ${p.tier === "U10" ? "selected" : ""}>U10</option>
-            <option ${p.tier === "U12" ? "selected" : ""}>U12</option>
-            <option ${p.tier === "U14" ? "selected" : ""}>U14</option>
-            <option ${p.tier === "U16" ? "selected" : ""}>U16</option>
-            <option ${p.tier === "U18" ? "selected" : ""}>U18</option>
-            <option ${p.tier === "U21" ? "selected" : ""}>U21</option>
-            <option ${p.tier === "Professional" ? "selected" : ""}>Professional</option>
-          </select>
+        <div class="form-row">
+          <div class="fg"><label class="required">Position</label>
+            <select id="ep-pos" style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+              <option value="">Select position</option>
+              <option ${p.pos === "GK" ? "selected" : ""}>GK</option>
+              <option ${p.pos === "CB" ? "selected" : ""}>CB</option>
+              <option ${p.pos === "LB" ? "selected" : ""}>LB</option>
+              <option ${p.pos === "RB" ? "selected" : ""}>RB</option>
+              <option ${p.pos === "DM" ? "selected" : ""}>DM</option>
+              <option ${p.pos === "CM" ? "selected" : ""}>CM</option>
+              <option ${p.pos === "CAM" ? "selected" : ""}>CAM</option>
+              <option ${p.pos === "LW" ? "selected" : ""}>LW</option>
+              <option ${p.pos === "RW" ? "selected" : ""}>RW</option>
+              <option ${p.pos === "ST" ? "selected" : ""}>ST</option>
+            </select>
+          </div>
+          <div class="fg"><label>Age tier</label>
+            <select id="ep-tier" style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+              <option ${p.tier === "U10" ? "selected" : ""}>U10</option>
+              <option ${p.tier === "U12" ? "selected" : ""}>U12</option>
+              <option ${p.tier === "U14" ? "selected" : ""}>U14</option>
+              <option ${p.tier === "U16" ? "selected" : ""}>U16</option>
+              <option ${p.tier === "U18" ? "selected" : ""}>U18</option>
+              <option ${p.tier === "U21" ? "selected" : ""}>U21</option>
+              <option ${p.tier === "Professional" ? "selected" : ""}>Professional</option>
+            </select>
+          </div>
         </div>
-      </div>
-      <div class="fg"><label class="required">Hometown / region</label>
-        <input type="text" id="ep-hometown" value="${p.hometown || ""}" placeholder="e.g. Kumasi, Ashanti"
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-      </div>
-      ${
-        !p.club
-          ? `
-        <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--border);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
-          <i class="ti ti-info-circle" style="margin-right:6px"></i>
-          Your club is assigned by your coach once you join a verified squad.
-        </div>`
-          : `
-        <div style="padding:12px;background:rgba(26,122,46,.05);border-left:2px solid var(--green);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
-          <i class="ti ti-circle-check" style="margin-right:6px;color:var(--green)"></i>
-          You are currently signed to <strong style="color:var(--green)">${p.club}</strong>.
-        </div>`
-      }
-      <div style="display:flex;gap:8px;margin-top:4px;">
-        <button class="btn btn-primary" onclick="HF_PLAYER.saveProfile()">
-          <i class="ti ti-circle-check"></i> Save changes
-        </button>
-        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('profile')">Cancel</button>
-      </div>
-    </div>`);
+        <div class="fg"><label class="required">Hometown / region</label>
+          <input type="text" id="ep-hometown" value="${p.hometown || ""}" placeholder="e.g. Kumasi, Ashanti"
+            style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+        </div>
+        ${
+          !p.club
+            ? `
+          <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--border);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
+            <i class="ti ti-info-circle" style="margin-right:6px"></i>
+            Your club is assigned by your coach once you join a verified squad.
+          </div>`
+            : `
+          <div style="padding:12px;background:rgba(26,122,46,.05);border-left:2px solid var(--green);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
+            <i class="ti ti-circle-check" style="margin-right:6px;color:var(--green)"></i>
+            You are currently signed to <strong style="color:var(--green)">${p.club}</strong>.
+          </div>`
+        }
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button class="btn btn-primary" onclick="HF_PLAYER.saveProfile()">
+            <i class="ti ti-circle-check"></i> Save changes
+          </button>
+          <button class="btn btn-outline" onclick="HF_ROUTER.navTo('profile')">Cancel</button>
+        </div>
+      </div>`);
   };
 
   const saveProfile = async () => {
     const session = HF_DB.getSession();
-    const p = session.profile || {};
-    const name = document.getElementById("ep-name")?.value.trim();
-    const pos = document.getElementById("ep-pos")?.value;
-    const tier = document.getElementById("ep-tier")?.value;
-    const hometown = document.getElementById("ep-hometown")?.value.trim();
 
-    if (!name) {
-      HF_UTILS.toast("Please enter your full name.", "error");
-      return;
-    }
-    if (!pos) {
-      HF_UTILS.toast("Please select your position.", "error");
-      return;
-    }
-    if (!hometown) {
-      HF_UTILS.toast("Please enter your hometown.", "error");
-      return;
-    }
+    // check for pending file upload from either input
+    const fileInput =
+      document.getElementById("avatar-input") ||
+      document.getElementById("avatar-input-banner");
+    const file = fileInput?.files[0] || window._pendingAvatarFile || null;
+    let avatarUrl = session.profile?.avatarUrl || null;
 
-    // update name if changed
-    if (name !== session.name) {
-      const nameResult = await HF_DB.updateUserName(session.userId, name);
-      if (nameResult.error) {
-        HF_UTILS.toast(nameResult.error, "error");
+    if (file) {
+      HF_UTILS.toast("Uploading photo...", "success");
+      const uploadResult = await HF_DB.uploadAvatar(session.userId, file);
+      if (uploadResult.error) {
+        HF_UTILS.toast(uploadResult.error, "error");
         return;
       }
-      session.name = name;
+      avatarUrl = uploadResult.url;
+      window._pendingAvatarFile = null;
     }
 
-    const updatedProfile = { ...p, pos, tier, hometown };
+    const updatedProfile = {
+      ...session.profile,
+      avatarUrl,
+      pos: document.getElementById("ep-pos")?.value || session.profile?.pos,
+      tier: document.getElementById("ep-tier")?.value || session.profile?.tier,
+      hometown:
+        document.getElementById("ep-hometown")?.value ||
+        session.profile?.hometown,
+    };
+
+    const name =
+      document.getElementById("ep-name")?.value.trim() || session.name;
     const result = await HF_DB.updateUserProfile(
       session.userId,
       updatedProfile,
+      name,
     );
     if (result.error) {
       HF_UTILS.toast(result.error, "error");
@@ -1931,12 +1946,8 @@ const HF_PLAYER = (() => {
     }
 
     session.profile = updatedProfile;
+    session.name = name;
     HF_DB.saveSession(session);
-
-    // update topbar name display
-    const nameDisplay = document.getElementById("topbar-name-display");
-    if (nameDisplay) nameDisplay.textContent = name;
-
     HF_UTILS.toast("Profile updated!", "success");
     HF_ROUTER.navTo("profile");
   };
@@ -2925,6 +2936,28 @@ const HF_PLAYER = (() => {
     document.getElementById("achievement-tooltip")?.remove();
   };
 
+  const previewAvatar = (input) => {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      HF_UTILS.toast("Image must be under 2MB.", "error");
+      return;
+    }
+
+    window._pendingAvatarFile = file;
+
+    // use FileReader to get data: URL which is CSP safe
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      ["avatar-preview", "avatar-banner"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el)
+          el.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   return {
     render,
     training,
@@ -2964,6 +2997,7 @@ const HF_PLAYER = (() => {
     showAchievementDetail,
     showAchievementTooltip,
     hideAchievementTooltip,
+    previewAvatar,
   };
 })();
 
