@@ -598,31 +598,36 @@ const HF_AUTH = (() => {
     showScreen("screen-login");
   };
 
-  const checkPassword = (val) => {
-    const fill = document.getElementById("password-strength-fill");
-    const label = document.getElementById("password-strength-label");
+  const checkPassword = (password) => {
+    // find the bar in the currently active screen
+    const activeScreen = document.querySelector(".auth-screen.active");
+    const fill =
+      activeScreen?.querySelector("#password-strength-fill") ||
+      document.getElementById("password-strength-fill");
+    const label =
+      activeScreen?.querySelector("#password-strength-label") ||
+      document.getElementById("password-strength-label");
     if (!fill || !label) return;
 
     let strength = 0;
-    if (val.length >= 6) strength++;
-    if (val.length >= 10) strength++;
-    if (/[A-Z]/.test(val)) strength++;
-    if (/[0-9]/.test(val)) strength++;
-    if (/[^A-Za-z0-9]/.test(val)) strength++;
+    if (password.length >= 6) strength++;
+    if (password.length >= 10) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^A-Za-z0-9]/.test(password)) strength++;
 
     const levels = [
-      { width: "0%", color: "transparent", text: "" },
-      { width: "25%", color: "var(--red)", text: "Weak" },
-      { width: "50%", color: "var(--red)", text: "Fair" },
-      { width: "75%", color: "var(--gold)", text: "Good" },
-      { width: "90%", color: "var(--green)", text: "Strong" },
-      { width: "100%", color: "var(--green)", text: "Very strong" },
+      { width: "0%", color: "transparent", label: "" },
+      { width: "25%", color: "var(--red)", label: "Weak" },
+      { width: "50%", color: "var(--gold)", label: "Fair" },
+      { width: "75%", color: "var(--blue)", label: "Good" },
+      { width: "100%", color: "var(--green)", label: "Strong" },
     ];
 
-    const level = levels[strength];
-    fill.style.width = level.width;
+    const level = levels[Math.min(strength, 4)];
+    fill.style.width = password.length === 0 ? "0%" : level.width;
     fill.style.background = level.color;
-    label.textContent = level.text;
+    label.textContent = password.length === 0 ? "" : level.label;
     label.style.color = level.color;
   };
 
