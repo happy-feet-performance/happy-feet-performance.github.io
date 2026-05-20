@@ -127,38 +127,6 @@ const HF_ROUTER = (() => {
     ],
   };
 
-  // ─── Alert for if admin made changes ────────────────────────────
-
-  const _showVerificationAlert = (session) => {
-    if (!session || session.role !== "coach") return; // guard
-
-    const existing = document.getElementById("verification-alert");
-    if (existing) existing.remove();
-
-    const overlay = document.createElement("div");
-    overlay.id = "verification-alert";
-    overlay.className = "verification-alert-overlay";
-    overlay.innerHTML = `
-    <div class="verification-alert-card">
-      <i class="ti ti-bell" style="font-size:36px;color:var(--gold);margin-bottom:var(--sp-lg);display:block;"></i>
-      <div style="font-family:var(--font);font-size:18px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-sm);">
-        Squad verification update
-      </div>
-      <div style="font-size:14px;color:var(--text2);margin-bottom:var(--sp-xl);line-height:1.6;">
-        An admin has reviewed your squad registration and has an update. Go to your messages to review and respond.
-      </div>
-      <div style="display:flex;gap:8px;justify-content:center;">
-        <button class="btn btn-primary" onclick="document.getElementById('verification-alert').remove();HF_ROUTER.navTo('messages');">
-          <i class="ti ti-message"></i> Go to messages
-        </button>
-        <button class="btn btn-outline" onclick="document.getElementById('verification-alert').remove();">
-          Dismiss
-        </button>
-      </div>
-    </div>`;
-    document.body.appendChild(overlay);
-  };
-
   // ─── Role accent colours ────────────────────────────────────
   const ROLE_COLORS = { player: "#1a7a2e", coach: "#C9961A", scout: "#185FA5" };
 
@@ -215,21 +183,6 @@ const HF_ROUTER = (() => {
     _buildSidenav(session, unreadCount, pendingVerifications);
     _routeTo("dashboard", session);
     HF_AGENT.show();
-
-    // show overlays
-    if (
-      session.role === "coach" &&
-      session.squadStatus === "awaiting_coach_approval"
-    ) {
-      setTimeout(() => _showVerificationAlert(session), 800);
-    }
-    if (
-      session.role === "admin" &&
-      pendingVerifications > 0 &&
-      typeof HF_ADMIN !== "undefined"
-    ) {
-      setTimeout(() => HF_ADMIN.showPendingAlert(pendingVerifications), 800);
-    }
 
     // start real-time subscriptions after 1 second
     setTimeout(() => {
@@ -384,8 +337,6 @@ const HF_ROUTER = (() => {
                 "Your squad has been verified! Full access unlocked.",
                 "success",
               );
-            } else if (newStatus === "awaiting_coach_approval") {
-              _showVerificationAlert(session);
             } else if (newStatus === "rejected") {
               HF_UTILS.toast(
                 "Your squad verification was rejected. Check your messages.",
@@ -609,14 +560,6 @@ const HF_ROUTER = (() => {
           session.squadStatus = status;
           HF_DB.saveSession(session);
           _buildSidenav(session);
-          if (status === "awaiting_coach_approval") {
-            const existing = document.getElementById("verification-alert");
-            if (existing) existing.remove();
-            setTimeout(() => _showVerificationAlert(session), 300);
-          } else {
-            const existing = document.getElementById("verification-alert");
-            if (existing) existing.remove();
-          }
         }
       });
     }

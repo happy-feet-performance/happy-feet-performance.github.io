@@ -750,8 +750,6 @@ const HF_ADMIN = (() => {
   };
 
   const showPendingAlert = (count) => {
-    const existing = document.getElementById("admin-verification-alert");
-    if (existing) existing.remove();
 
     const overlay = document.createElement("div");
     overlay.id = "admin-verification-alert";

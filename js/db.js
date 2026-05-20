@@ -15,6 +15,15 @@ const HF_DB = (() => {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   };
 
+  // ─── Password Hashing Helper ──────────────────────────────────
+  const _hashString = async (str) => {
+    const encoded = new TextEncoder().encode(str);
+    const buffer = await crypto.subtle.digest("SHA-256", encoded);
+    return Array.from(new Uint8Array(buffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  };
+
   // ─── Local session ─────────────────────────────────────────
   const getSession = () => {
     try {
@@ -2432,6 +2441,81 @@ const HF_DB = (() => {
     return data;
   };
 
+  const setSecurityQuestion = async (userId, question, answer) => {
+    const hashedAnswer = await _hashString(answer.toLowerCase().trim());
+    const { error } = await _client
+      .from("users")
+      .update({ security_question: question, security_answer: hashedAnswer })
+      .eq("id", userId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const verifySecurityAnswer = async (contact, answer) => {
+    const { data, error } = await _client
+      .from("users")
+      .select(
+        "id, security_question, security_answer, security_attempts, locked_until",
+      )
+      .eq("contact", contact)
+      .maybeSingle();
+
+    if (error || !data) return { error: "User not found." };
+    if (!data.security_answer) return { error: "No security question set." };
+
+    // check if locked
+    if (data.locked_until && new Date(data.locked_until) > new Date()) {
+      const mins = Math.ceil(
+        (new Date(data.locked_until) - new Date()) / 60000,
+      );
+      return {
+        error: `Too many attempts. Try again in ${mins} minute${mins !== 1 ? "s" : ""}.`,
+      };
+    }
+
+    const hashedAnswer = await _hashString(answer.toLowerCase().trim());
+
+    if (hashedAnswer !== data.security_answer) {
+      const attempts = (data.security_attempts || 0) + 1;
+      const lockedUntil =
+        attempts >= 4
+          ? new Date(Date.now() + 15 * 60 * 1000).toISOString()
+          : null;
+
+      await _client
+        .from("users")
+        .update({ security_attempts: attempts, locked_until: lockedUntil })
+        .eq("id", data.id);
+
+      const remaining = 4 - attempts;
+      if (lockedUntil)
+        return {
+          error: "Too many failed attempts. Account locked for 15 minutes.",
+        };
+      return {
+        error: `Incorrect answer.${remaining === 1 ? " 1 attempt remaining before lockout." : ""}`,
+      };
+    }
+
+    // reset attempts if correct
+    await _client
+      .from("users")
+      .update({ security_attempts: 0 })
+      .eq("id", data.id);
+
+    return { success: true, userId: data.id };
+  };
+
+  const getUserSecurityQuestion = async (contact) => {
+    const { data, error } = await _client
+      .from("users")
+      .select("security_question")
+      .eq("contact", contact)
+      .maybeSingle();
+    if (error || !data) return { data: null };
+    return { data };
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     localDate: _localDate,
@@ -2557,6 +2641,10 @@ const HF_DB = (() => {
     incrementLoginAttempts,
     resetLoginAttempts,
     findUserByContact,
+    setSecurityQuestion,
+    getUserSecurityQuestion,
+    verifySecurityAnswer,
+    resetPassword,
   };
 })();
 

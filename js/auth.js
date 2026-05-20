@@ -203,6 +203,14 @@ const HF_AUTH = (() => {
     document.getElementById("sidenav")?.classList.remove("open");
     const name = el("su-name")?.value.trim();
     const pass = el("su-pass")?.value;
+    if (!pass) {
+      showError("signup-err", "Please enter a password.");
+      return;
+    }
+    if (pass.length < 6) {
+      showError("signup-err", "Password must be at least 6 characters.");
+      return;
+    }
     hideError("signup-err");
 
     if (!name) {
@@ -390,7 +398,7 @@ const HF_AUTH = (() => {
       scout: "Your scout account is ready.",
     }[state.role];
     el("confirm-summary").innerHTML = summaryRows[state.role];
-    showScreen("screen-signup-confirm");
+    showScreen("screen-signup-security");
   };
 
   // ─── Complete signup ────────────────────────────────────────
@@ -399,9 +407,18 @@ const HF_AUTH = (() => {
 
     const result = await HF_DB.createUser(state.signup);
     if (result.error) {
-      toast(result.error, "error");
+      HF_UTILS.toast(result.error, "error");
       showScreen("screen-signup-info");
       return;
+    }
+
+    // save security question using stored values from goToConfirm
+    if (result.user && state.securityQuestion && state.securityAnswer) {
+      await HF_DB.setSecurityQuestion(
+        result.user.id,
+        state.securityQuestion,
+        state.securityAnswer,
+      );
     }
 
     const session = _makeSession(result.user);
@@ -413,7 +430,6 @@ const HF_AUTH = (() => {
 
     if (state.signup.role === "coach") {
       const clubInput = el("sq-team");
-      const regionInput = el("sq-region");
       if (clubInput) {
         clubInput.value = state.signup.profile.club || "";
         clubInput.style.opacity = "0.6";
@@ -422,9 +438,7 @@ const HF_AUTH = (() => {
       showScreen("screen-squad-verify");
     } else if (state.signup.role === "scout") {
       const agencyInput = el("ag-name");
-      if (agencyInput) {
-        agencyInput.value = state.signup.profile.org || "";
-      }
+      if (agencyInput) agencyInput.value = state.signup.profile.org || "";
       showScreen("screen-agency-verify");
     } else {
       HF_ROUTER.launch(session);
@@ -513,7 +527,7 @@ const HF_AUTH = (() => {
     const user = await HF_DB.findUser(contact, hashedPassword);
 
     if (!user) {
-      // wrong password — increment attempts
+      // increment attempts for wrong password
       const { attempts, lockedUntil } = await HF_DB.incrementLoginAttempts(
         userCheck.id,
       );
@@ -875,6 +889,95 @@ const HF_AUTH = (() => {
       : '<i class="ti ti-eye"></i>';
   };
 
+  const forgotStep1 = async () => {
+    const contact = el("forgot-contact")?.value.trim().toLowerCase();
+    if (!contact) {
+      showError("forgot-err", "Please enter your email or phone.");
+      return;
+    }
+
+    const { data } = await HF_DB.getUserSecurityQuestion(contact);
+    if (!data) {
+      showError("forgot-err", "No account found with that contact.");
+      return;
+    }
+    if (!data.security_question) {
+      showError("forgot-err", "No security question set for this account.");
+      return;
+    }
+
+    window._forgotContact = contact;
+    document.getElementById("forgot-question").textContent =
+      data.security_question;
+    document.getElementById("forgot-step-1").style.display = "none";
+    document.getElementById("forgot-step-2").style.display = "block";
+  };
+
+  const forgotStep2 = async () => {
+    const answer = el("forgot-answer")?.value.trim();
+    if (!answer) {
+      showError("forgot-err-2", "Please enter your answer.");
+      return;
+    }
+
+    const result = await HF_DB.verifySecurityAnswer(
+      window._forgotContact,
+      answer,
+    );
+    if (result.error) {
+      showError("forgot-err-2", result.error);
+      return;
+    }
+
+    window._forgotUserId = result.userId;
+    document.getElementById("forgot-step-2").style.display = "none";
+    document.getElementById("forgot-step-3").style.display = "block";
+  };
+
+  const forgotStep3 = async () => {
+    const newPass = el("forgot-new-pass")?.value;
+    const confirmPass = el("forgot-confirm-pass")?.value;
+
+    if (!newPass || newPass.length < 6) {
+      showError("forgot-err-3", "Password must be at least 6 characters.");
+      return;
+    }
+    if (newPass !== confirmPass) {
+      showError("forgot-err-3", "Passwords do not match.");
+      return;
+    }
+
+    const hashed = await HF_UTILS.hashPassword(newPass);
+    const result = await HF_DB.resetPassword(window._forgotUserId, hashed);
+    if (result.error) {
+      showError("forgot-err-3", result.error);
+      return;
+    }
+
+    window._forgotContact = null;
+    window._forgotUserId = null;
+
+    HF_UTILS.toast("Password reset successfully! Please log in.", "success");
+    showScreen("screen-login");
+  };
+
+  const goToConfirm = () => {
+    const question = el("su-security-q")?.value;
+    const answer = el("su-security-a")?.value.trim();
+    if (!question) {
+      showError("security-err", "Please select a security question.");
+      return;
+    }
+    if (!answer) {
+      showError("security-err", "Please enter your answer.");
+      return;
+    }
+    // store for completeSignup
+    state.securityQuestion = question;
+    state.securityAnswer = answer;
+    showScreen("screen-signup-confirm");
+  };
+
   // ─── Expose to window (called from onclick) ─────────────────
   return {
     showScreen,
@@ -883,6 +986,7 @@ const HF_AUTH = (() => {
     selectRole,
     goStep2,
     goStep3,
+    goToConfirm,
     completeSignup,
     handleLogin,
     handleAdminLogin,
@@ -896,6 +1000,9 @@ const HF_AUTH = (() => {
     getSelectedTags,
     skipVerification,
     togglePassword,
+    forgotStep1,
+    forgotStep2,
+    forgotStep3,
   };
 })();
 
