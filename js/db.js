@@ -2536,7 +2536,11 @@ const HF_DB = (() => {
     // notify all admins
     await _notifyAdmins(
       `New ticket: ${subject}`,
-      `A new support ticket has been submitted.\n\nCategory: ${category}\n\nMessage: ${body}`,
+      `A new support ticket has been submitted.
+
+      Category: ${category}
+
+      Message: ${body}`,
     );
 
     return { success: true, ticket: data };

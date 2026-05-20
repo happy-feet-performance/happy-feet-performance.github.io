@@ -517,7 +517,8 @@ const HF_UTILS = (() => {
     };
 
     return `
-    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
+    ${backFn ? `<button class="btn btn-outline" onclick="${backFn}" style="margin-top:8px"><i class="ti ti-arrow-left"></i> Back</button>` : ""}
+    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-top:var(--sp-lg);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
       <div style="display:flex;align-items:center;gap:var(--sp-lg);">
         <div style="width:72px;height:72px;background:${role === "player" ? "var(--green)" : role === "coach" ? "var(--gold)" : role === "admin" ? "var(--red)" : "var(--blue)"};display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#fff;">
           ${HF_UTILS.initials(user.name)}
@@ -541,8 +542,7 @@ const HF_UTILS = (() => {
     <div class="card">
       <div class="card-title"><div class="card-dot"></div>Profile details</div>
       ${sections[role] || ""}
-    </div>
-    ${backFn ? `<button class="btn btn-outline" onclick="${backFn}" style="margin-top:8px"><i class="ti ti-arrow-left"></i> Back</button>` : ""}`;
+    </div>`;
   };
 
   return {

@@ -1767,11 +1767,11 @@ const HF_SCOUT = (() => {
         <label class="required">Category</label>
         <select id="ticket-category"
           style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-          <option value="general">General enquiry</option>
-          <option value="verification">Verification issue</option>
-          <option value="account">Account issue</option>
-          <option value="technical">Technical problem</option>
-          <option value="report">Report a user</option>
+          <option value="general">General Inquiry</option>
+          <option value="verification">Verification Issue</option>
+          <option value="account">Account Issue</option>
+          <option value="technical">Technical Problem</option>
+          <option value="report">Report a User</option>
           <option value="other">Other</option>
         </select>
       </div>
