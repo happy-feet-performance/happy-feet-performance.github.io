@@ -2683,12 +2683,12 @@ const HF_DB = (() => {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "tickets" },
-        callback,
+        (payload) => callback({ ...payload, eventType: "INSERT" }),
       )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "tickets" },
-        callback,
+        (payload) => callback({ ...payload, eventType: "UPDATE" }),
       )
       .subscribe();
   };

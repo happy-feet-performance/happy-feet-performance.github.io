@@ -392,14 +392,21 @@ const HF_ADMIN = (() => {
   `);
   };
 
-  // ── TICKETS─────────────────────────────────────────────────
+  // ── TICKETS ─────────────────────────────────────────────────
   const tickets = async (s) => {
     const { data: allTickets } = await HF_DB.getTickets();
     const { data: myTickets } = await HF_DB.getMyTickets(s.userId);
 
     const open = allTickets?.filter((t) => t.status === "open") || [];
-    const claimed = allTickets?.filter((t) => t.status === "claimed") || [];
-    const resolved = allTickets?.filter((t) => t.status === "resolved") || [];
+    const mine =
+      allTickets?.filter(
+        (t) => t.status === "claimed" && t.claimed_by === s.userId,
+      ) || [];
+    const others =
+      allTickets?.filter(
+        (t) => t.status === "claimed" && t.claimed_by !== s.userId,
+      ) || [];
+    const resolved = allTickets?.filter((t) => t.status === "resolved");
 
     const ticketRow = (t, showClaim = true) => {
       const roleColor =
@@ -489,15 +496,38 @@ const HF_ADMIN = (() => {
       </div>`;
     };
 
+    const section = (title, color, items, defaultOpen = true) => `
+    <div class="card" style="margin-bottom:var(--sp-md);">
+      <div class="card-title" style="cursor:pointer;justify-content:space-between;"
+        onclick="const c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none';this.querySelector('i').className='ti '+(c.style.display==='none'?'ti-chevron-down':'ti-chevron-up');">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot" style="background:${color}"></div>${title}
+          <span style="font-size:11px;color:var(--text3)">${items.length}</span>
+        </div>
+        <i class="ti ${defaultOpen ? "ti-chevron-up" : "ti-chevron-down"}" style="font-size:14px;color:var(--text3)"></i>
+      </div>
+      <div style="display:${defaultOpen ? "block" : "none"}">
+        ${
+          items.length === 0
+            ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No tickets here.</div>`
+            : items.map((t) => ticketRow(t)).join("")
+        }
+      </div>
+    </div>`;
+
     setMain(`
-    <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr)">
       <div class="metric-card">
         <div class="metric-val" style="color:var(--red)">${open.length}</div>
-        <div class="metric-label">Open tickets</div>
+        <div class="metric-label">Unclaimed</div>
       </div>
       <div class="metric-card">
-        <div class="metric-val" style="color:var(--gold)">${claimed.length}</div>
-        <div class="metric-label">In progress</div>
+        <div class="metric-val" style="color:var(--gold)">${mine.length}</div>
+        <div class="metric-label">My tickets</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--blue)">${others.length}</div>
+        <div class="metric-label">Others handling</div>
       </div>
       <div class="metric-card">
         <div class="metric-val" style="color:var(--green)">${resolved.length}</div>
@@ -505,74 +535,10 @@ const HF_ADMIN = (() => {
       </div>
     </div>
 
-    ${
-      myTickets?.length > 0
-        ? `
-      <div class="card">
-        <div class="card-title" style="justify-content:space-between;">
-          <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-            <div class="card-dot"></div>My tickets
-            <span style="font-size:11px;color:var(--text3)">${myTickets.length} active</span>
-          </div>
-        </div>
-        ${myTickets.map((t) => ticketRow(t)).join("")}
-      </div>`
-        : ""
-    }
-
-    <div class="card">
-      <div class="card-title" style="cursor:pointer;justify-content:space-between;"
-        onclick="const c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none'">
-        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-          <div class="card-dot"></div>Open tickets
-          <span style="font-size:11px;color:var(--red)">${open.length} unclaimed</span>
-        </div>
-        <i class="ti ti-chevron-down" style="font-size:14px;color:var(--text3)"></i>
-      </div>
-      <div>
-        ${
-          open.length === 0
-            ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No open tickets.</div>`
-            : open.map((t) => ticketRow(t)).join("")
-        }
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title" style="cursor:pointer;justify-content:space-between;"
-        onclick="const c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none'">
-        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-          <div class="card-dot"></div>In progress
-          <span style="font-size:11px;color:var(--gold)">${claimed.length} claimed</span>
-        </div>
-        <i class="ti ti-chevron-down" style="font-size:14px;color:var(--text3)"></i>
-      </div>
-      <div style="display:none">
-        ${
-          claimed.length === 0
-            ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No tickets in progress.</div>`
-            : claimed.map((t) => ticketRow(t)).join("")
-        }
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title" style="cursor:pointer;justify-content:space-between;"
-        onclick="const c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none'">
-        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-          <div class="card-dot"></div>Resolved
-          <span style="font-size:11px;color:var(--green)">${resolved.length} total</span>
-        </div>
-        <i class="ti ti-chevron-down" style="font-size:14px;color:var(--text3)"></i>
-      </div>
-      <div style="display:none">
-        ${
-          resolved.length === 0
-            ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No resolved tickets yet.</div>`
-            : resolved.map((t) => ticketRow(t)).join("")
-        }
-      </div>
-    </div>`);
+    ${section("Unclaimed", "var(--red)", open, true)}
+    ${section("My tickets", "var(--gold)", mine, true)}
+    ${section("Handled by others", "var(--blue)", others, false)}
+    ${section("Resolved", "var(--green)", resolved, false)}`);
   };
 
   // ── USERS ──────────────────────────────────────────────────
