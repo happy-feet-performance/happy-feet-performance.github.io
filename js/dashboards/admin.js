@@ -8,6 +8,7 @@ const HF_ADMIN = (() => {
     if (mc) mc.innerHTML = html;
   };
 
+  // ── RENDER DISPATCHER ───────────────────────────────────────
   const render = async (view, session) => {
     const views = {
       dashboard,
@@ -107,7 +108,7 @@ const HF_ADMIN = (() => {
         </div>`);
   };
 
-  // ── SQUAD ACTIONS ──────────────────────────────────────────
+  // ── SQUAD/AGENCY ACTIONS ──────────────────────────────────────────
   const approveSquad = async (verificationId, coachId, teamName) => {
     const result = await HF_DB.approveSquadVerification(
       verificationId,
@@ -199,7 +200,72 @@ const HF_ADMIN = (() => {
     agencyVerifications(HF_DB.getSession());
   };
 
-  // ── VERIFICATIONS ──────────────────────────────────────────
+  // ── SQUAD/AGENCY VERIFICATIONS ──────────────────────────────────────────
+
+  const _verificationRow = (v) => `
+    <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+        <div>
+            <div style="font-size:14px;font-weight:600;color:var(--text)">${v.team_name}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">
+            ${v.league} · ${v.home_ground || "-"} · Founded ${v.founding_year || "-"}
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px">
+            Submitted ${new Date(v.submitted_at).toLocaleDateString()}
+            </div>
+        </div>
+        ${badgeHTML("Pending", "gold")}
+        </div>
+
+        <div id="edit-form-${v.id}" style="display:none;margin-bottom:12px;padding:12px;background:var(--bg);border:0.5px solid var(--border);">
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
+            Edit verification details
+        </div>
+        <div class="fg">
+            <label>Team name</label>
+            <input type="text" id="edit-name-${v.id}" value="${v.team_name}" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
+        </div>
+        <div class="fg">
+            <label>League / division</label>
+            <input type="text" id="edit-league-${v.id}" value="${v.league || ""}" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
+        </div>
+        <div class="form-row">
+            <div class="fg">
+            <label>Founding year</label>
+            <input type="number" id="edit-year-${v.id}" value="${v.founding_year || ""}" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
+            </div>
+            <div class="fg">
+            <label>Home ground</label>
+            <input type="text" id="edit-ground-${v.id}" value="${v.home_ground || ""}" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
+            </div>
+        </div>
+        <div class="fg">
+            <label>Admin notes to coach</label>
+            <input type="text" id="edit-notes-${v.id}" placeholder="e.g. Team name corrected to match league records" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.saveEdits('${v.id}', '${v.coach_id}', '${v.team_name}')">
+            <i class="ti ti-circle-check"></i> Save & notify coach
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.toggleEditForm('${v.id}')">
+            Cancel
+            </button>
+        </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.approveSquad('${v.id}','${v.coach_id}','${v.team_name}')">
+            <i class="ti ti-circle-check"></i> Approve
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.toggleEditForm('${v.id}')">
+            <i class="ti ti-edit"></i> Edit
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="HF_ADMIN.rejectSquad('${v.id}','${v.coach_id}','${v.team_name}')">
+            <i class="ti ti-x"></i> Reject
+        </button>
+        </div>
+    </div>`;
+
   const _agencyVerificationRow = (v) => `
   <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--blue);margin-bottom:var(--sp-sm);">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
@@ -542,7 +608,6 @@ const HF_ADMIN = (() => {
   };
 
   // ── USERS ──────────────────────────────────────────────────
-
   const userRow = (u, showActions = true) => {
     const safeName = u.name.replace(/'/g, "\\'");
     return `
@@ -559,7 +624,7 @@ const HF_ADMIN = (() => {
         showActions
           ? `
         <div style="display:flex;gap:6px;flex-shrink:0;">
-        <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.viewUserProfile('${u.id}')">
+        <button class="btn btn-outline btn-sm" onclick="HF_ROLE_UTILS.viewSenderProfile('${u.id}', 'admin', 'users')">
             <i class="ti ti-user"></i> Profile
         </button>
           ${
@@ -641,160 +706,6 @@ const HF_ADMIN = (() => {
     ${section("Admins", "var(--red)", admins, false)}
   `);
   };
-
-  // ── MESSAGES ───────────────────────────────────────────────
-  const messages = async (s) => {
-    const [{ data: msgs }, { data: archived }] = await Promise.all([
-      HF_DB.getMessages(s.userId),
-      HF_DB.getArchivedMessages(s.userId),
-    ]);
-
-    // enrich messages with sender names
-    const allSenderIds = [
-      ...(msgs || []).map((m) => m.from_id),
-      ...(archived || []).map((m) => m.from_id),
-    ];
-    const senderNames = await HF_DB.getUserNamesByIds(allSenderIds);
-
-    const enriched = (msgs || []).map((m) => ({
-      ...m,
-      senderName: senderNames[m.from_id] || "HappyFeet",
-    }));
-
-    const enrichedArchived = (archived || []).map((m) => ({
-      ...m,
-      senderName: senderNames[m.from_id] || "HappyFeet",
-    }));
-
-    setMain(`
-    <div class="card">
-      <div class="card-title" style="justify-content:space-between;">
-        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-            <div class="card-dot"></div>Messages
-        </div>
-         <div style="display:flex;gap:6px;">
-          <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.composeMessage()">
-            <i class="ti ti-edit"></i> New message
-          </button>
-          </div>
-        </div>
-      ${
-        !msgs || msgs.length === 0
-          ? `
-        <div style="text-align:center;padding:32px;color:var(--text2)">
-          <i class="ti ti-message" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No messages yet</div>
-          <div style="font-size:13px">Admin messages will appear here.</div>
-        </div>`
-          : HF_UTILS.messageListHTML(enriched, "admin")
-      }
-    </div>
-
-    ${
-      archived?.length > 0
-        ? `
-      <div class="card">
-        <div class="card-title" style="cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
-          <div class="card-dot"></div>Archived
-          <span style="margin-left:auto;font-size:11px;color:var(--text3)">
-            ${archived.length} · click to expand
-          </span>
-        </div>
-        <div style="display:none">
-          ${enrichedArchived
-            .map(
-              (m) => `
-            <div class="msg-item" id="archived-msg-${m.id}" style="cursor:pointer;" 
-                onclick="HF_ADMIN.viewThread('${m.thread_id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')">
-                <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
-                <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
-                </div>
-                <div style="flex:1;opacity:0.6">
-                <div style="font-size:11px;font-family:var(--font);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
-                    From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : "HappyFeet Admin")}
-                </div>
-                <div class="msg-name">${m.subject || "Message"}</div>
-                <div class="msg-preview">${m.body}</div>
-                <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
-                </div>
-                <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;flex-shrink:0;"
-                title="Move back to inbox"
-                onclick="event.stopPropagation();HF_ADMIN.unarchiveMessage('${m.id}')">
-                <i class="ti ti-inbox"></i>
-                </button>
-            </div>`,
-            )
-            .join("")}
-        </div>
-      </div>`
-        : ""
-    }`);
-  };
-
-  // ── VERIFICATION ROW HELPER ────────────────────────────────
-  const _verificationRow = (v) => `
-    <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-        <div>
-            <div style="font-size:14px;font-weight:600;color:var(--text)">${v.team_name}</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:2px">
-            ${v.league} · ${v.home_ground || "-"} · Founded ${v.founding_year || "-"}
-            </div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px">
-            Submitted ${new Date(v.submitted_at).toLocaleDateString()}
-            </div>
-        </div>
-        ${badgeHTML("Pending", "gold")}
-        </div>
-
-        <div id="edit-form-${v.id}" style="display:none;margin-bottom:12px;padding:12px;background:var(--bg);border:0.5px solid var(--border);">
-        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
-            Edit verification details
-        </div>
-        <div class="fg">
-            <label>Team name</label>
-            <input type="text" id="edit-name-${v.id}" value="${v.team_name}" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
-        </div>
-        <div class="fg">
-            <label>League / division</label>
-            <input type="text" id="edit-league-${v.id}" value="${v.league || ""}" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
-        </div>
-        <div class="form-row">
-            <div class="fg">
-            <label>Founding year</label>
-            <input type="number" id="edit-year-${v.id}" value="${v.founding_year || ""}" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
-            </div>
-            <div class="fg">
-            <label>Home ground</label>
-            <input type="text" id="edit-ground-${v.id}" value="${v.home_ground || ""}" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
-            </div>
-        </div>
-        <div class="fg">
-            <label>Admin notes to coach</label>
-            <input type="text" id="edit-notes-${v.id}" placeholder="e.g. Team name corrected to match league records" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
-        </div>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-            <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.saveEdits('${v.id}', '${v.coach_id}', '${v.team_name}')">
-            <i class="ti ti-circle-check"></i> Save & notify coach
-            </button>
-            <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.toggleEditForm('${v.id}')">
-            Cancel
-            </button>
-        </div>
-        </div>
-
-        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
-        <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.approveSquad('${v.id}','${v.coach_id}','${v.team_name}')">
-            <i class="ti ti-circle-check"></i> Approve
-        </button>
-        <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.toggleEditForm('${v.id}')">
-            <i class="ti ti-edit"></i> Edit
-        </button>
-        <button class="btn btn-danger btn-sm" onclick="HF_ADMIN.rejectSquad('${v.id}','${v.coach_id}','${v.team_name}')">
-            <i class="ti ti-x"></i> Reject
-        </button>
-        </div>
-    </div>`;
 
   // ── USER ACTIONS ───────────────────────────────────────────
   const kickUser = async (userId, name) => {
@@ -924,502 +835,96 @@ const HF_ADMIN = (() => {
     document.body.appendChild(overlay);
   };
 
-  const archiveMessage = async (messageId) => {
-    await HF_DB.archiveMessage(messageId);
-    HF_UTILS.toast("Message archived.", "success");
-    messages(HF_DB.getSession());
-  };
+  // ── MESSAGES ───────────────────────────────────────────────
+  const messages = async (s) => {
+    const [{ data: msgs }, { data: archived }] = await Promise.all([
+      HF_DB.getMessages(s.userId),
+      HF_DB.getArchivedMessages(s.userId),
+    ]);
 
-  const unarchiveMessage = async (messageId) => {
-    await HF_DB.unarchiveMessage(messageId);
-    HF_UTILS.toast("Message unarchived.", "success");
-    messages(HF_DB.getSession());
-  };
+    // enrich messages with sender names
+    const allSenderIds = [
+      ...(msgs || []).map((m) => m.from_id),
+      ...(archived || []).map((m) => m.from_id),
+    ];
+    const senderNames = await HF_DB.getUserNamesByIds(allSenderIds);
 
-  const readMessage = async (messageId, el) => {
-    const badge = document.getElementById(`badge-${messageId}`);
-    if (badge) badge.remove();
+    const enriched = (msgs || []).map((m) => ({
+      ...m,
+      senderName: senderNames[m.from_id] || "HappyFeet",
+    }));
 
-    await HF_DB.markMessageRead(messageId);
+    const enrichedArchived = (archived || []).map((m) => ({
+      ...m,
+      senderName: senderNames[m.from_id] || "HappyFeet",
+    }));
 
-    const session = HF_DB.getSession();
-    const { data: msgs } = await HF_DB.getMessages(session.userId);
-    const unreadCount = msgs?.filter((m) => !m.read).length || 0;
-    HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
-
-    // find the message and show body in a modal
-    const msg = msgs?.find((m) => m.id === messageId);
-    if (msg) {
-      const overlay = document.createElement("div");
-      overlay.id = `msg-modal-${messageId}`;
-      overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:var(--sp-xl);`;
-      overlay.innerHTML = `
-      <div style="background:var(--bg);border-top:3px solid var(--gold);padding:var(--sp-2xl);max-width:480px;width:100%;">
-        <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
-          HappyFeet ${msg.from_id === "system" ? "System" : "Admin"}
-        </div>
-        <div style="font-family:var(--font);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
-          ${msg.subject || "Message"}
-        </div>
-        <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:var(--sp-xl);">
-          ${msg.body}
-        </div>
-        <button class="btn btn-primary" onclick="document.getElementById('msg-modal-${messageId}').remove();HF_ROUTER.navTo('messages');">
-          <i class="ti ti-circle-check"></i> Got it
-        </button>
-      </div>`;
-      document.body.appendChild(overlay);
-    }
-
-    messages(session);
-  };
-
-  const composeMessage = () => {
-    const session = HF_DB.getSession();
     setMain(`
     <div class="card">
-      <div class="card-title"><div class="card-dot"></div>New message</div>
-      <div class="fg">
-        <label class="required">To</label>
-        <div id="compose-to-container" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px;background:var(--bg2);border:0.5px solid var(--border);min-height:44px;cursor:text;" onclick="document.getElementById('compose-search').focus()">
-          <div id="compose-tags" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
-          <input type="text" id="compose-search" placeholder="Search by name or email..."
-            oninput="HF_${session.role.toUpperCase()}.searchRecipients(this.value)"
-            style="flex:1;min-width:150px;border:none;background:transparent;color:var(--text);font-size:13px;font-family:var(--font);outline:none;padding:2px 4px;">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+            <div class="card-dot"></div>Messages
         </div>
-        <div id="compose-search-results" style="margin-top:2px;border:0.5px solid var(--border);background:var(--bg);display:none;"></div>
-        <input type="hidden" id="compose-to-ids">
-      </div>
-      <div class="fg">
-        <label class="required">Subject</label>
-        <input type="text" id="compose-subject" placeholder="Message subject"
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-      </div>
-      <div class="fg">
-        <label class="required">Message</label>
-        <textarea id="compose-body" rows="5" placeholder="Write your message..."
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" onclick="HF_${session.role.toUpperCase()}.sendComposedMessage()">
-          <i class="ti ti-send"></i> Send
-        </button>
-        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')">Cancel</button>
-      </div>
-    </div>`);
-
-    // store selected recipients
-    window._composeRecipients = [];
-  };
-
-  const searchRecipients = async (query) => {
-    const results = document.getElementById("compose-search-results");
-    if (!results) return;
-    if (!query || query.length < 2) {
-      results.style.display = "none";
-      results.innerHTML = "";
-      return;
-    }
-
-    const session = HF_DB.getSession();
-    const { data } = await HF_DB.searchAllUsers(query, session.userId);
-    const existing = window._composeRecipients?.map((r) => r.id) || [];
-    const filtered = data?.filter((u) => !existing.includes(u.id)) || [];
-
-    if (!filtered || filtered.length === 0) {
-      results.style.display = "none";
-      return;
-    }
-
-    results.style.display = "block";
-    results.innerHTML = filtered
-      .map(
-        (u) => `
-    <div style="display:flex;align-items:center;gap:var(--sp-md);padding:10px;cursor:pointer;border-bottom:0.5px solid var(--border);"
-      onmousedown="event.preventDefault();HF_${session.role.toUpperCase()}.selectRecipient('${u.id}', '${u.name.replace(/'/g, "\\'")}', '${u.role}')">
-      <div class="avatar avatar-sm" style="background:${u.role === "player" ? "var(--green)" : u.role === "coach" ? "var(--gold)" : u.role === "admin" ? "var(--red)" : "var(--blue)"}">
-        ${HF_UTILS.initials(u.name)}
-      </div>
-      <div>
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${u.name}</div>
-        <div style="font-size:11px;color:var(--text2)">${u.role}</div>
-      </div>
-    </div>`,
-      )
-      .join("");
-  };
-
-  const selectRecipient = (userId, userName, userRole) => {
-    if (!window._composeRecipients) window._composeRecipients = [];
-
-    // don't add duplicates
-    if (window._composeRecipients.find((r) => r.id === userId)) return;
-
-    window._composeRecipients.push({
-      id: userId,
-      name: userName,
-      role: userRole,
-    });
-
-    // add tag chip
-    const tags = document.getElementById("compose-tags");
-    const tag = document.createElement("div");
-    tag.id = `tag-${userId}`;
-    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font);letter-spacing:0.04em;`;
-    tag.innerHTML = `
-    ${userName}
-    <span style="cursor:pointer;font-size:14px;font-weight:700;line-height:1;" 
-      onclick="HF_${HF_DB.getSession().role.toUpperCase()}.removeRecipient('${userId}')">×</span>`;
-    tags?.appendChild(tag);
-
-    // show clear all link if more than one recipient
-    const clearAll = document.getElementById("compose-clear-all");
-    if (!clearAll && window._composeRecipients.length > 1) {
-      const link = document.createElement("div");
-      link.id = "compose-clear-all";
-      link.style.cssText =
-        "font-size:11px;color:var(--text3);cursor:pointer;padding:2px 4px;text-decoration:underline;";
-      link.textContent = "Clear all";
-      link.onclick = () => {
-        window._composeRecipients = [];
-        document.getElementById("compose-tags").innerHTML = "";
-        link.remove();
-      };
-      document.getElementById("compose-to-container")?.appendChild(link);
-    }
-
-    // remove clear all if back to 0 or 1
-    if (window._composeRecipients.length <= 1) {
-      document.getElementById("compose-clear-all")?.remove();
-    }
-
-    // clear search
-    const search = document.getElementById("compose-search");
-    const results = document.getElementById("compose-search-results");
-    if (search) {
-      search.value = "";
-      search.focus();
-    }
-    if (results) {
-      results.style.display = "none";
-      results.innerHTML = "";
-    }
-  };
-
-  const removeRecipient = (userId) => {
-    window._composeRecipients =
-      window._composeRecipients?.filter((r) => r.id !== userId) || [];
-    document.getElementById(`tag-${userId}`)?.remove();
-    if (window._composeRecipients.length <= 1) {
-      document.getElementById("compose-clear-all")?.remove();
-    }
-  };
-
-  const sendComposedMessage = async () => {
-    const session = HF_DB.getSession();
-    const recipients = window._composeRecipients || [];
-    const subject = document.getElementById("compose-subject")?.value.trim();
-    const body = document.getElementById("compose-body")?.value.trim();
-
-    if (recipients.length === 0) {
-      HF_UTILS.toast("Please select at least one recipient.", "error");
-      return;
-    }
-    if (!subject) {
-      HF_UTILS.toast("Please enter a subject.", "error");
-      return;
-    }
-    if (!body) {
-      HF_UTILS.toast("Please enter a message.", "error");
-      return;
-    }
-
-    // create one shared thread ID for all recipients
-    const threadId = crypto.randomUUID();
-
-    for (const recipient of recipients) {
-      await HF_DB._sendMessage(
-        session.userId,
-        recipient.id,
-        subject,
-        body,
-        threadId,
-      );
-    }
-
-    // also send a copy to self so sender can see the thread
-    if (recipients.length > 1) {
-      await HF_DB._sendMessage(
-        session.userId,
-        session.userId,
-        subject,
-        `[Group message to ${recipients.map((r) => r.name).join(", ")}]\n\n${body}`,
-        threadId,
-      );
-    }
-
-    window._composeRecipients = [];
-    HF_UTILS.toast(
-      `Message sent to ${recipients.length} recipient${recipients.length > 1 ? "s" : ""}!`,
-      "success",
-    );
-    HF_ROUTER.navTo("messages");
-  };
-
-  const toggleMsgActions = (messageId, fromId, senderName) => {
-    const actions = document.getElementById(`msg-actions-${messageId}`);
-    if (actions)
-      actions.style.display =
-        actions.style.display === "none" ? "block" : "none";
-  };
-
-  const replyToMessage = (messageId, fromId, senderName, subject) => {
-    if (!fromId || fromId === "admin" || fromId === "system") {
-      HF_UTILS.toast("You cannot reply to system messages.", "error");
-      return;
-    }
-    const session = HF_DB.getSession();
-    setMain(`
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Reply to ${senderName}</div>
-      <div style="padding:10px 12px;background:var(--bg2);border-left:2px solid var(--border);font-size:12px;color:var(--text2);margin-bottom:var(--sp-md);">
-        <i class="ti ti-arrow-back-up" style="margin-right:6px"></i>
-        Replying to: <strong style="color:var(--text)">${subject || "Message"}</strong>
-      </div>
-      <div class="fg">
-        <label class="required">Message</label>
-        <textarea id="reply-body" rows="4" placeholder="Write your reply..."
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" onclick="HF_${session.role.toUpperCase()}.sendReply('${fromId}', 'Re: ${(subject || "Message").replace(/'/g, "\\'")}')">
-          <i class="ti ti-send"></i> Send reply
-        </button>
-        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')">Cancel</button>
-      </div>
-    </div>`);
-  };
-
-  const sendReply = async (toId, subject, threadId) => {
-    const session = HF_DB.getSession();
-    const body = document.getElementById("reply-body")?.value.trim();
-    if (!body) {
-      HF_UTILS.toast("Please enter a reply.", "error");
-      return;
-    }
-
-    // detect emoji-only and launch confetti
-    const emojiOnly =
-      body
-        .replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, "")
-        .trim().length === 0;
-    if (emojiOnly) {
-      const firstEmoji = body.match(
-        /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu,
-      )?.[0];
-      if (firstEmoji) HF_UTILS.launchEmojiConfetti(firstEmoji);
-    }
-
-    const result = await HF_DB._sendMessage(
-      session.userId,
-      toId,
-      subject,
-      body,
-      threadId,
-    );
-    if (result.error) {
-      HF_UTILS.toast(result.error, "error");
-      return;
-    }
-
-    document.getElementById("reply-body").value = "";
-    viewThread(threadId, toId, subject);
-  };
-
-  const viewThread = async (threadId, otherUserId, subject) => {
-    const session = HF_DB.getSession();
-    const { data: msgs } = await HF_DB.getThread(threadId, session.userId);
-
-    const isEmojiOnly = (text) => {
-      const stripped = text
-        .replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, "")
-        .trim();
-      return stripped.length === 0;
-    };
-
-    const renderMessageBody = (body) => {
-      return body.replace(
-        /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu,
-        `<span class="emoji-animate" style="font-size:1.3em;cursor:pointer;display:inline-block;"
-      onclick="HF_UTILS.launchEmojiConfetti('$1');this.style.transform='scale(1.8)';setTimeout(()=>this.style.transform='scale(1)',200)">$1</span>`,
-      );
-    };
-
-    // mark all unread messages in thread as read
-    const unread =
-      msgs?.filter((m) => !m.read && m.to_id === session.userId) || [];
-    for (const m of unread) await HF_DB.markMessageRead(m.id);
-
-    // enrich with sender names
-    const enriched = await Promise.all(
-      (msgs || []).map(async (m) => ({
-        ...m,
-        senderName: await HF_DB.getUserNameById(m.from_id),
-      })),
-    );
-
-    setMain(`
-    <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);">
-      <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('messages')">
-        <i class="ti ti-arrow-left"></i> Back
-      </button>
-      <div style="font-family:var(--font);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
-        ${subject || "Conversation"}
-      </div>
+         <div style="display:flex;gap:6px;">
+          <button class="btn btn-primary btn-sm" onclick="HF_ROLE_UTILS.composeMessage()">
+            <i class="ti ti-edit"></i> New message
+          </button>
+          </div>
+        </div>
+      ${
+        !msgs || msgs.length === 0
+          ? `
+        <div style="text-align:center;padding:32px;color:var(--text2)">
+          <i class="ti ti-message" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No messages yet</div>
+          <div style="font-size:13px">Admin messages will appear here.</div>
+        </div>`
+          : HF_UTILS.messageListHTML(enriched, "admin")
+      }
     </div>
 
-    <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:var(--sp-lg);display:flex;flex-direction:column;gap:var(--sp-md);min-height:300px;max-height:60vh;overflow-y:auto;" id="thread-messages">
-        ${enriched
-          .map((m) => {
-            const isMine = m.from_id === session.userId;
-            const emojiOnly = isEmojiOnly(m.body);
-            return `
-            <div style="display:flex;flex-direction:column;align-items:${isMine ? "flex-end" : "flex-start"};">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font);letter-spacing:0.04em;">
-                ${isMine ? "You" : m.senderName} · ${HF_UTILS.timeAgo(m.created_at)}
-              </div>
-              <div style="
-                max-width:75%;
-                padding:${emojiOnly ? "4px" : "10px 14px"};
-                background:${emojiOnly ? "transparent" : isMine ? "var(--gold)" : "var(--bg2)"};
-                color:${isMine && !emojiOnly ? "#0f0f0d" : "var(--text)"};
-                font-size:${emojiOnly ? "32px" : "13px"};
-                line-height:1.5;">
-                ${renderMessageBody(m.body)}
-              </div>
-            </div>`;
-          })
-          .join("")}
-      </div>
-
-      <div style="padding:var(--sp-md);border-top:0.5px solid var(--border);background:var(--bg);">
-        <div id="emoji-picker" style="display:none;padding:var(--sp-sm);background:var(--bg2);border:0.5px solid var(--border);margin-bottom:8px;flex-wrap:wrap;gap:4px;">
-          ${[
-            "😀",
-            "😂",
-            "😍",
-            "🔥",
-            "👏",
-            "💪",
-            "⚽",
-            "🏆",
-            "🎯",
-            "👊",
-            "🙏",
-            "❤️",
-            "😤",
-            "😭",
-            "🤝",
-            "✅",
-            "💯",
-            "🚀",
-            "👋",
-            "😎",
-            "🤔",
-            "😅",
-            "🥅",
-            "🎉",
-            "👍",
-            "👎",
-            "❌",
-            "⚡",
-            "🌟",
-            "😴",
-          ]
+    ${
+      archived?.length > 0
+        ? `
+      <div class="card">
+        <div class="card-title" style="cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
+          <div class="card-dot"></div>Archived
+          <span style="margin-left:auto;font-size:11px;color:var(--text3)">
+            ${archived.length} · click to expand
+          </span>
+        </div>
+        <div style="display:none">
+          ${enrichedArchived
             .map(
-              (e) => `
-            <span style="font-size:24px;cursor:pointer;width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;transition:transform 0.15s ease;"
-              onmouseover="this.style.transform='scale(1.3)'"
-              onmouseout="this.style.transform='scale(1)'"
-              onclick="document.getElementById('reply-body').value += '${e}';this.style.transform='scale(1.5)';setTimeout(()=>this.style.transform='scale(1)',150)">
-              ${e}
-            </span>`,
+              (m) => `
+            <div class="msg-item" id="archived-msg-${m.id}" style="cursor:pointer;" 
+                onclick="HF_ROLE_UTILS.viewThread('${m.thread_id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')">
+                <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
+                <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
+                </div>
+                <div style="flex:1;opacity:0.6">
+                <div style="font-size:11px;font-family:var(--font);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+                    From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : "HappyFeet Admin")}
+                </div>
+                <div class="msg-name">${m.subject || "Message"}</div>
+                <div class="msg-preview">${m.body}</div>
+                <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
+                </div>
+                <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;flex-shrink:0;"
+                title="Move back to inbox"
+                onclick="event.stopPropagation();HF_ROLE_UTILS.unarchiveMessage('${m.id}')">
+                <i class="ti ti-inbox"></i>
+                </button>
+            </div>`,
             )
             .join("")}
         </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input type="text" id="reply-body" placeholder="Write a reply..."
-            style="flex:1;padding:0 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;font-family:var(--font);outline:none;height:42px;box-sizing:border-box;">
-          <button class="btn btn-outline" style="height:42px;width:42px;min-height:42px;padding:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex-shrink:0;"
-            title="Emoji"
-            onclick="const p=document.getElementById('emoji-picker');p.style.display=p.style.display==='none'?'flex':'none'">
-            <i class="ti ti-mood-smile"></i>
-          </button>
-          <button class="btn btn-primary" style="height:42px;width:42px;min-height:42px;padding:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex-shrink:0;"
-            onclick="HF_${session.role.toUpperCase()}.sendReply('${otherUserId}', '${(subject || "").replace(/'/g, "\\'")}', '${threadId}')">
-            <i class="ti ti-send"></i>
-          </button>
-        </div>
-      </div>
-    </div>`);
-
-    setTimeout(() => {
-      const threadEl = document.getElementById("thread-messages");
-      if (threadEl) threadEl.scrollTop = threadEl.scrollHeight;
-
-      // enter key sends message
-      const replyInput = document.getElementById("reply-body");
-      if (replyInput) {
-        replyInput.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            HF_DB.getSession() &&
-              window[
-                `HF_${HF_DB.getSession().role.toUpperCase()}`
-              ]?.sendReply?.(otherUserId, subject, threadId);
-          }
-        });
-      }
-    }, 100);
+      </div>`
+        : ""
+    }`);
   };
 
-  const viewSenderProfile = async (userId) => {
-    const session = HF_DB.getSession();
-    const html = await HF_UTILS.viewProfile(
-      userId,
-      "HF_ROUTER.navTo('messages')",
-    );
-    if (!html) return;
-    setMain(html);
-  };
-
-  const reportToAdmin = async (fromId, senderName) => {
-    const session = HF_DB.getSession();
-    const reason = prompt(
-      `Report ${senderName} to admin?\n\nPlease describe the issue:`,
-    );
-    if (!reason) return;
-
-    const adminIds = await HF_DB.getAdminIds();
-    for (const adminId of adminIds) {
-      await HF_DB._sendMessage(
-        session.userId,
-        adminId,
-        `[Report] User: ${senderName}`,
-        `${session.name} has reported ${senderName}.\n\nReason: ${reason}`,
-      );
-    }
-
-    HF_UTILS.toast(`${senderName} has been reported to admin.`, "success");
-  };
-
-  const viewUserProfile = async (userId) => {
-    const html = await HF_UTILS.viewProfile(userId, "HF_ROUTER.navTo('users')");
-    if (!html) return;
-    setMain(html);
-  };
-
+  // ── TICKET HELPERS ───────────────────────────────────────────────
   const claimTicket = async (ticketId) => {
     const session = HF_DB.getSession();
     const result = await HF_DB.claimTicket(ticketId, session.userId);
@@ -1528,13 +1033,37 @@ const HF_ADMIN = (() => {
   };
 
   const viewTicketUser = async (userId) => {
-    const html = await HF_UTILS.viewProfile(
+    const html = await HF_ROLE_UTILS.viewProfile(
       userId,
       "HF_ROUTER.navTo('tickets')",
     );
     if (!html) return;
     setMain(html);
   };
+
+  // ── ADMIN FUNCTIONS ───────────────────────────────────────
+  const composeMessage = () => HF_ROLE_UTILS.composeMessage("admin");
+  const searchRecipients = (q) => HF_ROLE_UTILS.searchRecipients(q, "admin");
+  const selectRecipient = (id, name, role) =>
+    HF_ROLE_UTILS.selectRecipient(id, name, role, "admin");
+  const removeRecipient = (id) => HF_ROLE_UTILS.removeRecipient(id);
+  const sendComposedMessage = () => HF_ROLE_UTILS.sendComposedMessage("admin");
+  const viewThread = (tid, uid, sub) =>
+    HF_ROLE_UTILS.viewThread(tid, uid, sub, "admin");
+  const sendReply = (tid, sub, thid) =>
+    HF_ROLE_UTILS.sendReply(tid, sub, thid, "admin");
+  const toggleMsgActions = (mid) => HF_ROLE_UTILS.toggleMsgActions(mid);
+  const replyToMessage = (mid, fid, sn, sub, thid) =>
+    HF_ROLE_UTILS.replyToMessage(mid, fid, sn, sub, thid, "admin");
+  const viewSenderProfile = (uid) =>
+    HF_ROLE_UTILS.viewSenderProfile(uid, "admin");
+  const reportToAdmin = (fid, sn) =>
+    HF_ROLE_UTILS.reportToAdmin(fid, sn, "admin");
+  const archiveMessage = (mid, el) =>
+    HF_ROLE_UTILS.archiveMessage(mid, el, "admin");
+  const unarchiveMessage = (mid) =>
+    HF_ROLE_UTILS.unarchiveMessage(mid, "admin");
+  const readMessage = (mid, el) => HF_ROLE_UTILS.readMessage(mid, el, "admin");
 
   return {
     render,
@@ -1548,21 +1077,6 @@ const HF_ADMIN = (() => {
     removeUser,
     toggleEditForm,
     saveEdits,
-    readMessage,
-    archiveMessage,
-    unarchiveMessage,
-    composeMessage,
-    sendComposedMessage,
-    searchRecipients,
-    selectRecipient,
-    removeRecipient,
-    viewThread,
-    toggleMsgActions,
-    replyToMessage,
-    sendReply,
-    viewSenderProfile,
-    reportToAdmin,
-    viewUserProfile,
     tickets,
     claimTicket,
     resolveTicket,

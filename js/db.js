@@ -2712,6 +2712,7 @@ const HF_DB = (() => {
   // ─── Public API ────────────────────────────────────────────
   return {
     localDate: _localDate,
+    localDateOffset: _localDateOffset,
     createUser,
     findUser,
     updateUserProfile,

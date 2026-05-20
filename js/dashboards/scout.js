@@ -1,13 +1,5 @@
 const HF_SCOUT = (() => {
-  const {
-    badgeHTML,
-    activityHTML,
-    avatarHTML,
-    toast,
-    initials,
-    avatarColor,
-    ratingColor,
-  } = HF_UTILS;
+  const { badgeHTML, toast, initials } = HF_UTILS;
 
   const setMain = (html) => {
     if (window._stopConfetti) window._stopConfetti();
@@ -15,6 +7,7 @@ const HF_SCOUT = (() => {
     if (mc) mc.innerHTML = html;
   };
 
+  // ── RENDER DISPATCHER ───────────────────────────────────────
   const render = (view, session) => {
     const views = {
       dashboard,
@@ -216,16 +209,16 @@ const HF_SCOUT = (() => {
           : agentConvos
               .map(
                 (c) => `
-  <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);cursor:pointer;"
-    onclick="HF_AGENT.openConversation('${c.session_id}', \`${(c.message || "").replace(/`/g, "'").replace(/\n/g, " ")}\`, \`${(c.response || "").replace(/`/g, "'").replace(/\n/g, " ")}\`)">
-    <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">
-      <i class="ti ti-message" style="color:var(--gold);margin-right:4px"></i>${c.message}
-    </div>
-    <div style="font-size:11px;color:var(--text2);line-height:1.5;">
-      ${c.response.slice(0, 120)}${c.response.length > 120 ? "..." : ""}
-    </div>
-    <div style="font-size:10px;color:var(--text3);margin-top:4px;">${HF_UTILS.timeAgo(c.created_at)}</div>
-  </div>`,
+                <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);cursor:pointer;"
+                  onclick="HF_AGENT.openConversation('${c.session_id}', \`${(c.message || "").replace(/`/g, "'").replace(/\n/g, " ")}\`, \`${(c.response || "").replace(/`/g, "'").replace(/\n/g, " ")}\`)">
+                  <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px;">
+                    <i class="ti ti-message" style="color:var(--gold);margin-right:4px"></i>${c.message}
+                  </div>
+                  <div style="font-size:11px;color:var(--text2);line-height:1.5;">
+                    ${c.response.slice(0, 120)}${c.response.length > 120 ? "..." : ""}
+                  </div>
+                  <div style="font-size:10px;color:var(--text3);margin-top:4px;">${HF_UTILS.timeAgo(c.created_at)}</div>
+                </div>`,
               )
               .join("")
       }
@@ -292,6 +285,223 @@ const HF_SCOUT = (() => {
     </div>`);
   };
 
+  // ── PROFILE HELPERS ───────────────────────────────────────────
+  const editProfile = () => {
+    const session = HF_DB.getSession();
+    const p = session.profile || {};
+
+    setMain(`
+    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;gap:var(--sp-lg);">
+      <div style="position:relative;">
+        <div id="avatar-banner" style="width:72px;height:72px;overflow:hidden;background:#185FA5;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;">
+          ${
+            p.avatarUrl
+              ? `<img src="${p.avatarUrl}?cb=${Date.now()}" style="width:100%;height:100%;object-fit:cover;">`
+              : HF_UTILS.initials(session.name)
+          }
+        </div>
+        <label style="position:absolute;bottom:-8px;right:-8px;width:24px;height:24px;background:var(--gold);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0f0f0d;">
+          <i class="ti ti-camera" style="font-size:12px"></i>
+          <input type="file" id="avatar-input" accept="image/*" style="display:none;"
+            onchange="HF_SCOUT.previewAvatar(this)">
+        </label>
+      </div>
+      <div>
+        <div style="font-family:var(--font);font-size:22px;font-weight:700;color:#fff;">${session.name}</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.org || "-"}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Edit profile</div>
+      <div class="fg">
+        <label class="required">Full name</label>
+        <input type="text" id="ep-name" value="${session.name || ""}" placeholder="Your full name"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <div class="fg">
+        <label class="required">Organisation / agency</label>
+        <input type="text" id="ep-org" value="${p.org || ""}" placeholder="e.g. HappyFeet Scouting"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <div class="fg">
+        <label class="required">Years experience</label>
+        <input type="number" id="ep-exp" value="${p.exp || ""}" min="0" max="50"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      ${
+        session.agencyStatus === "verified"
+          ? `
+        <div style="padding:12px;background:rgba(26,122,46,.05);border-left:2px solid var(--green);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
+          <i class="ti ti-circle-check" style="margin-right:6px;color:var(--green)"></i>
+          Your agency <strong style="color:var(--green)">${session.profile?.org || ""}</strong> is verified. To change your agency name please
+          <span onclick="HF_SCOUT.contactAdmin()" style="color:var(--gold);cursor:pointer;text-decoration:underline;">contact an administrator</span>.
+        </div>`
+          : `
+        <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--border);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
+          <i class="ti ti-info-circle" style="margin-right:6px"></i>
+          Agency name is set during agency verification.
+        </div>`
+      }
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button class="btn btn-primary" onclick="HF_SCOUT.saveProfile()">
+          <i class="ti ti-circle-check"></i> Save changes
+        </button>
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('profile')">Cancel</button>
+      </div>
+    </div>`);
+  };
+
+  const saveProfile = async () => {
+    const session = HF_DB.getSession();
+    const p = session.profile || {};
+    const name = document.getElementById("ep-name")?.value.trim();
+    const org = document.getElementById("ep-org")?.value.trim();
+    const exp = document.getElementById("ep-exp")?.value;
+
+    if (!name) {
+      HF_UTILS.toast("Please enter your full name.", "error");
+      return;
+    }
+    if (!org) {
+      HF_UTILS.toast("Please enter your organisation name.", "error");
+      return;
+    }
+    if (!exp || parseInt(exp) < 0 || parseInt(exp) > 50) {
+      HF_UTILS.toast("Please enter valid years of experience (0-50).", "error");
+      return;
+    }
+
+    // handle avatar upload
+    const file = window._pendingAvatarFile || null;
+    let avatarUrl = p.avatarUrl || null;
+    if (file) {
+      HF_UTILS.toast("Uploading photo...", "success");
+      const uploadResult = await HF_DB.uploadAvatar(session.userId, file);
+      if (uploadResult.error) {
+        HF_UTILS.toast(uploadResult.error, "error");
+        return;
+      }
+      avatarUrl = uploadResult.url;
+      window._pendingAvatarFile = null;
+    }
+
+    if (name !== session.name) {
+      const nameResult = await HF_DB.updateUserName(session.userId, name);
+      if (nameResult.error) {
+        HF_UTILS.toast(nameResult.error, "error");
+        return;
+      }
+      session.name = name;
+    }
+
+    const updatedProfile = { ...p, org, exp, avatarUrl };
+    const result = await HF_DB.updateUserProfile(
+      session.userId,
+      updatedProfile,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    session.profile = updatedProfile;
+    HF_DB.saveSession(session);
+
+    const nameDisplay = document.getElementById("topbar-name-display");
+    if (nameDisplay) nameDisplay.textContent = name;
+
+    HF_UTILS.toast("Profile updated!", "success");
+    HF_ROUTER.navTo("profile");
+  };
+
+  // ── AGENCY VERIFICATION HELPERS ───────────────────────────────────────────────
+  const resubmitAgency = () => {
+    const session = HF_DB.getSession();
+    setMain(`
+      <div class="auth-card" style="max-width:480px;margin:0 auto;">
+        <div class="auth-title">Resubmit agency registration</div>
+        <div class="auth-sub">Update your agency details for verification</div>
+        <div class="error-box" id="reagency-err"></div>
+        <div class="fg">
+          <label class="required">Organisation / agency</label>
+          <input type="text" id="rag-name" value="${session.profile?.org || ""}" placeholder="e.g. HappyFeet Scouting"
+            style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+        </div>
+        <div class="fg">
+          <label class="required">Regions you cover</label>
+          <div id="rag-regions-container" style="display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:var(--bg2);border:0.5px solid var(--border);min-height:44px;"></div>
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+            <button type="button" class="region-tag" data-value="Ghana" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Ghana</button>
+            <button type="button" class="region-tag" data-value="Nigeria" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Nigeria</button>
+            <button type="button" class="region-tag" data-value="Senegal" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Senegal</button>
+            <button type="button" class="region-tag" data-value="Ivory Coast" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Ivory Coast</button>
+            <button type="button" class="region-tag" data-value="Cameroon" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Cameroon</button>
+            <button type="button" class="region-tag" data-value="West Africa" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">West Africa</button>
+            <button type="button" class="region-tag" data-value="All Africa" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">All Africa</button>
+          </div>
+        </div>
+        <div class="fg">
+          <label class="required">Target leagues / destinations</label>
+          <div id="rag-leagues-container" style="display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:var(--bg2);border:0.5px solid var(--border);min-height:44px;"></div>
+          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
+            <button type="button" class="league-tag" data-value="Ghana Premier League" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Ghana Premier League</button>
+            <button type="button" class="league-tag" data-value="MLS" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">MLS</button>
+            <button type="button" class="league-tag" data-value="Premier League" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Premier League</button>
+            <button type="button" class="league-tag" data-value="Europe" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Europe</button>
+            <button type="button" class="league-tag" data-value="Gulf" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Gulf</button>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:var(--sp-md);">
+          <button class="btn btn-primary" onclick="HF_SCOUT.submitAgencyResubmission()">
+            <i class="ti ti-send"></i> Submit for verification
+          </button>
+          <button class="btn btn-outline" onclick="HF_ROUTER.navTo('dashboard')">Cancel</button>
+        </div>
+      </div>`);
+  };
+
+  const submitAgencyResubmission = async () => {
+    const session = HF_DB.getSession();
+    const agencyName = document.getElementById("rag-name")?.value.trim();
+    const website = document.getElementById("rag-website")?.value?.trim();
+    const regionsCovered = HF_AUTH.getSelectedTags("rag-regions-container");
+    const targetLeagues = HF_AUTH.getSelectedTags("rag-leagues-container");
+
+    if (!agencyName) {
+      HF_UTILS.toast("Please enter your agency name.", "error");
+      return;
+    }
+    if (regionsCovered.length === 0) {
+      HF_UTILS.toast("Please select at least one region.", "error");
+      return;
+    }
+    if (targetLeagues.length === 0) {
+      HF_UTILS.toast("Please select at least one target league.", "error");
+      return;
+    }
+
+    const result = await HF_DB.submitAgencyVerification({
+      scoutId: session.userId,
+      agencyName,
+      regionsCovered,
+      targetLeagues,
+      website: website || null,
+    });
+
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    await HF_DB.updateAgencyStatus(session.userId, "pending");
+    session.agencyStatus = "pending";
+    HF_DB.saveSession(session);
+
+    HF_UTILS.toast("Agency resubmitted for verification!", "success");
+    HF_ROUTER.navTo("dashboard");
+  };
+
   // ── DISCOVER ───────────────────────────────────────────────
   const discover = async (s) => {
     const { data: players } = await HF_DB.getAllPlayers();
@@ -340,157 +550,6 @@ const HF_SCOUT = (() => {
     window._scoutUserId = s.userId;
   };
 
-  const _playerRow = (p, isSaved, scoutId) => {
-    const prof = p.profile || {};
-    const overall = prof.ratings
-      ? Math.round(
-          (prof.ratings.speed +
-            prof.ratings.tech +
-            prof.ratings.tact +
-            prof.ratings.phys) /
-            4,
-        )
-      : null;
-
-    return `
-    <div class="prospect-row" onclick="HF_SCOUT.togglePlayerActions('${p.id}')" style="cursor:pointer;">
-      <div class="avatar avatar-md" style="background:var(--green)">${HF_UTILS.initials(p.name)}</div>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
-        <div style="font-size:11px;color:var(--text2)">${prof.pos || "-"} · ${prof.tier || "-"} · ${prof.hometown || "-"}</div>
-        <div style="font-size:11px;color:${prof.status === "unattached" || !prof.club ? "var(--green)" : "var(--text3)"}">
-          ${prof.status === "unattached" || !prof.club ? "Unattached" : prof.club}
-        </div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;">
-        ${overall !== null ? `<div style="font-size:16px;font-weight:700;color:var(--gold)">${overall}%</div>` : '<div style="font-size:13px;color:var(--text3)">Unrated</div>'}
-        ${isSaved ? `<span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(26,122,46,.15);color:var(--green);">Saved</span>` : ""}
-      </div>
-    </div>
-    <div id="player-actions-${p.id}" style="display:none;padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        ${
-          !isSaved
-            ? `
-          <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();HF_SCOUT.savePlayer('${p.id}', '${p.name.replace(/'/g, "\\'")}')">
-            <i class="ti ti-star"></i> Save prospect
-          </button>`
-            : ""
-        }
-        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.viewPlayerProfile('${p.id}')">
-          <i class="ti ti-user"></i> View profile
-        </button>
-        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.messagePlayer('${p.id}', '${p.name.replace(/'/g, "\\'")}')">
-          <i class="ti ti-message"></i> Message
-        </button>
-      </div>
-    </div>`;
-  };
-
-  const filterPlayers = () => {
-    const pos = document.getElementById("filter-pos")?.value;
-    const tier = document.getElementById("filter-tier")?.value;
-    const search = document
-      .getElementById("filter-search")
-      ?.value.toLowerCase();
-    const list = document.getElementById("players-list");
-    if (!list || !window._scoutAllPlayers) return;
-
-    const filtered = window._scoutAllPlayers.filter((p) => {
-      const prof = p.profile || {};
-      const matchPos = !pos || prof.pos === pos;
-      const matchTier = !tier || prof.tier === tier;
-      const matchSearch = !search || p.name.toLowerCase().includes(search);
-      return matchPos && matchTier && matchSearch;
-    });
-
-    list.innerHTML =
-      filtered.length === 0
-        ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No players match your filters.</div>`
-        : filtered
-            .map((p) =>
-              _playerRow(
-                p,
-                window._scoutSavedIds?.has(p.id),
-                window._scoutUserId,
-              ),
-            )
-            .join("");
-  };
-
-  const savePlayer = async (playerId, playerName) => {
-    const session = HF_DB.getSession();
-    const result = await HF_DB.saveProspect(session.userId, playerId);
-    if (result.error) {
-      toast(result.error, "error");
-      return;
-    }
-
-    await HF_DB._sendMessage(
-      "system",
-      playerId,
-      "You are being scouted",
-      `${session.name} from ${session.profile?.org || "HappyFeet Scouting"} has added you to their prospect list. Your profile is now being actively monitored. Keep up the great work!`,
-    );
-
-    toast(`${playerName} saved as prospect!`, "success");
-    discover(session);
-  };
-
-  const messagePlayer = async (playerId, playerName) => {
-    const session = HF_DB.getSession();
-    const safeName = playerName.replace(/'/g, "\\'");
-    setMain(`
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Message ${playerName}</div>
-        <div class="fg">
-          <label class="required">Subject</label>
-          <input type="text" id="msg-subject" placeholder="e.g. Scouting opportunity"
-            style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-        </div>
-        <div class="fg">
-          <label class="required">Message</label>
-          <textarea id="msg-body" rows="4" placeholder="Write your message..."
-            style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-primary" onclick="HF_SCOUT.sendMessage('${playerId}', '${safeName}')">
-            <i class="ti ti-send"></i> Send message
-          </button>
-          <button class="btn btn-outline" onclick="HF_ROUTER.navTo('discover')">Cancel</button>
-        </div>
-      </div>`);
-  };
-
-  const sendMessage = async (playerId, playerName) => {
-    const session = HF_DB.getSession();
-    const subject = document.getElementById("msg-subject")?.value.trim();
-    const body = document.getElementById("msg-body")?.value.trim();
-
-    if (!subject) {
-      toast("Please enter a subject.", "error");
-      return;
-    }
-    if (!body) {
-      toast("Please enter a message.", "error");
-      return;
-    }
-
-    const { error } = await HF_DB._sendMessage(
-      session.userId,
-      playerId,
-      subject,
-      body,
-    );
-    if (error) {
-      toast(error, "error");
-      return;
-    }
-
-    toast(`Message sent to ${playerName}!`, "success");
-    HF_ROUTER.navTo("discover");
-  };
-
   // ── SAVED PROSPECTS ────────────────────────────────────────
   const prospects = async (s) => {
     const { data: saved } = await HF_DB.getScoutProspects(s.userId);
@@ -512,6 +571,54 @@ const HF_SCOUT = (() => {
             : saved.map((sp) => _savedProspectRow(sp, s.userId)).join("")
         }
       </div>`);
+  };
+
+  // ── SAVED PROSPECTS HELPERS ───────────────────────────────────────
+  const _playerRow = (p, isSaved, scoutId) => {
+    const prof = p.profile || {};
+    const overall = prof.ratings
+      ? Math.round(
+          (prof.ratings.speed +
+            prof.ratings.tech +
+            prof.ratings.tact +
+            prof.ratings.phys) /
+            4,
+        )
+      : null;
+
+    return `
+      <div class="prospect-row" onclick="HF_SCOUT.togglePlayerActions('${p.id}')" style="cursor:pointer;">
+        <div class="avatar avatar-md" style="background:var(--green)">${HF_UTILS.initials(p.name)}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${p.name}</div>
+          <div style="font-size:11px;color:var(--text2)">${prof.pos || "-"} · ${prof.tier || "-"} · ${prof.hometown || "-"}</div>
+          <div style="font-size:11px;color:${prof.status === "unattached" || !prof.club ? "var(--green)" : "var(--text3)"}">
+            ${prof.status === "unattached" || !prof.club ? "Unattached" : prof.club}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          ${overall !== null ? `<div style="font-size:16px;font-weight:700;color:var(--gold)">${overall}%</div>` : '<div style="font-size:13px;color:var(--text3)">Unrated</div>'}
+          ${isSaved ? `<span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(26,122,46,.15);color:var(--green);">Saved</span>` : ""}
+        </div>
+      </div>
+      <div id="player-actions-${p.id}" style="display:none;padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          ${
+            !isSaved
+              ? `
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();HF_SCOUT.savePlayer('${p.id}', '${p.name.replace(/'/g, "\\'")}')">
+              <i class="ti ti-star"></i> Save prospect
+            </button>`
+              : ""
+          }
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_ROLE_UTILS.viewPlayerProfile('${p.id}')">
+            <i class="ti ti-user"></i> View profile
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.messagePlayer('${p.id}', '${p.name.replace(/'/g, "\\'")}')">
+            <i class="ti ti-message"></i> Message
+          </button>
+        </div>
+      </div>`;
   };
 
   const _savedProspectRow = (sp, scoutId) => {
@@ -554,42 +661,42 @@ const HF_SCOUT = (() => {
     </div>
     <div id="saved-actions-${sp.id}" style="display:none;padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.viewPlayerProfile('${sp.player_id}')">
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_ROLE_UTILS.viewPlayerProfile('${sp.player_id}')">
           <i class="ti ti-user"></i> View profile
         </button>
         ${
           !sp.report
             ? `
-  <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.generateReport('${scoutId}', '${sp.player_id}', '${safeName}')">
-    <i class="ti ti-sparkles"></i> Generate report
-  </button>`
+              <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.generateReport('${scoutId}', '${sp.player_id}', '${safeName}')">
+                <i class="ti ti-sparkles"></i> Generate report
+              </button>`
             : `
-  <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.viewReport('${scoutId}', '${sp.player_id}', '${safeName}')">
-    <i class="ti ti-file-text"></i> View report
-  </button>`
+              <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.viewReport('${scoutId}', '${sp.player_id}', '${safeName}')">
+                <i class="ti ti-file-text"></i> View report
+              </button>`
         }
         ${
           sp.flagged
             ? `
-  <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.unflagProspect('${scoutId}', '${sp.player_id}', '${safeName}')">
-    <i class="ti ti-flag-off"></i> Unflag
-  </button>`
+              <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.unflagProspect('${scoutId}', '${sp.player_id}', '${safeName}')">
+                <i class="ti ti-flag-off"></i> Unflag
+              </button>`
             : `
-  <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.flagProspect('${scoutId}', '${sp.player_id}', '${safeName}')">
-    <i class="ti ti-flag"></i> Flag
-  </button>`
+              <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.flagProspect('${scoutId}', '${sp.player_id}', '${safeName}')">
+                <i class="ti ti-flag"></i> Flag
+              </button>`
         }
         ${
           !sp.report_shared
             ? sp.report
               ? `
-        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.shareReportViaMessage('${scoutId}', '${sp.player_id}', '${safeName}')">
-          <i class="ti ti-file-text"></i> Share report
-        </button>`
+                <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.shareReportViaMessage('${scoutId}', '${sp.player_id}', '${safeName}')">
+                  <i class="ti ti-file-text"></i> Share report
+                </button>`
               : `
-        <button class="btn btn-outline btn-sm" style="opacity:0.4;cursor:not-allowed;" disabled title="Generate a report first">
-          <i class="ti ti-file-text"></i> Share report
-        </button>`
+                <button class="btn btn-outline btn-sm" style="opacity:0.4;cursor:not-allowed;" disabled title="Generate a report first">
+                  <i class="ti ti-file-text"></i> Share report
+                </button>`
             : ""
         }
         <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.messagePlayer('${sp.player_id}', '${safeName}')">
@@ -600,6 +707,20 @@ const HF_SCOUT = (() => {
         </button>
       </div>
     </div>`;
+  };
+
+  const togglePlayerActions = (playerId) => {
+    const actions = document.getElementById(`player-actions-${playerId}`);
+    if (actions)
+      actions.style.display =
+        actions.style.display === "none" ? "block" : "none";
+  };
+
+  const toggleSavedActions = (prospectId) => {
+    const actions = document.getElementById(`saved-actions-${prospectId}`);
+    if (actions)
+      actions.style.display =
+        actions.style.display === "none" ? "block" : "none";
   };
 
   const unsavePlayer = async (scoutId, playerId, name) => {
@@ -632,6 +753,19 @@ const HF_SCOUT = (() => {
     );
 
     toast(`${name} flagged as elite prospect!`, "success");
+    prospects(HF_DB.getSession());
+  };
+
+  const unflagProspect = async (scoutId, playerId, name) => {
+    const result = await HF_DB.updateProspectStatus(scoutId, playerId, {
+      flagged: false,
+      status: "watching",
+    });
+    if (result.error) {
+      toast(result.error, "error");
+      return;
+    }
+    toast(`${name} unflagged.`, "success");
     prospects(HF_DB.getSession());
   };
 
@@ -785,6 +919,7 @@ const HF_SCOUT = (() => {
       </div>`);
   };
 
+  // ── PIPELINE HELPERS ───────────────────────────────────────
   const arrangeTrial = async (scoutId, playerId, name) => {
     const result = await HF_DB.updateProspectStatus(scoutId, playerId, {
       trial_arranged: true,
@@ -942,6 +1077,8 @@ const HF_SCOUT = (() => {
     window._availableClubsData = available;
     window._scoutUserId = s.userId;
   };
+
+  // ── CLUBS HELPERS ──────────────────────────────────────────
 
   const _clubNetworkRow = (c, scoutId) => `
     <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:3px solid var(--green);margin-bottom:var(--sp-sm);cursor:pointer;"
@@ -1195,10 +1332,10 @@ const HF_SCOUT = (() => {
             <div class="card-dot"></div>Messages
           </div>
           <div style="display:flex;gap:6px;">
-            <button class="btn btn-primary btn-sm" onclick="HF_PLAYER.composeMessage()">
+            <button class="btn btn-primary btn-sm" onclick="HF_ROLE_UTILS.composeMessage('player')">
               <i class="ti ti-edit"></i> New message
             </button>
-            <button class="btn btn-outline btn-sm" onclick="HF_PLAYER.contactAdmin()">
+            <button class="btn btn-outline btn-sm" onclick="HF_ROLE_UTILS.contactAdmin('player')">
               <i class="ti ti-headset"></i> Support
             </button>
           </div>
@@ -1254,1012 +1391,14 @@ const HF_SCOUT = (() => {
       }`);
   };
 
-  // ── FAITH ──────────────────────────────────────────────────
-  const faith = (s) => {
-    setMain(`
-      <div class="faith-hero">
-        <i class="ti ti-cross" style="font-size:32px;margin-bottom:10px;display:block;color:var(--faith)"></i>
-        <div style="font-size:20px;font-weight:700;margin-bottom:6px">Faith & Purpose</div>
-        <div style="font-size:13px;opacity:.8">Your talent is God-given. Your discipline is your worship.</div>
-      </div>
-      <div class="faith-verse-card">
-        <div class="verse-text">${HF_SCRIPTURE.getToday().verse}</div>
-        <div class="verse-ref">${HF_SCRIPTURE.getToday().ref}</div>
-      </div>`);
-  };
+  // ── MESSAGES HELPERS ───────────────────────────────────────
+  const messagePlayer = (playerId, playerName) =>
+    HF_ROLE_UTILS.messageUser(playerId, playerName, "discover", "scout");
 
-  // ── FIND MY TEAM ───────────────────────────────────────────
-  const findmyteam = async (s) => {
-    const { data: coaches } = await HF_DB.getVerifiedCoaches();
-    const { data: approved } = await HF_DB.getApprovedClubNetwork(s.userId);
+  const sendMessage = (playerId, playerName) =>
+    HF_ROLE_UTILS.sendMessage(playerId, playerName, "discover");
 
-    const approvedIds = new Set(approved?.map((a) => a.coach_id) || []);
-
-    // fetch network request status for each coach
-    const coachesWithStatus = await Promise.all(
-      (coaches || []).map(async (c) => {
-        const { data: req } = await HF_DB.getClubNetworkStatus(s.userId, c.id);
-        return { ...c, networkRequest: req, isApproved: approvedIds.has(c.id) };
-      }),
-    );
-
-    setMain(`
-    <div class="welcome-banner">
-      <div>
-        <div class="welcome-title">Club network</div>
-        <div class="welcome-sub">Browse verified squads and request access to see full details</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;">
-        <div style="font-size:32px;font-weight:700;color:var(--gold);">${approvedIds.size}</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:0.08em;">In network</div>
-      </div>
-    </div>
-
-    <div style="display:flex;gap:8px;margin-bottom:var(--sp-lg);flex-wrap:wrap;">
-      <select id="fmt-filter" onchange="HF_SCOUT.filterFMTCoaches()"
-        style="padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
-        <option value="">All clubs</option>
-        <option value="approved">In my network</option>
-        <option value="pending">Pending</option>
-      </select>
-      <input type="text" id="fmt-search" placeholder="Search by coach or club name..."
-        oninput="HF_SCOUT.filterFMTCoaches()"
-        style="flex:1;min-width:150px;padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
-    </div>
-
-    <div id="fmt-coaches-list">
-      ${
-        !coachesWithStatus || coachesWithStatus.length === 0
-          ? `
-        <div class="card">
-          <div style="text-align:center;padding:32px;color:var(--text2)">
-            <i class="ti ti-building" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No verified clubs yet</div>
-            <div style="font-size:13px">Verified clubs will appear here as coaches register.</div>
-          </div>
-        </div>`
-          : coachesWithStatus.map((c) => _scoutClubCard(c, s.userId)).join("")
-      }
-    </div>
-
-    <div id="club-detail-panel" style="display:none;margin-top:var(--sp-lg);"></div>`);
-
-    window._fmtScoutCoaches = coachesWithStatus;
-    window._scoutUserId = s.userId;
-  };
-
-  const _scoutClubCard = (c, scoutId) => {
-    const p = c.profile || {};
-    const req = c.networkRequest;
-    const isApproved = c.isApproved;
-    const isPending = req?.status === "pending";
-    const isDeclined = req?.status === "declined";
-    const safeName = c.name.replace(/'/g, "\\'");
-    const safeClub = (p.club || "").replace(/'/g, "\\'");
-
-    return `
-    <div class="card" style="margin-bottom:var(--sp-md);">
-      <div style="display:flex;align-items:center;gap:var(--sp-md);">
-        <div style="width:52px;height:52px;background:${isApproved ? "var(--green)" : "var(--bg2)"};border:2px solid ${isApproved ? "var(--green)" : "var(--border)"};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:${isApproved ? "#fff" : "var(--text2)"};flex-shrink:0;">
-          ${(p.club || c.name).charAt(0).toUpperCase()}
-        </div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-size:15px;font-weight:700;color:var(--text)">${p.club || "-"}</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px;">
-            ${p.league ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text2);">${p.league}</span>` : ""}
-            <span style="font-size:10px;color:var(--text3);">Coach: ${c.name}</span>
-            ${p.exp ? `<span style="font-size:10px;color:var(--text3);">${p.exp} yrs exp</span>` : ""}
-          </div>
-        </div>
-        <div style="text-align:right;flex-shrink:0;">
-          ${
-            isApproved
-              ? `
-            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">
-              In network
-            </span>`
-              : isPending
-                ? `
-            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;background:rgba(196,154,10,.15);color:var(--gold);">
-              Pending
-            </span>`
-                : isDeclined
-                  ? `
-            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;background:rgba(200,16,46,.1);color:var(--red);">
-              Declined
-            </span>`
-                  : ""
-          }
-        </div>
-      </div>
-
-      <div style="margin-top:var(--sp-md);padding-top:var(--sp-md);border-top:0.5px solid var(--border);">
-        ${
-          isApproved
-            ? `
-          <div style="display:flex;gap:8px;align-items:center;">
-            <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.toggleClubDetail('${c.id}', '${safeClub}', '${p.league || ""}')">
-              <i class="ti ti-chart-bar"></i> View squad details
-            </button>
-            <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.messagePlayer('${c.id}', '${safeName}')">
-              <i class="ti ti-message"></i> Message coach
-            </button>
-          </div>`
-            : `
-          <div style="display:flex;align-items:center;gap:var(--sp-md);">
-            <div style="flex:1;font-size:12px;color:var(--text3);">
-              <i class="ti ti-lock" style="margin-right:4px"></i>
-              Request access to see squad details, ratings, and wellness data.
-            </div>
-            ${
-              !isPending
-                ? `
-              <button class="btn btn-primary btn-sm" onclick="HF_SCOUT.requestNetwork('${c.id}', '${safeName}')">
-                <i class="ti ti-network"></i> Request access
-              </button>`
-                : ""
-            }
-          </div>`
-        }
-      </div>
-    </div>`;
-  };
-
-  const filterFMTCoaches = () => {
-    const filter = document.getElementById("fmt-filter")?.value;
-    const search = document.getElementById("fmt-search")?.value.toLowerCase();
-    const list = document.getElementById("fmt-coaches-list");
-    if (!list || !window._fmtScoutCoaches) return;
-
-    const filtered = window._fmtScoutCoaches.filter((c) => {
-      const p = c.profile || {};
-      const matchFilter =
-        !filter ||
-        (filter === "approved" && c.isApproved) ||
-        (filter === "pending" && c.networkRequest?.status === "pending");
-      const matchSearch =
-        !search ||
-        c.name.toLowerCase().includes(search) ||
-        (p.club || "").toLowerCase().includes(search);
-      return matchFilter && matchSearch;
-    });
-
-    list.innerHTML =
-      filtered.length === 0
-        ? `<div class="card"><div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No clubs match your filters.</div></div>`
-        : filtered.map((c) => _scoutClubCard(c, window._scoutUserId)).join("");
-  };
-
-  const requestNetwork = async (coachId, coachName) => {
-    const session = HF_DB.getSession();
-    const result = await HF_DB.requestClubNetwork(session.userId, coachId);
-    if (result.error) {
-      HF_UTILS.toast(result.error, "error");
-      return;
-    }
-
-    await HF_DB._sendMessage(
-      "system",
-      coachId,
-      "Scout network request",
-      `${session.name} from ${session.profile?.org || "HappyFeet Scouting"} has requested to add your club to their scouting network. You can approve or decline from your squad page.`,
-    );
-
-    HF_UTILS.toast(`Network request sent to ${coachName}!`, "success");
-    findmyteam(session);
-  };
-
-  // ── EDIT PROFILE ───────────────────────────────────────────
-  const editProfile = () => {
-    const session = HF_DB.getSession();
-    const p = session.profile || {};
-
-    setMain(`
-    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;gap:var(--sp-lg);">
-      <div style="position:relative;">
-        <div id="avatar-banner" style="width:72px;height:72px;overflow:hidden;background:#185FA5;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;">
-          ${
-            p.avatarUrl
-              ? `<img src="${p.avatarUrl}?cb=${Date.now()}" style="width:100%;height:100%;object-fit:cover;">`
-              : HF_UTILS.initials(session.name)
-          }
-        </div>
-        <label style="position:absolute;bottom:-8px;right:-8px;width:24px;height:24px;background:var(--gold);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0f0f0d;">
-          <i class="ti ti-camera" style="font-size:12px"></i>
-          <input type="file" id="avatar-input" accept="image/*" style="display:none;"
-            onchange="HF_SCOUT.previewAvatar(this)">
-        </label>
-      </div>
-      <div>
-        <div style="font-family:var(--font);font-size:22px;font-weight:700;color:#fff;">${session.name}</div>
-        <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:3px;">${p.org || "-"}</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Edit profile</div>
-      <div class="fg">
-        <label class="required">Full name</label>
-        <input type="text" id="ep-name" value="${session.name || ""}" placeholder="Your full name"
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-      </div>
-      <div class="fg">
-        <label class="required">Organisation / agency</label>
-        <input type="text" id="ep-org" value="${p.org || ""}" placeholder="e.g. HappyFeet Scouting"
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-      </div>
-      <div class="fg">
-        <label class="required">Years experience</label>
-        <input type="number" id="ep-exp" value="${p.exp || ""}" min="0" max="50"
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-      </div>
-      ${
-        session.agencyStatus === "verified"
-          ? `
-        <div style="padding:12px;background:rgba(26,122,46,.05);border-left:2px solid var(--green);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
-          <i class="ti ti-circle-check" style="margin-right:6px;color:var(--green)"></i>
-          Your agency <strong style="color:var(--green)">${session.profile?.org || ""}</strong> is verified. To change your agency name please
-          <span onclick="HF_SCOUT.contactAdmin()" style="color:var(--gold);cursor:pointer;text-decoration:underline;">contact an administrator</span>.
-        </div>`
-          : `
-        <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--border);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
-          <i class="ti ti-info-circle" style="margin-right:6px"></i>
-          Agency name is set during agency verification.
-        </div>`
-      }
-      <div style="display:flex;gap:8px;margin-top:4px;">
-        <button class="btn btn-primary" onclick="HF_SCOUT.saveProfile()">
-          <i class="ti ti-circle-check"></i> Save changes
-        </button>
-        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('profile')">Cancel</button>
-      </div>
-    </div>`);
-  };
-
-  const saveProfile = async () => {
-    const session = HF_DB.getSession();
-    const p = session.profile || {};
-    const name = document.getElementById("ep-name")?.value.trim();
-    const org = document.getElementById("ep-org")?.value.trim();
-    const exp = document.getElementById("ep-exp")?.value;
-
-    if (!name) {
-      HF_UTILS.toast("Please enter your full name.", "error");
-      return;
-    }
-    if (!org) {
-      HF_UTILS.toast("Please enter your organisation name.", "error");
-      return;
-    }
-    if (!exp || parseInt(exp) < 0 || parseInt(exp) > 50) {
-      HF_UTILS.toast("Please enter valid years of experience (0-50).", "error");
-      return;
-    }
-
-    // handle avatar upload
-    const file = window._pendingAvatarFile || null;
-    let avatarUrl = p.avatarUrl || null;
-    if (file) {
-      HF_UTILS.toast("Uploading photo...", "success");
-      const uploadResult = await HF_DB.uploadAvatar(session.userId, file);
-      if (uploadResult.error) {
-        HF_UTILS.toast(uploadResult.error, "error");
-        return;
-      }
-      avatarUrl = uploadResult.url;
-      window._pendingAvatarFile = null;
-    }
-
-    if (name !== session.name) {
-      const nameResult = await HF_DB.updateUserName(session.userId, name);
-      if (nameResult.error) {
-        HF_UTILS.toast(nameResult.error, "error");
-        return;
-      }
-      session.name = name;
-    }
-
-    const updatedProfile = { ...p, org, exp, avatarUrl };
-    const result = await HF_DB.updateUserProfile(
-      session.userId,
-      updatedProfile,
-    );
-    if (result.error) {
-      HF_UTILS.toast(result.error, "error");
-      return;
-    }
-
-    session.profile = updatedProfile;
-    HF_DB.saveSession(session);
-
-    const nameDisplay = document.getElementById("topbar-name-display");
-    if (nameDisplay) nameDisplay.textContent = name;
-
-    HF_UTILS.toast("Profile updated!", "success");
-    HF_ROUTER.navTo("profile");
-  };
-
-  const previewAvatar = (input) => {
-    const file = input.files[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      HF_UTILS.toast("Image must be under 2MB.", "error");
-      return;
-    }
-    window._pendingAvatarFile = file;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      ["avatar-preview", "avatar-banner"].forEach((id) => {
-        const el = document.getElementById(id);
-        if (el)
-          el.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
-      });
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // ── RESUBMIT AGENCY ────────────────────────────────────────
-  const resubmitAgency = () => {
-    const session = HF_DB.getSession();
-    setMain(`
-      <div class="auth-card" style="max-width:480px;margin:0 auto;">
-        <div class="auth-title">Resubmit agency registration</div>
-        <div class="auth-sub">Update your agency details for verification</div>
-        <div class="error-box" id="reagency-err"></div>
-        <div class="fg">
-          <label class="required">Organisation / agency</label>
-          <input type="text" id="rag-name" value="${session.profile?.org || ""}" placeholder="e.g. HappyFeet Scouting"
-            style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-        </div>
-        <div class="fg">
-          <label class="required">Regions you cover</label>
-          <div id="rag-regions-container" style="display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:var(--bg2);border:0.5px solid var(--border);min-height:44px;"></div>
-          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
-            <button type="button" class="region-tag" data-value="Ghana" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Ghana</button>
-            <button type="button" class="region-tag" data-value="Nigeria" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Nigeria</button>
-            <button type="button" class="region-tag" data-value="Senegal" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Senegal</button>
-            <button type="button" class="region-tag" data-value="Ivory Coast" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Ivory Coast</button>
-            <button type="button" class="region-tag" data-value="Cameroon" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Cameroon</button>
-            <button type="button" class="region-tag" data-value="West Africa" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">West Africa</button>
-            <button type="button" class="region-tag" data-value="All Africa" onclick="HF_AUTH.toggleTag(this,'rag-regions-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">All Africa</button>
-          </div>
-        </div>
-        <div class="fg">
-          <label class="required">Target leagues / destinations</label>
-          <div id="rag-leagues-container" style="display:flex;flex-wrap:wrap;gap:6px;padding:10px;background:var(--bg2);border:0.5px solid var(--border);min-height:44px;"></div>
-          <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
-            <button type="button" class="league-tag" data-value="Ghana Premier League" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Ghana Premier League</button>
-            <button type="button" class="league-tag" data-value="MLS" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">MLS</button>
-            <button type="button" class="league-tag" data-value="Premier League" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Premier League</button>
-            <button type="button" class="league-tag" data-value="Europe" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Europe</button>
-            <button type="button" class="league-tag" data-value="Gulf" onclick="HF_AUTH.toggleTag(this,'rag-leagues-container')" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:4px 10px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text2);cursor:pointer;">Gulf</button>
-          </div>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:var(--sp-md);">
-          <button class="btn btn-primary" onclick="HF_SCOUT.submitAgencyResubmission()">
-            <i class="ti ti-send"></i> Submit for verification
-          </button>
-          <button class="btn btn-outline" onclick="HF_ROUTER.navTo('dashboard')">Cancel</button>
-        </div>
-      </div>`);
-  };
-
-  const submitAgencyResubmission = async () => {
-    const session = HF_DB.getSession();
-    const agencyName = document.getElementById("rag-name")?.value.trim();
-    const website = document.getElementById("rag-website")?.value?.trim();
-    const regionsCovered = HF_AUTH.getSelectedTags("rag-regions-container");
-    const targetLeagues = HF_AUTH.getSelectedTags("rag-leagues-container");
-
-    if (!agencyName) {
-      HF_UTILS.toast("Please enter your agency name.", "error");
-      return;
-    }
-    if (regionsCovered.length === 0) {
-      HF_UTILS.toast("Please select at least one region.", "error");
-      return;
-    }
-    if (targetLeagues.length === 0) {
-      HF_UTILS.toast("Please select at least one target league.", "error");
-      return;
-    }
-
-    const result = await HF_DB.submitAgencyVerification({
-      scoutId: session.userId,
-      agencyName,
-      regionsCovered,
-      targetLeagues,
-      website: website || null,
-    });
-
-    if (result.error) {
-      HF_UTILS.toast(result.error, "error");
-      return;
-    }
-
-    await HF_DB.updateAgencyStatus(session.userId, "pending");
-    session.agencyStatus = "pending";
-    HF_DB.saveSession(session);
-
-    HF_UTILS.toast("Agency resubmitted for verification!", "success");
-    HF_ROUTER.navTo("dashboard");
-  };
-
-  const readMessage = async (messageId, el) => {
-    const badge = document.getElementById(`badge-${messageId}`);
-    if (badge) badge.remove();
-
-    await HF_DB.markMessageRead(messageId);
-
-    const session = HF_DB.getSession();
-    const { data: msgs } = await HF_DB.getMessages(session.userId);
-    const unreadCount = msgs?.filter((m) => !m.read).length || 0;
-    HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
-
-    // find the message and show body in a modal
-    const msg = msgs?.find((m) => m.id === messageId);
-    if (msg) {
-      const overlay = document.createElement("div");
-      overlay.id = `msg-modal-${messageId}`;
-      overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:var(--sp-xl);`;
-      overlay.innerHTML = `
-      <div style="background:var(--bg);border-top:3px solid var(--gold);padding:var(--sp-2xl);max-width:480px;width:100%;">
-        <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
-          HappyFeet ${msg.from_id === "system" ? "System" : "Admin"}
-        </div>
-        <div style="font-family:var(--font);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
-          ${msg.subject || "Message"}
-        </div>
-        <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:var(--sp-xl);">
-          ${msg.body}
-        </div>
-        <button class="btn btn-primary" onclick="document.getElementById('msg-modal-${messageId}').remove();HF_ROUTER.navTo('messages');">
-          <i class="ti ti-circle-check"></i> Got it
-        </button>
-      </div>`;
-      document.body.appendChild(overlay);
-    }
-
-    messages(session);
-  };
-
-  const archiveMessage = async (messageId) => {
-    await HF_DB.archiveMessage(messageId);
-
-    const session = HF_DB.getSession();
-    const { data: msgs } = await HF_DB.getMessages(session.userId);
-    const unreadCount = msgs?.filter((m) => !m.read).length || 0;
-    HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
-
-    HF_UTILS.toast("Message archived.", "success");
-    messages(session);
-  };
-
-  const unarchiveMessage = async (messageId) => {
-    await HF_DB.unarchiveMessage(messageId);
-    HF_UTILS.toast("Message unarchived.", "success");
-    messages(HF_DB.getSession());
-  };
-
-  const togglePlayerActions = (playerId) => {
-    const actions = document.getElementById(`player-actions-${playerId}`);
-    if (actions)
-      actions.style.display =
-        actions.style.display === "none" ? "block" : "none";
-  };
-
-  const toggleSavedActions = (prospectId) => {
-    const actions = document.getElementById(`saved-actions-${prospectId}`);
-    if (actions)
-      actions.style.display =
-        actions.style.display === "none" ? "block" : "none";
-  };
-
-  const contactAdmin = () => {
-    myTickets(HF_DB.getSession(), false);
-  };
-
-  const sendTicket = async (fromMessages = false) => {
-    const session = HF_DB.getSession();
-    const category = document.getElementById("ticket-category")?.value;
-    const subject = document.getElementById("ticket-subject")?.value.trim();
-    const body = document.getElementById("ticket-body")?.value.trim();
-
-    if (!subject) {
-      HF_UTILS.toast("Please enter a subject.", "error");
-      return;
-    }
-    if (!body) {
-      HF_UTILS.toast("Please enter a message.", "error");
-      return;
-    }
-
-    const result = await HF_DB.createTicket(
-      session.userId,
-      subject,
-      body,
-      category,
-    );
-    if (result.error) {
-      HF_UTILS.toast(result.error, "error");
-      return;
-    }
-
-    HF_UTILS.toast(
-      "Ticket submitted! An admin will respond shortly.",
-      "success",
-    );
-    myTickets(session, fromMessages);
-  };
-
-  const toggleCustomSubject = (value) => {
-    const field = document.getElementById("custom-subject-field");
-    if (field) field.style.display = value === "custom" ? "block" : "none";
-  };
-
-  const sendAdminMessage = async () => {
-    const session = HF_DB.getSession();
-    const subjectSelect = document.getElementById("contact-subject")?.value;
-    const customSubject = document
-      .getElementById("contact-custom-subject")
-      ?.value.trim();
-    const body = document.getElementById("contact-body")?.value.trim();
-
-    const subject = subjectSelect === "custom" ? customSubject : subjectSelect;
-
-    if (!subject) {
-      HF_UTILS.toast("Please enter a subject.", "error");
-      return;
-    }
-    if (!body) {
-      HF_UTILS.toast("Please enter your message.", "error");
-      return;
-    }
-
-    const adminIds = await HF_DB.getAdminIds();
-    for (const adminId of adminIds) {
-      await HF_DB._sendMessage(
-        session.userId,
-        adminId,
-        `[Scout] ${subject}`,
-        body,
-      );
-    }
-
-    HF_UTILS.toast("Message sent to admin!", "success");
-    HF_ROUTER.navTo("messages");
-  };
-
-  const composeMessage = () => {
-    const session = HF_DB.getSession();
-    setMain(`
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>New message</div>
-      <div class="fg">
-        <label class="required">To</label>
-        <div id="compose-to-container" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px;background:var(--bg2);border:0.5px solid var(--border);min-height:44px;cursor:text;" onclick="document.getElementById('compose-search').focus()">
-          <div id="compose-tags" style="display:flex;flex-wrap:wrap;gap:4px;"></div>
-          <input type="text" id="compose-search" placeholder="Search by name or email..."
-            oninput="HF_${session.role.toUpperCase()}.searchRecipients(this.value)"
-            style="flex:1;min-width:150px;border:none;background:transparent;color:var(--text);font-size:13px;font-family:var(--font);outline:none;padding:2px 4px;">
-        </div>
-        <div id="compose-search-results" style="margin-top:2px;border:0.5px solid var(--border);background:var(--bg);display:none;"></div>
-        <input type="hidden" id="compose-to-ids">
-      </div>
-      <div class="fg">
-        <label class="required">Subject</label>
-        <input type="text" id="compose-subject" placeholder="Message subject"
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-      </div>
-      <div class="fg">
-        <label class="required">Message</label>
-        <textarea id="compose-body" rows="5" placeholder="Write your message..."
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" onclick="HF_${session.role.toUpperCase()}.sendComposedMessage()">
-          <i class="ti ti-send"></i> Send
-        </button>
-        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')">Cancel</button>
-      </div>
-    </div>`);
-
-    // store selected recipients
-    window._composeRecipients = [];
-  };
-
-  const searchRecipients = async (query) => {
-    const results = document.getElementById("compose-search-results");
-    if (!results) return;
-    if (!query || query.length < 2) {
-      results.style.display = "none";
-      results.innerHTML = "";
-      return;
-    }
-
-    const session = HF_DB.getSession();
-    const { data } = await HF_DB.searchAllUsers(query, session.userId);
-    const existing = window._composeRecipients?.map((r) => r.id) || [];
-    const filtered = data?.filter((u) => !existing.includes(u.id)) || [];
-
-    if (!filtered || filtered.length === 0) {
-      results.style.display = "none";
-      return;
-    }
-
-    results.style.display = "block";
-    results.innerHTML = filtered
-      .map(
-        (u) => `
-    <div style="display:flex;align-items:center;gap:var(--sp-md);padding:10px;cursor:pointer;border-bottom:0.5px solid var(--border);"
-      onmousedown="event.preventDefault();HF_${session.role.toUpperCase()}.selectRecipient('${u.id}', '${u.name.replace(/'/g, "\\'")}', '${u.role}')">
-      <div class="avatar avatar-sm" style="background:${u.role === "player" ? "var(--green)" : u.role === "coach" ? "var(--gold)" : u.role === "admin" ? "var(--red)" : "var(--blue)"}">
-        ${HF_UTILS.initials(u.name)}
-      </div>
-      <div>
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${u.name}</div>
-        <div style="font-size:11px;color:var(--text2)">${u.role}</div>
-      </div>
-    </div>`,
-      )
-      .join("");
-  };
-
-  const selectRecipient = (userId, userName, userRole) => {
-    if (!window._composeRecipients) window._composeRecipients = [];
-
-    // don't add duplicates
-    if (window._composeRecipients.find((r) => r.id === userId)) return;
-
-    window._composeRecipients.push({
-      id: userId,
-      name: userName,
-      role: userRole,
-    });
-
-    // add tag chip
-    const tags = document.getElementById("compose-tags");
-    const tag = document.createElement("div");
-    tag.id = `tag-${userId}`;
-    tag.style.cssText = `display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--gold);color:#0f0f0d;font-size:12px;font-weight:600;font-family:var(--font);letter-spacing:0.04em;`;
-    tag.innerHTML = `
-    ${userName}
-    <span style="cursor:pointer;font-size:14px;font-weight:700;line-height:1;" 
-      onclick="HF_${HF_DB.getSession().role.toUpperCase()}.removeRecipient('${userId}')">×</span>`;
-    tags?.appendChild(tag);
-
-    // show clear all link if more than one recipient
-    const clearAll = document.getElementById("compose-clear-all");
-    if (!clearAll && window._composeRecipients.length > 1) {
-      const link = document.createElement("div");
-      link.id = "compose-clear-all";
-      link.style.cssText =
-        "font-size:11px;color:var(--text3);cursor:pointer;padding:2px 4px;text-decoration:underline;";
-      link.textContent = "Clear all";
-      link.onclick = () => {
-        window._composeRecipients = [];
-        document.getElementById("compose-tags").innerHTML = "";
-        link.remove();
-      };
-      document.getElementById("compose-to-container")?.appendChild(link);
-    }
-
-    // remove clear all if back to 0 or 1
-    if (window._composeRecipients.length <= 1) {
-      document.getElementById("compose-clear-all")?.remove();
-    }
-
-    // clear search
-    const search = document.getElementById("compose-search");
-    const results = document.getElementById("compose-search-results");
-    if (search) {
-      search.value = "";
-      search.focus();
-    }
-    if (results) {
-      results.style.display = "none";
-      results.innerHTML = "";
-    }
-  };
-
-  const removeRecipient = (userId) => {
-    window._composeRecipients =
-      window._composeRecipients?.filter((r) => r.id !== userId) || [];
-    document.getElementById(`tag-${userId}`)?.remove();
-    if (window._composeRecipients.length <= 1) {
-      document.getElementById("compose-clear-all")?.remove();
-    }
-  };
-
-  const sendComposedMessage = async () => {
-    const session = HF_DB.getSession();
-    const recipients = window._composeRecipients || [];
-    const subject = document.getElementById("compose-subject")?.value.trim();
-    const body = document.getElementById("compose-body")?.value.trim();
-
-    if (recipients.length === 0) {
-      HF_UTILS.toast("Please select at least one recipient.", "error");
-      return;
-    }
-    if (!subject) {
-      HF_UTILS.toast("Please enter a subject.", "error");
-      return;
-    }
-    if (!body) {
-      HF_UTILS.toast("Please enter a message.", "error");
-      return;
-    }
-
-    // create one shared thread ID for all recipients
-    const threadId = crypto.randomUUID();
-
-    for (const recipient of recipients) {
-      await HF_DB._sendMessage(
-        session.userId,
-        recipient.id,
-        subject,
-        body,
-        threadId,
-      );
-    }
-
-    // also send a copy to self so sender can see the thread
-    if (recipients.length > 1) {
-      await HF_DB._sendMessage(
-        session.userId,
-        session.userId,
-        subject,
-        `[Group message to ${recipients.map((r) => r.name).join(", ")}]\n\n${body}`,
-        threadId,
-      );
-    }
-
-    window._composeRecipients = [];
-    HF_UTILS.toast(
-      `Message sent to ${recipients.length} recipient${recipients.length > 1 ? "s" : ""}!`,
-      "success",
-    );
-    HF_ROUTER.navTo("messages");
-  };
-
-  const toggleMsgActions = (messageId, fromId, senderName) => {
-    const actions = document.getElementById(`msg-actions-${messageId}`);
-    if (actions)
-      actions.style.display =
-        actions.style.display === "none" ? "block" : "none";
-  };
-
-  const replyToMessage = (messageId, fromId, senderName, subject) => {
-    if (!fromId || fromId === "admin" || fromId === "system") {
-      HF_UTILS.toast("You cannot reply to system messages.", "error");
-      return;
-    }
-    const session = HF_DB.getSession();
-    setMain(`
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Reply to ${senderName}</div>
-      <div style="padding:10px 12px;background:var(--bg2);border-left:2px solid var(--border);font-size:12px;color:var(--text2);margin-bottom:var(--sp-md);">
-        <i class="ti ti-arrow-back-up" style="margin-right:6px"></i>
-        Replying to: <strong style="color:var(--text)">${subject || "Message"}</strong>
-      </div>
-      <div class="fg">
-        <label class="required">Message</label>
-        <textarea id="reply-body" rows="4" placeholder="Write your reply..."
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" onclick="HF_${session.role.toUpperCase()}.sendReply('${fromId}', 'Re: ${(subject || "Message").replace(/'/g, "\\'")}')">
-          <i class="ti ti-send"></i> Send reply
-        </button>
-        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')">Cancel</button>
-      </div>
-    </div>`);
-  };
-
-  const sendReply = async (toId, subject, threadId) => {
-    const session = HF_DB.getSession();
-    const body = document.getElementById("reply-body")?.value.trim();
-    if (!body) {
-      HF_UTILS.toast("Please enter a reply.", "error");
-      return;
-    }
-
-    // detect emoji-only and launch confetti
-    const emojiOnly =
-      body
-        .replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, "")
-        .trim().length === 0;
-    if (emojiOnly) {
-      const firstEmoji = body.match(
-        /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu,
-      )?.[0];
-      if (firstEmoji) HF_UTILS.launchEmojiConfetti(firstEmoji);
-    }
-
-    const result = await HF_DB._sendMessage(
-      session.userId,
-      toId,
-      subject,
-      body,
-      threadId,
-    );
-    if (result.error) {
-      HF_UTILS.toast(result.error, "error");
-      return;
-    }
-
-    document.getElementById("reply-body").value = "";
-    viewThread(threadId, toId, subject);
-  };
-
-  const viewThread = async (threadId, otherUserId, subject) => {
-    const session = HF_DB.getSession();
-    const { data: msgs } = await HF_DB.getThread(threadId, session.userId);
-
-    const isEmojiOnly = (text) => {
-      const stripped = text
-        .replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, "")
-        .trim();
-      return stripped.length === 0;
-    };
-
-    const renderMessageBody = (body) => {
-      return body.replace(
-        /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu,
-        `<span class="emoji-animate" style="font-size:1.3em;cursor:pointer;display:inline-block;"
-      onclick="HF_UTILS.launchEmojiConfetti('$1');this.style.transform='scale(1.8)';setTimeout(()=>this.style.transform='scale(1)',200)">$1</span>`,
-      );
-    };
-
-    // mark all unread messages in thread as read
-    const unread =
-      msgs?.filter((m) => !m.read && m.to_id === session.userId) || [];
-    for (const m of unread) await HF_DB.markMessageRead(m.id);
-
-    // enrich with sender names
-    const enriched = await Promise.all(
-      (msgs || []).map(async (m) => ({
-        ...m,
-        senderName: await HF_DB.getUserNameById(m.from_id),
-      })),
-    );
-
-    setMain(`
-    <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);">
-      <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('messages')">
-        <i class="ti ti-arrow-left"></i> Back
-      </button>
-      <div style="font-family:var(--font);font-size:14px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);">
-        ${subject || "Conversation"}
-      </div>
-    </div>
-
-    <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:var(--sp-lg);display:flex;flex-direction:column;gap:var(--sp-md);min-height:300px;max-height:60vh;overflow-y:auto;" id="thread-messages">
-        ${enriched
-          .map((m) => {
-            const isMine = m.from_id === session.userId;
-            const emojiOnly = isEmojiOnly(m.body);
-            return `
-            <div style="display:flex;flex-direction:column;align-items:${isMine ? "flex-end" : "flex-start"};">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;font-family:var(--font);letter-spacing:0.04em;">
-                ${isMine ? "You" : m.senderName} · ${HF_UTILS.timeAgo(m.created_at)}
-              </div>
-              <div style="
-                max-width:75%;
-                padding:${emojiOnly ? "4px" : "10px 14px"};
-                background:${emojiOnly ? "transparent" : isMine ? "var(--gold)" : "var(--bg2)"};
-                color:${isMine && !emojiOnly ? "#0f0f0d" : "var(--text)"};
-                font-size:${emojiOnly ? "32px" : "13px"};
-                line-height:1.5;">
-                ${renderMessageBody(m.body)}
-              </div>
-            </div>`;
-          })
-          .join("")}
-      </div>
-
-      <div style="padding:var(--sp-md);border-top:0.5px solid var(--border);background:var(--bg);">
-        <div id="emoji-picker" style="display:none;padding:var(--sp-sm);background:var(--bg2);border:0.5px solid var(--border);margin-bottom:8px;flex-wrap:wrap;gap:4px;">
-          ${[
-            "😀",
-            "😂",
-            "😍",
-            "🔥",
-            "👏",
-            "💪",
-            "⚽",
-            "🏆",
-            "🎯",
-            "👊",
-            "🙏",
-            "❤️",
-            "😤",
-            "😭",
-            "🤝",
-            "✅",
-            "💯",
-            "🚀",
-            "👋",
-            "😎",
-            "🤔",
-            "😅",
-            "🥅",
-            "🎉",
-            "👍",
-            "👎",
-            "❌",
-            "⚡",
-            "🌟",
-            "😴",
-          ]
-            .map(
-              (e) => `
-            <span style="font-size:24px;cursor:pointer;width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;transition:transform 0.15s ease;"
-              onmouseover="this.style.transform='scale(1.3)'"
-              onmouseout="this.style.transform='scale(1)'"
-              onclick="document.getElementById('reply-body').value += '${e}';this.style.transform='scale(1.5)';setTimeout(()=>this.style.transform='scale(1)',150)">
-              ${e}
-            </span>`,
-            )
-            .join("")}
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input type="text" id="reply-body" placeholder="Write a reply..."
-            style="flex:1;padding:0 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;font-family:var(--font);outline:none;height:42px;box-sizing:border-box;">
-          <button class="btn btn-outline" style="height:42px;width:42px;min-height:42px;padding:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex-shrink:0;"
-            title="Emoji"
-            onclick="const p=document.getElementById('emoji-picker');p.style.display=p.style.display==='none'?'flex':'none'">
-            <i class="ti ti-mood-smile"></i>
-          </button>
-          <button class="btn btn-primary" style="height:42px;width:42px;min-height:42px;padding:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex-shrink:0;"
-            onclick="HF_${session.role.toUpperCase()}.sendReply('${otherUserId}', '${(subject || "").replace(/'/g, "\\'")}', '${threadId}')">
-            <i class="ti ti-send"></i>
-          </button>
-        </div>
-      </div>
-    </div>`);
-
-    setTimeout(() => {
-      const threadEl = document.getElementById("thread-messages");
-      if (threadEl) threadEl.scrollTop = threadEl.scrollHeight;
-
-      // enter key sends message
-      const replyInput = document.getElementById("reply-body");
-      if (replyInput) {
-        replyInput.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            HF_DB.getSession() &&
-              window[
-                `HF_${HF_DB.getSession().role.toUpperCase()}`
-              ]?.sendReply?.(otherUserId, subject, threadId);
-          }
-        });
-      }
-    }, 100);
-  };
-
-  const reportToAdmin = async (fromId, senderName) => {
-    const session = HF_DB.getSession();
-    const reason = prompt(
-      `Report ${senderName} to admin?\n\nPlease describe the issue:`,
-    );
-    if (!reason) return;
-
-    const adminIds = await HF_DB.getAdminIds();
-    for (const adminId of adminIds) {
-      await HF_DB._sendMessage(
-        session.userId,
-        adminId,
-        `[Report] User: ${senderName}`,
-        `${session.name} has reported ${senderName}.\n\nReason: ${reason}`,
-      );
-    }
-
-    HF_UTILS.toast(`${senderName} has been reported to admin.`, "success");
-  };
-
+  // ── REPORT ──────────────────────────────────────────────────
   const generateReport = async (scoutId, playerId, playerName) => {
     const { data: player } = await HF_DB.getUserById(playerId);
     const { data: sessions } = await HF_DB.getPlayerSessionRatings(playerId);
@@ -2346,6 +1485,7 @@ const HF_SCOUT = (() => {
     </div>`);
   };
 
+  // ── REPORT HELPERS ──────────────────────────────────────────
   const submitGenerateReport = async (scoutId, playerId, playerName) => {
     const btn = document.getElementById("generate-report-btn");
     const strengths = document.getElementById("scout-strengths")?.value.trim();
@@ -2373,46 +1513,46 @@ const HF_SCOUT = (() => {
 
     const prompt = `You are an expert football scout writing a professional scouting report for an African football talent platform called HappyFeet.
 
-Generate a detailed, professional scouting report for the following player:
+    Generate a detailed, professional scouting report for the following player:
 
-PLAYER DETAILS:
-- Name: ${playerName}
-- Position: ${p.pos || "Unknown"}
-- Age tier: ${p.tier || "Unknown"}
-- Hometown: ${p.hometown || "Unknown"}
-- Club status: ${p.club || "Unattached"}
+    PLAYER DETAILS:
+    - Name: ${playerName}
+    - Position: ${p.pos || "Unknown"}
+    - Age tier: ${p.tier || "Unknown"}
+    - Hometown: ${p.hometown || "Unknown"}
+    - Club status: ${p.club || "Unattached"}
 
-PERFORMANCE DATA:
-- Sessions logged: ${sessions?.length || 0}
-- Average overall rating: ${avgOverall ? avgOverall + "/100" : "No data"}
-${
-  latestSession
-    ? `- Latest speed: ${latestSession.speed}/100
-- Latest technical: ${latestSession.technical}/100
-- Latest tactical: ${latestSession.tactical}/100
-- Latest physical: ${latestSession.physical}/100`
-    : "- No session data available"
-}
+    PERFORMANCE DATA:
+    - Sessions logged: ${sessions?.length || 0}
+    - Average overall rating: ${avgOverall ? avgOverall + "/100" : "No data"}
+    ${
+      latestSession
+        ? `- Latest speed: ${latestSession.speed}/100
+    - Latest technical: ${latestSession.technical}/100
+    - Latest tactical: ${latestSession.tactical}/100
+    - Latest physical: ${latestSession.physical}/100`
+        : "- No session data available"
+    }
 
-SCOUT OBSERVATIONS:
-- Strengths: ${strengths || "Not provided"}
-- Areas for development: ${weaknesses || "Not provided"}
-- Additional context: ${context || "Not provided"}
-- Target clubs/leagues: ${targets || "Not specified"}
+    SCOUT OBSERVATIONS:
+    - Strengths: ${strengths || "Not provided"}
+    - Areas for development: ${weaknesses || "Not provided"}
+    - Additional context: ${context || "Not provided"}
+    - Target clubs/leagues: ${targets || "Not specified"}
 
-SCOUT AGENCY: ${session.profile?.org || "HappyFeet Scouting"}
+    SCOUT AGENCY: ${session.profile?.org || "HappyFeet Scouting"}
 
-Write a professional scouting report with the following sections:
-1. PLAYER OVERVIEW
-2. TECHNICAL ANALYSIS
-3. PHYSICAL ANALYSIS  
-4. TACTICAL AWARENESS
-5. KEY STRENGTHS
-6. AREAS FOR IMPROVEMENT
-7. SCOUT RECOMMENDATION
-8. POTENTIAL RATING (score out of 10 with brief justification)
+    Write a professional scouting report with the following sections:
+    1. PLAYER OVERVIEW
+    2. TECHNICAL ANALYSIS
+    3. PHYSICAL ANALYSIS  
+    4. TACTICAL AWARENESS
+    5. KEY STRENGTHS
+    6. AREAS FOR IMPROVEMENT
+    7. SCOUT RECOMMENDATION
+    8. POTENTIAL RATING (score out of 10 with brief justification)
 
-Be specific, professional, and constructive. Focus on the African football context and potential for development. Format each section clearly.`;
+    Be specific, professional, and constructive. Focus on the African football context and potential for development. Format each section clearly.`;
 
     try {
       const isLocal =
@@ -2426,32 +1566,32 @@ Be specific, professional, and constructive. Focus on the African football conte
         await new Promise((r) => setTimeout(r, 1500));
         reportText = `SCOUTING REPORT FOR ${playerName.toUpperCase()}
 
-1. PLAYER OVERVIEW
-${playerName} is a ${p.tier || "youth"} ${p.pos || "field"} player from ${p.hometown || "Ghana"}. Currently ${p.club ? "signed to " + p.club : "unattached and available"}.
+        1. PLAYER OVERVIEW
+        ${playerName} is a ${p.tier || "youth"} ${p.pos || "field"} player from ${p.hometown || "Ghana"}. Currently ${p.club ? "signed to " + p.club : "unattached and available"}.
 
-2. TECHNICAL ANALYSIS
-Based on available session data, the player shows ${avgOverall ? (avgOverall >= 75 ? "strong" : avgOverall >= 60 ? "developing" : "early-stage") : "unmeasured"} technical ability${latestSession ? ` with a technical rating of ${latestSession.technical}/100` : ""}.
+        2. TECHNICAL ANALYSIS
+        Based on available session data, the player shows ${avgOverall ? (avgOverall >= 75 ? "strong" : avgOverall >= 60 ? "developing" : "early-stage") : "unmeasured"} technical ability${latestSession ? ` with a technical rating of ${latestSession.technical}/100` : ""}.
 
-3. PHYSICAL ANALYSIS
-${latestSession ? `Physical rating of ${latestSession.physical}/100 with speed at ${latestSession.speed}/100.` : "Physical data not yet available (further sessions required)."}
+        3. PHYSICAL ANALYSIS
+        ${latestSession ? `Physical rating of ${latestSession.physical}/100 with speed at ${latestSession.speed}/100.` : "Physical data not yet available (further sessions required)."}
 
-4. TACTICAL AWARENESS
-${latestSession ? `Tactical rating of ${latestSession.tactical}/100.` : "Tactical assessment pending further observation."}
+        4. TACTICAL AWARENESS
+        ${latestSession ? `Tactical rating of ${latestSession.tactical}/100.` : "Tactical assessment pending further observation."}
 
-5. KEY STRENGTHS
-${strengths || "To be assessed in further sessions."}
+        5. KEY STRENGTHS
+        ${strengths || "To be assessed in further sessions."}
 
-6. AREAS FOR IMPROVEMENT
-${weaknesses || "Comprehensive assessment required."}
+        6. AREAS FOR IMPROVEMENT
+        ${weaknesses || "Comprehensive assessment required."}
 
-7. SCOUT RECOMMENDATION
-${avgOverall && avgOverall >= 70 ? "RECOMMEND for trial: player shows significant promise." : "MONITOR: continue observation before making placement recommendation."}
+        7. SCOUT RECOMMENDATION
+        ${avgOverall && avgOverall >= 70 ? "RECOMMEND for trial: player shows significant promise." : "MONITOR: continue observation before making placement recommendation."}
 
-8. POTENTIAL RATING
-${avgOverall ? Math.round(avgOverall / 10) : 6}/10: ${avgOverall && avgOverall >= 75 ? "High potential with right development pathway." : "Developing talent requiring structured support."}
+        8. POTENTIAL RATING
+        ${avgOverall ? Math.round(avgOverall / 10) : 6}/10: ${avgOverall && avgOverall >= 75 ? "High potential with right development pathway." : "Developing talent requiring structured support."}
 
-Report generated by ${session.profile?.org || "HappyFeet Scouting"}.
-[LOCAL MOCK: Deploy to see real AI report]`;
+        Report generated by ${session.profile?.org || "HappyFeet Scouting"}.
+        [LOCAL MOCK: Deploy to see real AI report]`;
       } else {
         const response = await fetch("/.netlify/functions/chat", {
           method: "POST",
@@ -2712,18 +1852,18 @@ Report generated by ${session.profile?.org || "HappyFeet Scouting"}.
 
     const mdContent = `# Scouting Report for ${playerName}
 
-**Generated by:** ${agencyName}  
-**Date:** ${date}  
-**Platform:** HappyFeet Performance Hub
+    **Generated by:** ${agencyName}  
+    **Date:** ${date}  
+    **Platform:** HappyFeet Performance Hub
 
----
+    ---
 
-${reportEl.textContent.trim()}
+    ${reportEl.textContent.trim()}
 
----
+    ---
 
-*This report was generated by HappyFeet AI and reviewed by ${agencyName}.*
-`;
+    *This report was generated by HappyFeet AI and reviewed by ${agencyName}.*
+    `;
 
     const blob = new Blob([mdContent], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
@@ -2865,35 +2005,231 @@ ${reportEl.textContent.trim()}
     HF_UTILS.toast("PDF downloaded!", "success");
   };
 
-  const unflagProspect = async (scoutId, playerId, name) => {
-    const result = await HF_DB.updateProspectStatus(scoutId, playerId, {
-      flagged: false,
-      status: "watching",
+  // ── FAITH ──────────────────────────────────────────────────
+  const faith = (s) => {
+    setMain(`
+      <div class="faith-hero">
+        <i class="ti ti-cross" style="font-size:32px;margin-bottom:10px;display:block;color:var(--faith)"></i>
+        <div style="font-size:20px;font-weight:700;margin-bottom:6px">Faith & Purpose</div>
+        <div style="font-size:13px;opacity:.8">Your talent is God-given. Your discipline is your worship.</div>
+      </div>
+      <div class="faith-verse-card">
+        <div class="verse-text">${HF_SCRIPTURE.getToday().verse}</div>
+        <div class="verse-ref">${HF_SCRIPTURE.getToday().ref}</div>
+      </div>`);
+  };
+
+  // ── FIND MY TEAM ───────────────────────────────────────────
+  const findmyteam = async (s) => {
+    const { data: coaches } = await HF_DB.getVerifiedCoaches();
+    const { data: approved } = await HF_DB.getApprovedClubNetwork(s.userId);
+
+    const approvedIds = new Set(approved?.map((a) => a.coach_id) || []);
+
+    // fetch network request status for each coach
+    const coachesWithStatus = await Promise.all(
+      (coaches || []).map(async (c) => {
+        const { data: req } = await HF_DB.getClubNetworkStatus(s.userId, c.id);
+        return { ...c, networkRequest: req, isApproved: approvedIds.has(c.id) };
+      }),
+    );
+
+    setMain(`
+    <div class="welcome-banner">
+      <div>
+        <div class="welcome-title">Club network</div>
+        <div class="welcome-sub">Browse verified squads and request access to see full details</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-size:32px;font-weight:700;color:var(--gold);">${approvedIds.size}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:0.08em;">In network</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:var(--sp-lg);flex-wrap:wrap;">
+      <select id="fmt-filter" onchange="HF_SCOUT.filterFMTCoaches()"
+        style="padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
+        <option value="">All clubs</option>
+        <option value="approved">In my network</option>
+        <option value="pending">Pending</option>
+      </select>
+      <input type="text" id="fmt-search" placeholder="Search by coach or club name..."
+        oninput="HF_SCOUT.filterFMTCoaches()"
+        style="flex:1;min-width:150px;padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
+    </div>
+
+    <div id="fmt-coaches-list">
+      ${
+        !coachesWithStatus || coachesWithStatus.length === 0
+          ? `
+        <div class="card">
+          <div style="text-align:center;padding:32px;color:var(--text2)">
+            <i class="ti ti-building" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
+            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No verified clubs yet</div>
+            <div style="font-size:13px">Verified clubs will appear here as coaches register.</div>
+          </div>
+        </div>`
+          : coachesWithStatus.map((c) => _scoutClubCard(c, s.userId)).join("")
+      }
+    </div>
+
+    <div id="club-detail-panel" style="display:none;margin-top:var(--sp-lg);"></div>`);
+
+    window._fmtScoutCoaches = coachesWithStatus;
+    window._scoutUserId = s.userId;
+  };
+
+  // ── FIND MY TEAM HELPERS ───────────────────────────────────
+  const _scoutClubCard = (c, scoutId) => {
+    const p = c.profile || {};
+    const req = c.networkRequest;
+    const isApproved = c.isApproved;
+    const isPending = req?.status === "pending";
+    const isDeclined = req?.status === "declined";
+    const safeName = c.name.replace(/'/g, "\\'");
+    const safeClub = (p.club || "").replace(/'/g, "\\'");
+
+    return `
+    <div class="card" style="margin-bottom:var(--sp-md);">
+      <div style="display:flex;align-items:center;gap:var(--sp-md);">
+        <div style="width:52px;height:52px;background:${isApproved ? "var(--green)" : "var(--bg2)"};border:2px solid ${isApproved ? "var(--green)" : "var(--border)"};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:${isApproved ? "#fff" : "var(--text2)"};flex-shrink:0;">
+          ${(p.club || c.name).charAt(0).toUpperCase()}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:15px;font-weight:700;color:var(--text)">${p.club || "-"}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:3px;">
+            ${p.league ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text2);">${p.league}</span>` : ""}
+            <span style="font-size:10px;color:var(--text3);">Coach: ${c.name}</span>
+            ${p.exp ? `<span style="font-size:10px;color:var(--text3);">${p.exp} yrs exp</span>` : ""}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          ${
+            isApproved
+              ? `
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;background:rgba(26,122,46,.15);color:var(--green);">
+              In network
+            </span>`
+              : isPending
+                ? `
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;background:rgba(196,154,10,.15);color:var(--gold);">
+              Pending
+            </span>`
+                : isDeclined
+                  ? `
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;background:rgba(200,16,46,.1);color:var(--red);">
+              Declined
+            </span>`
+                  : ""
+          }
+        </div>
+      </div>
+
+      <div style="margin-top:var(--sp-md);padding-top:var(--sp-md);border-top:0.5px solid var(--border);">
+        ${
+          isApproved
+            ? `
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.toggleClubDetail('${c.id}', '${safeClub}', '${p.league || ""}')">
+              <i class="ti ti-chart-bar"></i> View squad details
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.messagePlayer('${c.id}', '${safeName}')">
+              <i class="ti ti-message"></i> Message coach
+            </button>
+          </div>`
+            : `
+          <div style="display:flex;align-items:center;gap:var(--sp-md);">
+            <div style="flex:1;font-size:12px;color:var(--text3);">
+              <i class="ti ti-lock" style="margin-right:4px"></i>
+              Request access to see squad details, ratings, and wellness data.
+            </div>
+            ${
+              !isPending
+                ? `
+              <button class="btn btn-primary btn-sm" onclick="HF_SCOUT.requestNetwork('${c.id}', '${safeName}')">
+                <i class="ti ti-network"></i> Request access
+              </button>`
+                : ""
+            }
+          </div>`
+        }
+      </div>
+    </div>`;
+  };
+
+  const filterFMTCoaches = () => {
+    const filter = document.getElementById("fmt-filter")?.value;
+    const search = document.getElementById("fmt-search")?.value.toLowerCase();
+    const list = document.getElementById("fmt-coaches-list");
+    if (!list || !window._fmtScoutCoaches) return;
+
+    const filtered = window._fmtScoutCoaches.filter((c) => {
+      const p = c.profile || {};
+      const matchFilter =
+        !filter ||
+        (filter === "approved" && c.isApproved) ||
+        (filter === "pending" && c.networkRequest?.status === "pending");
+      const matchSearch =
+        !search ||
+        c.name.toLowerCase().includes(search) ||
+        (p.club || "").toLowerCase().includes(search);
+      return matchFilter && matchSearch;
     });
+
+    list.innerHTML =
+      filtered.length === 0
+        ? `<div class="card"><div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No clubs match your filters.</div></div>`
+        : filtered.map((c) => _scoutClubCard(c, window._scoutUserId)).join("");
+  };
+
+  const requestNetwork = async (coachId, coachName) => {
+    const session = HF_DB.getSession();
+    const result = await HF_DB.requestClubNetwork(session.userId, coachId);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    await HF_DB._sendMessage(
+      "system",
+      coachId,
+      "Scout network request",
+      `${session.name} from ${session.profile?.org || "HappyFeet Scouting"} has requested to add your club to their scouting network. You can approve or decline from your squad page.`,
+    );
+
+    HF_UTILS.toast(`Network request sent to ${coachName}!`, "success");
+    findmyteam(session);
+  };
+
+  const filterPlayers = () =>
+    HF_ROLE_UTILS.filterPlayers(
+      "_discoverAllPlayers",
+      (p) => _discoverPlayerCard(p, window._scoutUserId),
+      "discover-players-list",
+      {
+        pos: document.getElementById("disc-pos")?.value,
+        tier: document.getElementById("disc-tier")?.value,
+        search: document.getElementById("disc-search")?.value,
+      },
+    );
+
+  const savePlayer = async (playerId, playerName) => {
+    const session = HF_DB.getSession();
+    const result = await HF_DB.saveProspect(session.userId, playerId);
     if (result.error) {
       toast(result.error, "error");
       return;
     }
-    toast(`${name} unflagged.`, "success");
-    prospects(HF_DB.getSession());
-  };
 
-  const viewSenderProfile = async (userId) => {
-    const html = await HF_UTILS.viewProfile(
-      userId,
-      "HF_ROUTER.navTo('messages')",
-    );
-    if (!html) return;
-    setMain(html);
-  };
-
-  const viewPlayerProfile = async (playerId) => {
-    const html = await HF_UTILS.viewProfile(
+    await HF_DB._sendMessage(
+      "system",
       playerId,
-      "HF_ROUTER.navTo('discover')",
+      "You are being scouted",
+      `${session.name} from ${session.profile?.org || "HappyFeet Scouting"} has added you to their prospect list. Your profile is now being actively monitored. Keep up the great work!`,
     );
-    if (!html) return;
-    setMain(html);
+
+    toast(`${playerName} saved as prospect!`, "success");
+    discover(session);
   };
 
   const toggleClubDetail = async (coachId, clubName, league) => {
@@ -2912,403 +2248,64 @@ ${reportEl.textContent.trim()}
       return;
     }
 
-    // close any open panel and reset all chevrons
     document
       .querySelectorAll('[id^="chevron-"]')
       .forEach((el) => (el.style.transform = "rotate(0deg)"));
     if (panel) panel.style.display = "none";
 
-    // rotate this chevron
     if (chevron) chevron.style.transform = "rotate(90deg)";
 
-    // open new panel
     if (panel) panel.dataset.openCoach = coachId;
     await viewClubDetail(coachId, clubName, league);
   };
 
-  const myTickets = async (s, fromMessages = false) => {
-    const { data: tickets } = await HF_DB.getUserTickets(s.userId);
-
-    const unread =
-      tickets?.filter((t) => {
-        const msgs = t.messages || [];
-        const lastMsg = msgs[msgs.length - 1];
-        return lastMsg?.is_admin && t.status !== "resolved";
-      }) || [];
-
-    const replied =
-      tickets?.filter((t) => {
-        const msgs = t.messages || [];
-        const lastMsg = msgs[msgs.length - 1];
-        return !lastMsg?.is_admin && msgs.length > 1 && t.status !== "resolved";
-      }) || [];
-
-    const resolved = tickets?.filter((t) => t.status === "resolved") || [];
-
-    const ticketCard = (t, isUnread = false) => {
-      const statusColor =
-        t.status === "open"
-          ? "var(--red)"
-          : t.status === "claimed"
-            ? "var(--gold)"
-            : "var(--green)";
-      const statusLabel =
-        t.status === "open"
-          ? "Open"
-          : t.status === "claimed"
-            ? "In progress"
-            : "Resolved";
-      const msgCount = t.messages?.length || 0;
-      const lastMsg = t.messages?.[t.messages.length - 1];
-
-      return `
-    <div style="background:var(--bg);border:0.5px solid ${isUnread ? "var(--gold)" : "var(--border)"};border-left:4px solid ${isUnread ? "var(--gold)" : statusColor};margin-bottom:var(--sp-sm);cursor:pointer;transition:background 0.15s ease;position:relative;"
-      onmouseover="this.style.background='var(--bg2)'"
-      onmouseout="this.style.background='var(--bg)'"
-      onclick="HF_${s.role.toUpperCase()}.viewTicketThread('${t.id}', '${t.subject.replace(/'/g, "\\'")}', ${fromMessages})">
-      ${
-        isUnread
-          ? `
-        <div style="position:absolute;top:0;right:0;background:var(--gold);padding:2px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#0f0f0d;">
-          New reply
-        </div>`
-          : ""
-      }
-      <div style="padding:var(--sp-md) var(--sp-lg);">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-md);margin-bottom:6px;">
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;font-weight:${isUnread ? "700" : "600"};color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-              ${t.subject}
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px;">
-              <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;background:${statusColor}22;color:${statusColor};white-space:nowrap;">
-                ${statusLabel}
-              </span>
-              <span style="font-size:10px;color:var(--text3);">·</span>
-              <span style="font-size:11px;color:var(--text2);">${t.category?.charAt(0).toUpperCase() + t.category?.slice(1) || ""}</span>
-              <span style="font-size:10px;color:var(--text3);">·</span>
-              <span style="font-size:11px;color:var(--text3);">${HF_UTILS.timeAgo(t.created_at)}</span>
-              <span style="font-size:10px;color:var(--text3);">·</span>
-              <span style="font-size:11px;color:var(--text3);">${msgCount} message${msgCount !== 1 ? "s" : ""}</span>
-            </div>
-          </div>
-          <i class="ti ti-chevron-right" style="color:var(--text3);font-size:16px;flex-shrink:0;"></i>
-        </div>
-        ${
-          t.status === "claimed"
-            ? `
-          <div style="font-size:11px;color:var(--text2);padding-top:6px;border-top:0.5px solid var(--border);display:flex;align-items:center;gap:4px;">
-            <i class="ti ti-user" style="color:var(--gold)"></i>
-            <span>Being handled by <strong style="color:var(--text)">${t.claimer?.name || "HappyFeet Support"}</strong></span>
-          </div>`
-            : ""
-        }
-        ${
-          lastMsg
-            ? `
-          <div style="font-size:12px;color:var(--text2);margin-top:6px;padding:8px 12px;background:${isUnread ? "rgba(196,154,10,.06)" : "var(--bg2)"};border-left:${isUnread ? "2px solid var(--gold)" : "none"};">
-            <span style="font-weight:600;color:${lastMsg.is_admin ? "var(--gold)" : "var(--text)"};">
-              ${lastMsg.is_admin ? "Support" : "You"}:
-            </span>
-            ${lastMsg.body.slice(0, 100)}${lastMsg.body.length > 100 ? "..." : ""}
-          </div>`
-            : ""
-        }
-      </div>
-    </div>`;
-    };
-
-    const section = (title, color, items, defaultOpen = true) => `
-  <div class="card" style="margin-bottom:var(--sp-md);">
-    <div class="card-title" style="cursor:pointer;justify-content:space-between;"
-      onclick="const c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none';this.querySelector('i').className='ti '+(c.style.display==='none'?'ti-chevron-down':'ti-chevron-up');">
-      <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-        <div class="card-dot" style="background:${color}"></div>${title}
-        <span style="font-size:11px;color:var(--text3)">${items.length}</span>
-      </div>
-      <i class="ti ${defaultOpen ? "ti-chevron-up" : "ti-chevron-down"}" style="font-size:14px;color:var(--text3)"></i>
-    </div>
-    <div style="display:${defaultOpen ? "block" : "none"}">
-      ${
-        items.length === 0
-          ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No tickets here.</div>`
-          : items.map((t) => ticketCard(t)).join("")
-      }
-    </div>
-  </div>`;
-
-    const unreadSection =
-      unread.length > 0
-        ? `
-        <div class="card" style="margin-bottom:var(--sp-md);border-top:3px solid var(--gold);">
-          <div class="card-title" style="justify-content:space-between;">
-            <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-              <div class="card-dot" style="background:var(--gold)"></div>
-              Needs your attention
-              <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
-                ${unread.length} new
-              </span>
-            </div>
-          </div>
-          ${unread.map((t) => ticketCard(t, true)).join("")}
-        </div>`
-        : "";
-
-    setMain(`
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-lg);">
-      <div style="display:flex;align-items:center;gap:var(--sp-md);">
-        <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('${fromMessages ? "messages" : "dashboard"}')">
-          <i class="ti ti-arrow-left"></i> Back
-        </button>
-        <div style="font-size:14px;font-weight:700;color:var(--text);">My Support Tickets</div>
-      </div>
-      <button class="btn btn-primary btn-sm" onclick="HF_${s.role.toUpperCase()}.newTicket(HF_DB.getSession(), ${fromMessages})">
-        <i class="ti ti-plus"></i> New ticket
-      </button>
-    </div>
-
-    ${
-      !tickets || tickets.length === 0
-        ? `
-      <div class="card">
-        <div style="text-align:center;padding:48px 32px;">
-          <i class="ti ti-ticket" style="font-size:48px;margin-bottom:16px;display:block;color:var(--text3)"></i>
-          <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px">No tickets yet</div>
-          <div style="font-size:13px;color:var(--text2);margin-bottom:24px">Submit a support ticket if you need help.</div>
-          <button class="btn btn-primary btn-sm" onclick="HF_${s.role.toUpperCase()}.newTicket(HF_DB.getSession(), ${fromMessages})">
-            <i class="ti ti-plus"></i> New ticket
-          </button>
-        </div>
-      </div>`
-        : `
-      ${unreadSection}
-      ${replied.length > 0 ? section("Awaiting response", "var(--blue)", replied, true) : ""}
-      ${resolved.length > 0 ? section("Resolved", "var(--green)", resolved, false) : ""}
-      ${unread.length === 0 && replied.length === 0 && resolved.length === 0 ? section("All tickets", "var(--text3)", tickets, true) : ""}`
-    }
-  `);
-  };
-
-  const viewTicketThread = async (ticketId, subject, fromMessages = false) => {
-    const s = HF_DB.getSession();
-    const { data: msgs } = await HF_DB.getTicketMessages(ticketId);
-    const { data: tickets } = await HF_DB.getUserTickets(s.userId);
-    const ticket = tickets?.find((t) => t.id === ticketId);
-    const statusColor =
-      ticket?.status === "open"
-        ? "var(--red)"
-        : ticket?.status === "claimed"
-          ? "var(--gold)"
-          : "var(--green)";
-    const statusLabel =
-      ticket?.status === "open"
-        ? "Open"
-        : ticket?.status === "claimed"
-          ? "In progress"
-          : "Resolved";
-
-    setMain(`
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-lg);">
-      <div style="display:flex;align-items:center;gap:var(--sp-md);">
-        <button class="btn btn-outline btn-sm" onclick="HF_${s.role.toUpperCase()}.myTickets(HF_DB.getSession(), ${fromMessages})">
-          <i class="ti ti-arrow-left"></i> My tickets
-        </button>
-        <div>
-          <div style="font-size:14px;font-weight:700;color:var(--text);">${subject}</div>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
-            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:1px 6px;background:${statusColor}22;color:${statusColor};">
-              ${statusLabel}
-            </span>
-            <span style="font-size:11px;color:var(--text3);">${ticket?.category || ""}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    ${
-      ticket?.status === "claimed"
-        ? `
-      <div style="padding:10px 14px;background:rgba(196,154,10,.06);border-left:3px solid var(--gold);margin-bottom:var(--sp-lg);font-size:12px;color:var(--text2);">
-        <i class="ti ti-user" style="margin-right:6px;color:var(--gold)"></i>
-        Your ticket is being handled by <strong style="color:var(--text)">${ticket.claimer?.name || "HappyFeet Support"}</strong>
-      </div>`
-        : ""
-    }
-
-    ${
-      ticket?.status === "resolved"
-        ? `
-      <div style="padding:10px 14px;background:rgba(26,122,46,.06);border-left:3px solid var(--green);margin-bottom:var(--sp-lg);font-size:12px;color:var(--text2);">
-        <i class="ti ti-circle-check" style="margin-right:6px;color:var(--green)"></i>
-        This ticket has been resolved. You can still view the conversation or submit a new ticket if needed.
-      </div>`
-        : ""
-    }
-
-    <div class="card" style="padding:0;overflow:hidden;">
-      <div style="padding:var(--sp-lg);display:flex;flex-direction:column;gap:var(--sp-md);min-height:200px;max-height:55vh;overflow-y:auto;" id="ticket-thread">
-        ${(msgs || [])
-          .map((m) => {
-            const isMine = m.from_id === s.userId;
-            return `
-            <div style="display:flex;flex-direction:column;align-items:${isMine ? "flex-end" : "flex-start"};">
-              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">
-                ${isMine ? "You" : "HappyFeet Support"} · ${HF_UTILS.timeAgo(m.created_at)}
-              </div>
-              <div style="max-width:75%;padding:10px 14px;
-                background:${isMine ? "var(--gold)" : "var(--bg2)"};
-                color:${isMine ? "#0f0f0d" : "var(--text)"};
-                font-size:13px;line-height:1.5;">
-                ${m.body}
-              </div>
-            </div>`;
-          })
-          .join("")}
-      </div>
-      ${
-        ticket?.status !== "resolved"
-          ? `
-          <div style="padding:var(--sp-md);border-top:0.5px solid var(--border);display:flex;flex-direction:column;gap:8px;background:var(--bg);">
-            <div style="display:flex;gap:8px;align-items:center;">
-              <input type="text" id="ticket-reply-input" placeholder="Add a message..."
-                style="flex:1;padding:0 12px;height:42px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;font-family:var(--font);outline:none;"
-                onkeydown="if(event.key==='Enter')HF_${s.role.toUpperCase()}.sendUserTicketReply('${ticketId}', '${subject.replace(/'/g, "\\'")}', ${fromMessages})">
-              <button class="btn btn-primary" style="height:42px;width:42px;padding:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;"
-                onclick="HF_${s.role.toUpperCase()}.sendUserTicketReply('${ticketId}', '${subject.replace(/'/g, "\\'")}', ${fromMessages})">
-                <i class="ti ti-send"></i>
-              </button>
-            </div>
-            ${
-              ticket?.status === "claimed"
-                ? `
-              <button class="btn btn-outline btn-sm" style="align-self:flex-end;"
-                onclick="HF_${s.role.toUpperCase()}.markTicketResolved('${ticketId}', '${subject.replace(/'/g, "\\'")}', ${fromMessages})">
-                <i class="ti ti-circle-check"></i> Mark as resolved
-              </button>`
-                : ""
-            }
-          </div>`
-          : `
-          <div style="padding:var(--sp-md);border-top:0.5px solid var(--border);background:var(--bg);display:flex;justify-content:flex-end;">
-            <button class="btn btn-outline btn-sm"
-              onclick="HF_${s.role.toUpperCase()}.reopenUserTicket('${ticketId}', '${subject.replace(/'/g, "\\'")}', ${fromMessages})">
-              <i class="ti ti-arrow-back-up"></i> Reopen ticket
-          </button>
-        </div>`
-      }
-    </div>`);
-
-    setTimeout(() => {
-      const el = document.getElementById("ticket-thread");
-      if (el) el.scrollTop = el.scrollHeight;
-    }, 100);
-  };
-
-  const sendUserTicketReply = async (
-    ticketId,
-    subject,
-    fromMessages = false,
-  ) => {
-    const s = HF_DB.getSession();
-    const body = document.getElementById("ticket-reply-input")?.value.trim();
-    if (!body) return;
-
-    const result = await HF_DB.addTicketMessage(
-      ticketId,
-      s.userId,
-      body,
-      false,
-    );
-    if (result.error) {
-      HF_UTILS.toast(result.error, "error");
-      return;
-    }
-
-    document.getElementById("ticket-reply-input").value = "";
-    viewTicketThread(ticketId, subject, fromMessages);
-  };
-
-  const markTicketResolved = async (ticketId, subject, fromMessages) => {
-    const result = await HF_DB.resolveTicket(ticketId);
-    if (result.error) {
-      HF_UTILS.toast(result.error, "error");
-      return;
-    }
-    HF_UTILS.toast("Ticket marked as resolved.", "success");
-    viewTicketThread(ticketId, subject, fromMessages);
-  };
-
-  const reopenUserTicket = async (ticketId, subject, fromMessages) => {
-    const result = await HF_DB.reopenTicket(ticketId);
-    if (result.error) {
-      HF_UTILS.toast(result.error, "error");
-      return;
-    }
-    HF_UTILS.toast("Ticket reopened.", "success");
-    viewTicketThread(ticketId, subject, fromMessages);
-  };
-
-  const newTicket = (s, fromMessages = false) => {
-    setMain(`
-    <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);">
-      <button class="btn btn-outline btn-sm" onclick="HF_${s.role.toUpperCase()}.myTickets(HF_DB.getSession(), ${fromMessages})">
-        <i class="ti ti-arrow-left"></i> My tickets
-      </button>
-      <div style="font-size:14px;font-weight:700;color:var(--text);">New support ticket</div>
-    </div>
-
-    <div class="card">
-      <div style="font-size:13px;color:var(--text2);margin-bottom:var(--sp-lg);">
-        Submit a support ticket and an admin will respond shortly.
-      </div>
-      <div class="fg">
-        <label class="required">Category</label>
-        <select id="ticket-category"
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-          <option value="general">General inquiry</option>
-          <option value="verification">Verification issue</option>
-          <option value="account">Account issue</option>
-          <option value="technical">Technical problem</option>
-          <option value="report">Report a user</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-      <div class="fg">
-        <label class="required">Subject</label>
-        <input type="text" id="ticket-subject" placeholder="Brief description of your issue"
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-      </div>
-      <div class="fg">
-        <label class="required">Message</label>
-        <textarea id="ticket-body" rows="5" placeholder="Describe your issue in detail..."
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" onclick="HF_${s.role.toUpperCase()}.sendTicket(${fromMessages})">
-          <i class="ti ti-send"></i> Submit ticket
-        </button>
-        <button class="btn btn-outline" onclick="HF_${s.role.toUpperCase()}.myTickets(HF_DB.getSession(), ${fromMessages})">
-          Cancel
-        </button>
-      </div>
-    </div>`);
-  };
+  // ── SCOUT FUNCTIONS ───────────────────────────────────────
+  const composeMessage = () => HF_ROLE_UTILS.composeMessage("scout");
+  const searchRecipients = (q) => HF_ROLE_UTILS.searchRecipients(q, "scout");
+  const selectRecipient = (id, name, role) =>
+    HF_ROLE_UTILS.selectRecipient(id, name, role, "scout");
+  const removeRecipient = (id) => HF_ROLE_UTILS.removeRecipient(id);
+  const sendComposedMessage = () => HF_ROLE_UTILS.sendComposedMessage("scout");
+  const viewThread = (tid, uid, sub) =>
+    HF_ROLE_UTILS.viewThread(tid, uid, sub, "scout");
+  const sendReply = (tid, sub, thid) =>
+    HF_ROLE_UTILS.sendReply(tid, sub, thid, "scout");
+  const toggleMsgActions = (mid) => HF_ROLE_UTILS.toggleMsgActions(mid);
+  const replyToMessage = (mid, fid, sn, sub, thid) =>
+    HF_ROLE_UTILS.replyToMessage(mid, fid, sn, sub, thid, "scout");
+  const viewSenderProfile = (uid) =>
+    HF_ROLE_UTILS.viewSenderProfile(uid, "scout");
+  const reportToAdmin = (fid, sn) =>
+    HF_ROLE_UTILS.reportToAdmin(fid, sn, "scout");
+  const archiveMessage = (mid, el) =>
+    HF_ROLE_UTILS.archiveMessage(mid, el, "scout");
+  const unarchiveMessage = (mid) =>
+    HF_ROLE_UTILS.unarchiveMessage(mid, "scout");
+  const readMessage = (mid, el) => HF_ROLE_UTILS.readMessage(mid, el, "scout");
+  const contactAdmin = () => HF_ROLE_UTILS.contactAdmin("scout");
+  const myTickets = (s, fm) => HF_ROLE_UTILS.myTickets(s, fm, "scout");
+  const newTicket = (s, fm) => HF_ROLE_UTILS.newTicket(s, fm, "scout");
+  const sendTicket = (fm) => HF_ROLE_UTILS.sendTicket(fm, "scout");
+  const viewTicketThread = (id, sub, fm) =>
+    HF_ROLE_UTILS.viewTicketThread(id, sub, fm, "scout");
+  const sendUserTicketReply = (id, sub, fm) =>
+    HF_ROLE_UTILS.sendUserTicketReply(id, sub, fm, "scout");
+  const markTicketResolved = (id, sub, fm) =>
+    HF_ROLE_UTILS.markTicketResolved(id, sub, fm, "scout");
+  const reopenUserTicket = (id, sub, fm) =>
+    HF_ROLE_UTILS.reopenUserTicket(id, sub, fm, "scout");
+  const previewAvatar = (input) => HF_ROLE_UTILS.previewAvatar(input);
+  const togglePrayer = (prayerId) =>
+    HF_ROLE_UTILS.togglePrayer(prayerId, "scout");
 
   return {
     render,
     resubmitAgency,
     submitAgencyResubmission,
-    readMessage,
-    archiveMessage,
-    unarchiveMessage,
-    filterPlayers,
     savePlayer,
-    viewSenderProfile,
-    viewPlayerProfile,
-    messagePlayer,
-    sendMessage,
     unsavePlayer,
     flagProspect,
+    unflagProspect,
     shareReport,
     arrangeTrial,
     markPlaced,
@@ -3317,19 +2314,6 @@ ${reportEl.textContent.trim()}
     saveProfile,
     togglePlayerActions,
     toggleSavedActions,
-    contactAdmin,
-    sendAdminMessage,
-    toggleCustomSubject,
-    composeMessage,
-    sendComposedMessage,
-    searchRecipients,
-    selectRecipient,
-    removeRecipient,
-    viewThread,
-    toggleMsgActions,
-    replyToMessage,
-    sendReply,
-    reportToAdmin,
     generateReport,
     submitGenerateReport,
     viewReport,
@@ -3341,20 +2325,11 @@ ${reportEl.textContent.trim()}
     downloadReport,
     downloadReportPDF,
     filterFMTCoaches,
-    unflagProspect,
     filterMyClubs,
     filterAvailableClubs,
     viewClubDetail,
     toggleClubDetail,
     requestNetwork,
-    previewAvatar,
-    sendTicket,
-    myTickets,
-    viewTicketThread,
-    sendUserTicketReply,
-    markTicketResolved,
-    reopenUserTicket,
-    newTicket,
   };
 })();
 

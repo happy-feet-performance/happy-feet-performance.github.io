@@ -36,6 +36,7 @@ const HF_ROUTER = (() => {
       { section: "Discover" },
       { view: "findmyteam", icon: "ti-map-search", label: "Find my team" },
     ],
+
     coach: (squadStatus, teamSize = 0) => {
       const verified = squadStatus === "verified";
       const hasPlayers = teamSize > 0;
@@ -83,6 +84,7 @@ const HF_ROUTER = (() => {
       );
       return nav;
     },
+
     scout: (agencyStatus) => {
       const verified = agencyStatus === "verified";
       const nav = [
