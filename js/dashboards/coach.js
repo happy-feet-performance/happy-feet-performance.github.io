@@ -1513,8 +1513,8 @@ const HF_COACH = (() => {
       ${neededPositions
         .map(
           (pos) => `
-        <span style="font-size:11px;font-weight:700;padding:3px 10px;background:rgba(196,154,10,.1);border:0.5px solid var(--gold);color:var(--gold);cursor:pointer;"
-          onclick="document.getElementById('fmt-pos').value='${pos}';HF_COACH.filterPlayers()">
+        <span id="pos-btn-${pos}" style="font-size:11px;font-weight:700;padding:3px 10px;background:rgba(196,154,10,.1);border:0.5px solid var(--gold);color:var(--gold);cursor:pointer;transition:all 0.15s ease;"
+          onclick="HF_COACH.selectNeededPosition('${pos}')">
           ${pos}
         </span>`,
         )
@@ -2991,32 +2991,6 @@ const HF_COACH = (() => {
       </button>
     </div>
 
-      ${["Speed", "Technical", "Tactical", "Physical"]
-        .map(
-          (l) => `
-        <div class="bar-row">
-          <div class="bar-head">
-            <span>${l}</span>
-            <span id="cv-${l.toLowerCase()}" style="color:var(--gold);font-weight:600">7</span>
-          </div>
-          <input type="range" min="1" max="10" value="7" step="1"
-            style="width:100%;accent-color:var(--gold);margin-top:4px"
-            oninput="document.getElementById('cv-${l.toLowerCase()}').textContent=this.value">
-        </div>`,
-        )
-        .join("")}
-
-      <div class="fg" style="margin-top:8px">
-        <label>Notes</label>
-        <input type="text" id="tr-notes" placeholder="e.g. Strong first touch, work on weak foot"
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-      </div>
-      <button class="btn btn-primary" style="margin-top:8px"
-        onclick="HF_COACH.savePlayerRating('${playerId}', '${playerName.replace(/'/g, "\\'")}')">
-        <i class="ti ti-circle-check"></i> ${todayRating ? "Update rating" : "Save rating"}
-      </button>
-    </div>
-
     ${
       sessions && sessions.length > 0
         ? `
@@ -3728,6 +3702,32 @@ const HF_COACH = (() => {
     squad(session);
   };
 
+  const selectNeededPosition = (pos) => {
+    const select = document.getElementById("fmt-pos");
+    if (!select) return;
+
+    // toggle off if already selected
+    const isSame = select.value === pos;
+    select.value = isSame ? "" : pos;
+
+    // reset all buttons
+    document.querySelectorAll('[id^="pos-btn-"]').forEach((btn) => {
+      btn.style.background = "rgba(196,154,10,.1)";
+      btn.style.color = "var(--gold)";
+    });
+
+    // highlight selected
+    if (!isSame) {
+      const btn = document.getElementById(`pos-btn-${pos}`);
+      if (btn) {
+        btn.style.background = "var(--gold)";
+        btn.style.color = "#0f0f0d";
+      }
+    }
+
+    HF_COACH.filterPlayers();
+  };
+
   return {
     render,
     readMessage,
@@ -3781,6 +3781,7 @@ const HF_COACH = (() => {
     approveNetworkRequest,
     declineNetworkRequest,
     previewAvatar,
+    selectNeededPosition,
   };
 })();
 
