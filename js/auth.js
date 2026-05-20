@@ -783,6 +783,16 @@ const HF_AUTH = (() => {
     HF_ROUTER.launch(session);
   };
 
+  const togglePassword = (inputId, btn) => {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const isPassword = input.type === "password";
+    input.type = isPassword ? "text" : "password";
+    btn.innerHTML = isPassword
+      ? '<i class="ti ti-eye-off"></i>'
+      : '<i class="ti ti-eye"></i>';
+  };
+
   // ─── Expose to window (called from onclick) ─────────────────
   return {
     showScreen,
@@ -803,6 +813,7 @@ const HF_AUTH = (() => {
     toggleTag,
     getSelectedTags,
     skipVerification,
+    togglePassword,
   };
 })();
 

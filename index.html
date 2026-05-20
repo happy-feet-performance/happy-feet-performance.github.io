@@ -109,12 +109,16 @@
           </div>
           <div class="fg">
             <label>Password</label>
-            <input
-              type="password"
-              id="login-pass"
-              placeholder="Your password"
-              autocomplete="off"
-            />
+            <div class="password-wrap">
+              <input type="password" id="login-pass" placeholder="Password" />
+              <button
+                type="button"
+                class="password-toggle"
+                onclick="HF_AUTH.togglePassword('login-pass', this)"
+              >
+                <i class="ti ti-eye"></i>
+              </button>
+            </div>
           </div>
           <button
             class="btn btn-primary btn-full"
@@ -281,13 +285,20 @@
           </div>
           <div class="fg">
             <label>Password</label>
-            <input
-              type="password"
-              id="su-pass"
-              placeholder="Min 6 characters"
-              autocomplete="new-password"
-              oninput="HF_AUTH.checkPassword(this.value)"
-            />
+            <div class="password-wrap">
+              <input
+                type="password"
+                id="su-pass"
+                placeholder="Create a password"
+              />
+              <button
+                type="button"
+                class="password-toggle"
+                onclick="HF_AUTH.togglePassword('su-pass', this)"
+              >
+                <i class="ti ti-eye"></i>
+              </button>
+            </div>
             <div
               id="password-strength-bar"
               style="
@@ -1277,12 +1288,16 @@
           </div>
           <div class="fg">
             <label class="required">Password</label>
-            <input
-              type="password"
-              id="admin-pass"
-              placeholder="Your admin password"
-              autocomplete="off"
-            />
+            <div class="password-wrap">
+              <input type="password" id="admin-pass" placeholder="Password" />
+              <button
+                type="button"
+                class="password-toggle"
+                onclick="HF_AUTH.togglePassword('admin-pass', this)"
+              >
+                <i class="ti ti-eye"></i>
+              </button>
+            </div>
           </div>
           <button
             class="btn btn-primary btn-full"
