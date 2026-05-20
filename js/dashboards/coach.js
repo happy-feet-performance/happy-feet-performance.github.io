@@ -2837,45 +2837,6 @@ const HF_COACH = (() => {
     );
   };
 
-  // ── COACH FUNCTIONS ───────────────────────────────────────
-  const composeMessage = () => HF_ROLE_UTILS.composeMessage("coach");
-  const searchRecipients = (q) => HF_ROLE_UTILS.searchRecipients(q, "coach");
-  const selectRecipient = (id, name, role) =>
-    HF_ROLE_UTILS.selectRecipient(id, name, role, "coach");
-  const removeRecipient = (id) => HF_ROLE_UTILS.removeRecipient(id);
-  const sendComposedMessage = () => HF_ROLE_UTILS.sendComposedMessage("coach");
-  const viewThread = (tid, uid, sub) =>
-    HF_ROLE_UTILS.viewThread(tid, uid, sub, "coach");
-  const sendReply = (tid, sub, thid) =>
-    HF_ROLE_UTILS.sendReply(tid, sub, thid, "coach");
-  const toggleMsgActions = (mid) => HF_ROLE_UTILS.toggleMsgActions(mid);
-  const replyToMessage = (mid, fid, sn, sub, thid) =>
-    HF_ROLE_UTILS.replyToMessage(mid, fid, sn, sub, thid, "coach");
-  const viewSenderProfile = (uid) =>
-    HF_ROLE_UTILS.viewSenderProfile(uid, "coach");
-  const reportToAdmin = (fid, sn) =>
-    HF_ROLE_UTILS.reportToAdmin(fid, sn, "coach");
-  const archiveMessage = (mid, el) =>
-    HF_ROLE_UTILS.archiveMessage(mid, el, "coach");
-  const unarchiveMessage = (mid) =>
-    HF_ROLE_UTILS.unarchiveMessage(mid, "coach");
-  const readMessage = (mid, el) => HF_ROLE_UTILS.readMessage(mid, el, "coach");
-  const contactAdmin = () => HF_ROLE_UTILS.contactAdmin("coach");
-  const myTickets = (s, fm) => HF_ROLE_UTILS.myTickets(s, fm, "coach");
-  const newTicket = (s, fm) => HF_ROLE_UTILS.newTicket(s, fm, "coach");
-  const sendTicket = (fm) => HF_ROLE_UTILS.sendTicket(fm, "coach");
-  const viewTicketThread = (id, sub, fm) =>
-    HF_ROLE_UTILS.viewTicketThread(id, sub, fm, "coach");
-  const sendUserTicketReply = (id, sub, fm) =>
-    HF_ROLE_UTILS.sendUserTicketReply(id, sub, fm, "coach");
-  const markTicketResolved = (id, sub, fm) =>
-    HF_ROLE_UTILS.markTicketResolved(id, sub, fm, "coach");
-  const reopenUserTicket = (id, sub, fm) =>
-    HF_ROLE_UTILS.reopenUserTicket(id, sub, fm, "coach");
-  const previewAvatar = (input) => HF_ROLE_UTILS.previewAvatar(input);
-  const togglePrayer = (prayerId) =>
-    HF_ROLE_UTILS.togglePrayer(prayerId, "coach");
-
   return {
     render,
     showInvitePanel,

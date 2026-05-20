@@ -303,7 +303,7 @@ const HF_SCOUT = (() => {
         <label style="position:absolute;bottom:-8px;right:-8px;width:24px;height:24px;background:var(--gold);cursor:pointer;display:flex;align-items:center;justify-content:center;color:#0f0f0d;">
           <i class="ti ti-camera" style="font-size:12px"></i>
           <input type="file" id="avatar-input" accept="image/*" style="display:none;"
-            onchange="HF_SCOUT.previewAvatar(this)">
+            onchange="HF_ROLE_UTILS.previewAvatar(this)">
         </label>
       </div>
       <div>
@@ -335,7 +335,7 @@ const HF_SCOUT = (() => {
         <div style="padding:12px;background:rgba(26,122,46,.05);border-left:2px solid var(--green);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
           <i class="ti ti-circle-check" style="margin-right:6px;color:var(--green)"></i>
           Your agency <strong style="color:var(--green)">${session.profile?.org || ""}</strong> is verified. To change your agency name please
-          <span onclick="HF_SCOUT.contactAdmin()" style="color:var(--gold);cursor:pointer;text-decoration:underline;">contact an administrator</span>.
+          <span onclick="HF_ROLE_UTILS.contactAdmin('scout')" style="color:var(--gold);cursor:pointer;text-decoration:underline;">contact an administrator</span>.
         </div>`
           : `
         <div style="padding:12px;background:var(--bg2);border-left:2px solid var(--border);font-size:13px;color:var(--text2);margin-bottom:var(--sp-md)">
@@ -1079,7 +1079,6 @@ const HF_SCOUT = (() => {
   };
 
   // ── CLUBS HELPERS ──────────────────────────────────────────
-
   const _clubNetworkRow = (c, scoutId) => `
     <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:3px solid var(--green);margin-bottom:var(--sp-sm);cursor:pointer;"
       onclick="HF_SCOUT.toggleClubDetail('${c.coach_id}', '${c.club_name.replace(/'/g, "\\'")}', '${c.league || ""}')">
@@ -1365,7 +1364,7 @@ const HF_SCOUT = (() => {
               .map(
                 (m) => `
             <div class="msg-item" id="archived-msg-${m.id}" style="cursor:pointer;" 
-              onclick="HF_SCOUT.viewThread('${m.thread_id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')">
+              onclick="HF_ROLE_UTILS.viewThread('${m.thread_id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')">
               <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
                 <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
               </div>
@@ -2259,45 +2258,6 @@ const HF_SCOUT = (() => {
     await viewClubDetail(coachId, clubName, league);
   };
 
-  // ── SCOUT FUNCTIONS ───────────────────────────────────────
-  const composeMessage = () => HF_ROLE_UTILS.composeMessage("scout");
-  const searchRecipients = (q) => HF_ROLE_UTILS.searchRecipients(q, "scout");
-  const selectRecipient = (id, name, role) =>
-    HF_ROLE_UTILS.selectRecipient(id, name, role, "scout");
-  const removeRecipient = (id) => HF_ROLE_UTILS.removeRecipient(id);
-  const sendComposedMessage = () => HF_ROLE_UTILS.sendComposedMessage("scout");
-  const viewThread = (tid, uid, sub) =>
-    HF_ROLE_UTILS.viewThread(tid, uid, sub, "scout");
-  const sendReply = (tid, sub, thid) =>
-    HF_ROLE_UTILS.sendReply(tid, sub, thid, "scout");
-  const toggleMsgActions = (mid) => HF_ROLE_UTILS.toggleMsgActions(mid);
-  const replyToMessage = (mid, fid, sn, sub, thid) =>
-    HF_ROLE_UTILS.replyToMessage(mid, fid, sn, sub, thid, "scout");
-  const viewSenderProfile = (uid) =>
-    HF_ROLE_UTILS.viewSenderProfile(uid, "scout");
-  const reportToAdmin = (fid, sn) =>
-    HF_ROLE_UTILS.reportToAdmin(fid, sn, "scout");
-  const archiveMessage = (mid, el) =>
-    HF_ROLE_UTILS.archiveMessage(mid, el, "scout");
-  const unarchiveMessage = (mid) =>
-    HF_ROLE_UTILS.unarchiveMessage(mid, "scout");
-  const readMessage = (mid, el) => HF_ROLE_UTILS.readMessage(mid, el, "scout");
-  const contactAdmin = () => HF_ROLE_UTILS.contactAdmin("scout");
-  const myTickets = (s, fm) => HF_ROLE_UTILS.myTickets(s, fm, "scout");
-  const newTicket = (s, fm) => HF_ROLE_UTILS.newTicket(s, fm, "scout");
-  const sendTicket = (fm) => HF_ROLE_UTILS.sendTicket(fm, "scout");
-  const viewTicketThread = (id, sub, fm) =>
-    HF_ROLE_UTILS.viewTicketThread(id, sub, fm, "scout");
-  const sendUserTicketReply = (id, sub, fm) =>
-    HF_ROLE_UTILS.sendUserTicketReply(id, sub, fm, "scout");
-  const markTicketResolved = (id, sub, fm) =>
-    HF_ROLE_UTILS.markTicketResolved(id, sub, fm, "scout");
-  const reopenUserTicket = (id, sub, fm) =>
-    HF_ROLE_UTILS.reopenUserTicket(id, sub, fm, "scout");
-  const previewAvatar = (input) => HF_ROLE_UTILS.previewAvatar(input);
-  const togglePrayer = (prayerId) =>
-    HF_ROLE_UTILS.togglePrayer(prayerId, "scout");
-
   return {
     render,
     resubmitAgency,
@@ -2330,6 +2290,7 @@ const HF_SCOUT = (() => {
     viewClubDetail,
     toggleClubDetail,
     requestNetwork,
+    filterPlayers,
   };
 })();
 

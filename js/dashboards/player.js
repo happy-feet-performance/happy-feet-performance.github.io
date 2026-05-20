@@ -1969,7 +1969,7 @@ const HF_PLAYER = (() => {
           const isChecked = checked.includes(p.id);
           return `
           <div style="display:flex;align-items:flex-start;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:2px solid ${isChecked ? "var(--green)" : "var(--faith)"};margin-bottom:var(--sp-sm);cursor:pointer;transition:var(--trans);"
-            onclick="HF_PLAYER.togglePrayer('${p.id}', '${todayKey}', '${s.userId}')">
+            onclick="HF_ROLE_UTILS.togglePrayer('${p.id}', '${todayKey}', '${s.userId}')">
             <div style="width:20px;height:20px;border:2px solid ${isChecked ? "var(--green)" : "var(--faith)"};background:${isChecked ? "var(--green)" : "transparent"};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
               ${isChecked ? '<i class="ti ti-check" style="font-size:12px;color:#fff;"></i>' : ""}
             </div>
@@ -2203,45 +2203,6 @@ const HF_PLAYER = (() => {
     HF_UTILS.toast(`Trial request sent to ${coachName}!`, "success");
   };
 
-  // ── PLAYER FUNCTIONS ───────────────────────────────────────
-  const composeMessage = () => HF_ROLE_UTILS.composeMessage("player");
-  const searchRecipients = (q) => HF_ROLE_UTILS.searchRecipients(q, "player");
-  const selectRecipient = (id, name, role) =>
-    HF_ROLE_UTILS.selectRecipient(id, name, role, "player");
-  const removeRecipient = (id) => HF_ROLE_UTILS.removeRecipient(id);
-  const sendComposedMessage = () => HF_ROLE_UTILS.sendComposedMessage("player");
-  const viewThread = (tid, uid, sub) =>
-    HF_ROLE_UTILS.viewThread(tid, uid, sub, "player");
-  const sendReply = (tid, sub, thid) =>
-    HF_ROLE_UTILS.sendReply(tid, sub, thid, "player");
-  const toggleMsgActions = (mid) => HF_ROLE_UTILS.toggleMsgActions(mid);
-  const replyToMessage = (mid, fid, sn, sub, thid) =>
-    HF_ROLE_UTILS.replyToMessage(mid, fid, sn, sub, thid, "player");
-  const viewSenderProfile = (uid) =>
-    HF_ROLE_UTILS.viewSenderProfile(uid, "player");
-  const reportToAdmin = (fid, sn) =>
-    HF_ROLE_UTILS.reportToAdmin(fid, sn, "player");
-  const archiveMessage = (mid, el) =>
-    HF_ROLE_UTILS.archiveMessage(mid, el, "player");
-  const unarchiveMessage = (mid) =>
-    HF_ROLE_UTILS.unarchiveMessage(mid, "player");
-  const readMessage = (mid, el) => HF_ROLE_UTILS.readMessage(mid, el, "player");
-  const contactAdmin = () => HF_ROLE_UTILS.contactAdmin("player");
-  const myTickets = (s, fm) => HF_ROLE_UTILS.myTickets(s, fm, "player");
-  const newTicket = (s, fm) => HF_ROLE_UTILS.newTicket(s, fm, "player");
-  const sendTicket = (fm) => HF_ROLE_UTILS.sendTicket(fm, "player");
-  const viewTicketThread = (id, sub, fm) =>
-    HF_ROLE_UTILS.viewTicketThread(id, sub, fm, "player");
-  const sendUserTicketReply = (id, sub, fm) =>
-    HF_ROLE_UTILS.sendUserTicketReply(id, sub, fm, "player");
-  const markTicketResolved = (id, sub, fm) =>
-    HF_ROLE_UTILS.markTicketResolved(id, sub, fm, "player");
-  const reopenUserTicket = (id, sub, fm) =>
-    HF_ROLE_UTILS.reopenUserTicket(id, sub, fm, "player");
-  const previewAvatar = (input) => HF_ROLE_UTILS.previewAvatar(input);
-  const togglePrayer = (prayerId) =>
-    HF_ROLE_UTILS.togglePrayer(prayerId, "player");
-
   return {
     render,
     training,
@@ -2255,7 +2216,6 @@ const HF_PLAYER = (() => {
     editProfile,
     saveProfile,
     respondInvite,
-    togglePrayer,
     filterCoaches,
     requestTrial,
     messageCoach,
