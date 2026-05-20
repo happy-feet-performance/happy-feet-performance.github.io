@@ -1324,6 +1324,11 @@ const HF_COACH = (() => {
         title: "On perseverance",
         desc: '"Let us not become weary in doing good." ~ Galatians 6:9',
       },
+      {
+        id: "evening",
+        title: "Evening reflection",
+        desc: "Lord, thank You for the strength You gave me today. I reflect on what I learned, I forgive myself for my mistakes, and I rest knowing You watch over me tonight. Tomorrow I rise again.",
+      },
     ];
 
     const allChecked = prayers.every((p) => checked.includes(p.id));

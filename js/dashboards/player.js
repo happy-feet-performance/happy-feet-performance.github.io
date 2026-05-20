@@ -1643,17 +1643,22 @@ const HF_PLAYER = (() => {
       {
         id: "morning",
         title: "Morning prayer",
-        desc: "Before training: Lord, strengthen my body and sharpen my mind.",
+        desc: "Before training: Lord, strengthen my body and sharpen my mind. Guide my feet, protect me from injury, and let my performance bring glory to You today.",
       },
       {
         id: "prematch",
         title: "Pre-match prayer",
-        desc: "Father, as I step onto this pitch I surrender the outcome to You.",
+        desc: "Father, as I step onto this pitch I surrender the outcome to You. Let me play with courage, integrity, and joy. Win or lose, may my character reflect Your grace.",
       },
       {
         id: "struggle",
         title: "When you're struggling",
-        desc: "God, I don't understand this season. Renew my strength.",
+        desc: "God, I don't understand this season. Renew my strength. Remind me that You have a plan for me greater than any setback. Help me trust the process.",
+      },
+      {
+        id: "evening",
+        title: "Evening reflection",
+        desc: "Lord, thank You for the strength You gave me today. I reflect on what I learned, I forgive myself for my mistakes, and I rest knowing You watch over me tonight. Tomorrow I rise again.",
       },
     ];
 
