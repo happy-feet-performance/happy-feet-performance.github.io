@@ -15,6 +15,7 @@ const HF_ADMIN = (() => {
       "agency-verifications": agencyVerifications,
       users,
       messages,
+      tickets,
     };
     const fn = views[view] || dashboard;
     fn(session);
@@ -391,6 +392,178 @@ const HF_ADMIN = (() => {
   `);
   };
 
+  // ── TICKETS─────────────────────────────────────────────────
+  const tickets = async (s) => {
+    const { data: allTickets } = await HF_DB.getTickets();
+    const { data: myTickets } = await HF_DB.getMyTickets(s.userId);
+
+    const open = allTickets?.filter((t) => t.status === "open") || [];
+    const claimed = allTickets?.filter((t) => t.status === "claimed") || [];
+    const resolved = allTickets?.filter((t) => t.status === "resolved") || [];
+
+    const ticketRow = (t, showClaim = true) => {
+      const roleColor =
+        t.from?.role === "player"
+          ? "var(--green)"
+          : t.from?.role === "coach"
+            ? "var(--gold)"
+            : t.from?.role === "scout"
+              ? "var(--blue)"
+              : "var(--text3)";
+
+      return `
+      <div style="padding:var(--sp-md);background:var(--bg2);border-left:3px solid ${
+        t.status === "open"
+          ? "var(--red)"
+          : t.status === "claimed"
+            ? "var(--gold)"
+            : "var(--green)"
+      };margin-bottom:var(--sp-sm);">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-md);">
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+              <span style="font-size:13px;font-weight:600;color:var(--text)">${t.subject}</span>
+              <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:1px 6px;background:${roleColor}22;color:${roleColor};">${t.from?.role || "-"}</span>
+              <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:1px 6px;background:var(--bg);color:var(--text3);">${t.category}</span>
+            </div>
+            <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">
+              From: ${t.from?.name || "-"} · ${HF_UTILS.timeAgo(t.created_at)}
+            </div>
+            <div style="font-size:12px;color:var(--text2);line-height:1.5;">
+              ${t.body.slice(0, 150)}${t.body.length > 150 ? "..." : ""}
+            </div>
+            ${
+              t.claimed_by
+                ? `
+              <div style="font-size:11px;color:var(--gold);margin-top:4px;">
+                <i class="ti ti-user" style="margin-right:4px"></i>
+                Claimed by ${t.claimer?.name || "Admin"} · ${HF_UTILS.timeAgo(t.claimed_at)}
+              </div>`
+                : ""
+            }
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+            ${
+              t.status === "open"
+                ? `
+              <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.claimTicket('${t.id}')">
+                <i class="ti ti-hand-stop"></i> Claim
+              </button>`
+                : ""
+            }
+            ${
+              t.status === "claimed" && t.claimed_by === s.userId
+                ? `
+              <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.replyTicket('${t.id}', '${t.from_id}', '${t.subject.replace(/'/g, "\\'")}')">
+                <i class="ti ti-message"></i> Reply
+              </button>
+              <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.resolveTicket('${t.id}', '${t.from_id}', '${t.subject.replace(/'/g, "\\'")}')">
+                <i class="ti ti-circle-check"></i> Resolve
+              </button>`
+                : ""
+            }
+            ${
+              t.status === "resolved"
+                ? `
+              <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.reopenTicket('${t.id}')">
+                <i class="ti ti-refresh"></i> Reopen
+              </button>`
+                : ""
+            }
+            <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.viewTicketUser('${t.from_id}')">
+              <i class="ti ti-user"></i> Profile
+            </button>
+          </div>
+        </div>
+      </div>`;
+    };
+
+    setMain(`
+    <div class="metrics-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--red)">${open.length}</div>
+        <div class="metric-label">Open tickets</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--gold)">${claimed.length}</div>
+        <div class="metric-label">In progress</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val" style="color:var(--green)">${resolved.length}</div>
+        <div class="metric-label">Resolved</div>
+      </div>
+    </div>
+
+    ${
+      myTickets?.length > 0
+        ? `
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+            <div class="card-dot"></div>My tickets
+            <span style="font-size:11px;color:var(--text3)">${myTickets.length} active</span>
+          </div>
+        </div>
+        ${myTickets.map((t) => ticketRow(t)).join("")}
+      </div>`
+        : ""
+    }
+
+    <div class="card">
+      <div class="card-title" style="cursor:pointer;justify-content:space-between;"
+        onclick="const c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none'">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Open tickets
+          <span style="font-size:11px;color:var(--red)">${open.length} unclaimed</span>
+        </div>
+        <i class="ti ti-chevron-down" style="font-size:14px;color:var(--text3)"></i>
+      </div>
+      <div>
+        ${
+          open.length === 0
+            ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No open tickets.</div>`
+            : open.map((t) => ticketRow(t)).join("")
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="cursor:pointer;justify-content:space-between;"
+        onclick="const c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none'">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>In progress
+          <span style="font-size:11px;color:var(--gold)">${claimed.length} claimed</span>
+        </div>
+        <i class="ti ti-chevron-down" style="font-size:14px;color:var(--text3)"></i>
+      </div>
+      <div style="display:none">
+        ${
+          claimed.length === 0
+            ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No tickets in progress.</div>`
+            : claimed.map((t) => ticketRow(t)).join("")
+        }
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="cursor:pointer;justify-content:space-between;"
+        onclick="const c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none'">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Resolved
+          <span style="font-size:11px;color:var(--green)">${resolved.length} total</span>
+        </div>
+        <i class="ti ti-chevron-down" style="font-size:14px;color:var(--text3)"></i>
+      </div>
+      <div style="display:none">
+        ${
+          resolved.length === 0
+            ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No resolved tickets yet.</div>`
+            : resolved.map((t) => ticketRow(t)).join("")
+        }
+      </div>
+    </div>`);
+  };
+
   // ── USERS ──────────────────────────────────────────────────
 
   const userRow = (u, showActions = true) => {
@@ -750,7 +923,6 @@ const HF_ADMIN = (() => {
   };
 
   const showPendingAlert = (count) => {
-
     const overlay = document.createElement("div");
     overlay.id = "admin-verification-alert";
     overlay.className = "verification-alert-overlay";
@@ -1271,6 +1443,89 @@ const HF_ADMIN = (() => {
     setMain(html);
   };
 
+  const claimTicket = async (ticketId) => {
+    const session = HF_DB.getSession();
+    const result = await HF_DB.claimTicket(ticketId, session.userId);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+    HF_UTILS.toast("Ticket claimed!", "success");
+    tickets(session);
+  };
+
+  const resolveTicket = async (ticketId, fromId, subject) => {
+    const session = HF_DB.getSession();
+    const result = await HF_DB.resolveTicket(ticketId);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    await HF_DB._sendMessage(
+      "system",
+      fromId,
+      `Ticket resolved: ${subject}`,
+      `Your support ticket "${subject}" has been resolved by our team. If you need further assistance please submit a new ticket.`,
+    );
+
+    HF_UTILS.toast("Ticket resolved!", "success");
+    tickets(session);
+  };
+
+  const reopenTicket = async (ticketId) => {
+    const session = HF_DB.getSession();
+    const result = await HF_DB.reopenTicket(ticketId);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+    HF_UTILS.toast("Ticket reopened.", "success");
+    tickets(session);
+  };
+
+  const replyTicket = async (ticketId, fromId, subject) => {
+    const session = HF_DB.getSession();
+    setMain(`
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Reply to ticket: ${subject}</div>
+      <div class="fg">
+        <label class="required">Message</label>
+        <textarea id="ticket-reply" rows="5" placeholder="Write your response..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="HF_ADMIN.sendTicketReply('${ticketId}', '${fromId}', '${subject.replace(/'/g, "\\'")}')">
+          <i class="ti ti-send"></i> Send reply
+        </button>
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('tickets')">Cancel</button>
+      </div>
+    </div>`);
+  };
+
+  const sendTicketReply = async (ticketId, fromId, subject) => {
+    const session = HF_DB.getSession();
+    const body = document.getElementById("ticket-reply")?.value.trim();
+    if (!body) {
+      HF_UTILS.toast("Please enter a message.", "error");
+      return;
+    }
+
+    await HF_DB._sendMessage(session.userId, fromId, `Re: ${subject}`, body);
+
+    HF_UTILS.toast("Reply sent!", "success");
+    HF_ROUTER.navTo("tickets");
+  };
+
+  const viewTicketUser = async (userId) => {
+    const html = await HF_UTILS.viewProfile(
+      userId,
+      "HF_ROUTER.navTo('tickets')",
+    );
+    if (!html) return;
+    setMain(html);
+  };
+
   return {
     render,
     approveSquad,
@@ -1283,7 +1538,6 @@ const HF_ADMIN = (() => {
     removeUser,
     toggleEditForm,
     saveEdits,
-    showPendingAlert,
     readMessage,
     archiveMessage,
     unarchiveMessage,
@@ -1292,13 +1546,20 @@ const HF_ADMIN = (() => {
     searchRecipients,
     selectRecipient,
     removeRecipient,
+    viewThread,
     toggleMsgActions,
     replyToMessage,
     sendReply,
     viewSenderProfile,
-    viewUserProfile,
     reportToAdmin,
-    viewThread,
+    viewUserProfile,
+    tickets,
+    claimTicket,
+    resolveTicket,
+    reopenTicket,
+    replyTicket,
+    sendTicketReply,
+    viewTicketUser,
   };
 })();
 

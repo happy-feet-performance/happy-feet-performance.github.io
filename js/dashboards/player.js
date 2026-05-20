@@ -2109,41 +2109,80 @@ const HF_PLAYER = (() => {
   };
 
   const contactAdmin = () => {
+    const session = HF_DB.getSession();
     setMain(`
     <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Contact admin</div>
-      <div style="font-size:13px;color:var(--text2);margin-bottom:var(--sp-lg)">
-        Send a message to the HappyFeet admin team for any account or platform related issues.
+      <div class="card-title"><div class="card-dot"></div>Contact support</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:var(--sp-lg);">
+        Submit a support ticket and an admin will respond shortly.
+      </div>
+      <div class="fg">
+        <label class="required">Category</label>
+        <select id="ticket-category"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+          <option value="general">General enquiry</option>
+          <option value="verification">Verification issue</option>
+          <option value="account">Account issue</option>
+          <option value="technical">Technical problem</option>
+          <option value="report">Report a user</option>
+          <option value="other">Other</option>
+        </select>
       </div>
       <div class="fg">
         <label class="required">Subject</label>
-        <select id="contact-subject" onchange="HF_PLAYER.toggleCustomSubject(this.value)"
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-          <option value="">Select a subject</option>
-          <option>Account issue</option>
-          <option>Report a problem</option>
-          <option>Squad dispute</option>
-          <option>Appeal a ban or kick</option>
-          <option value="custom">Other (custom reason)</option>
-        </select>
-      </div>
-      <div class="fg" id="custom-subject-field" style="display:none;">
-        <label class="required">Custom subject</label>
-        <input type="text" id="contact-custom-subject" placeholder="Enter your subject..."
+        <input type="text" id="ticket-subject" placeholder="Brief description of your issue"
           style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
       </div>
       <div class="fg">
         <label class="required">Message</label>
-        <textarea id="contact-body" rows="4" placeholder="Describe your issue..."
+        <textarea id="ticket-body" rows="5" placeholder="Describe your issue in detail..."
           style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
       </div>
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" onclick="HF_PLAYER.sendAdminMessage()">
-          <i class="ti ti-send"></i> Send message
+        <button class="btn btn-primary" onclick="HF_${session.role.toUpperCase()}.sendTicket()">
+          <i class="ti ti-send"></i> Submit ticket
         </button>
         <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')">Cancel</button>
       </div>
     </div>`);
+  };
+
+  const sendTicket = async () => {
+    const session = HF_DB.getSession();
+    const category = document.getElementById("ticket-category")?.value;
+    const subject = document.getElementById("ticket-subject")?.value.trim();
+    const body = document.getElementById("ticket-body")?.value.trim();
+
+    if (!subject) {
+      HF_UTILS.toast("Please enter a subject.", "error");
+      return;
+    }
+    if (!body) {
+      HF_UTILS.toast("Please enter a message.", "error");
+      return;
+    }
+
+    const result = await HF_DB.createTicket(
+      session.userId,
+      subject,
+      body,
+      category,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    // confirm to user via message
+    await HF_DB._sendMessage(
+      "system",
+      session.userId,
+      `Ticket submitted: ${subject}`,
+      `Your support ticket has been received. An admin will respond shortly.\n\nTicket ID: ${result.ticket.id}\nCategory: ${category}\n\nMessage: ${body}`,
+    );
+
+    HF_UTILS.toast("Ticket submitted! We'll be in touch shortly.", "success");
+    HF_ROUTER.navTo("messages");
   };
 
   const toggleCustomSubject = (value) => {
@@ -3003,6 +3042,7 @@ const HF_PLAYER = (() => {
     showAchievementTooltip,
     hideAchievementTooltip,
     previewAvatar,
+    sendTicket,
   };
 })();
 

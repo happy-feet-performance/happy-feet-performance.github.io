@@ -124,6 +124,11 @@ const HF_ROUTER = (() => {
       { view: "users", icon: "ti-users", label: "Users" },
       { section: "Communication" },
       { view: "messages", icon: "ti-message", label: "Messages" },
+      {
+        view: "tickets",
+        label: "Support tickets",
+        icon: "ti-ticket",
+      },
     ],
   };
 
@@ -135,8 +140,6 @@ const HF_ROUTER = (() => {
   let _subscriptionsActive = false;
 
   const launch = async (session) => {
-    document.getElementById("admin-verification-alert")?.remove();
-    document.getElementById("verification-alert")?.remove();
     document.getElementById("nav-overlay")?.classList.remove("open");
 
     document.getElementById("auth-screens").style.display = "none";
@@ -179,6 +182,21 @@ const HF_ROUTER = (() => {
       pendingVerifications =
         (pending?.length || 0) + (agencyPending?.length || 0);
     }
+
+    // check unread tickets
+    let openTicketCount = 0;
+    if (session.role === "admin") {
+      const { data: openTickets } = await HF_DB.getTickets("open");
+      openTicketCount = openTickets?.length || 0;
+    }
+
+    _buildSidenav(
+      session,
+      unreadCount,
+      pendingVerifications,
+      null,
+      openTicketCount,
+    );
 
     _buildSidenav(session, unreadCount, pendingVerifications);
     _routeTo("dashboard", session);
@@ -264,6 +282,21 @@ const HF_ROUTER = (() => {
             `New message: ${newMessage.subject || "You have a new message"}`,
             "success",
           );
+
+          // add to admin subscriptions
+          HF_DB._client
+            .channel("realtime-tickets")
+            .on(
+              "postgres_changes",
+              { event: "INSERT", schema: "public", table: "tickets" },
+              async () => {
+                const { data: openTickets } = await HF_DB.getTickets("open");
+                const count = openTickets?.length || 0;
+                _buildSidenav(session, 0, 0, null, count);
+                HF_UTILS.toast("New support ticket received!", "success");
+              },
+            )
+            .subscribe();
         });
 
         HF_DB.subscribeToPendingVerifications(async (payload) => {
@@ -405,6 +438,7 @@ const HF_ROUTER = (() => {
     unreadCount = 0,
     pendingVerifications = 0,
     teamSizeOverride = null,
+    openTickets = 0,
   ) => {
     const nav = el("sidenav");
     const squadStatus = session.squadStatus || "unregistered";
@@ -442,6 +476,12 @@ const HF_ROUTER = (() => {
           badgeColor = "var(--gold)";
         }
 
+        // tickets badge for admin
+        if (item.view === "tickets" && openTickets > 0) {
+          badge = String(openTickets);
+          badgeColor = "var(--red)";
+        }
+
         const badgeHTML = badge
           ? `<span class="nav-badge" style="background:rgba(0,0,0,.1);color:${badgeColor || "var(--gold)"};">${badge}</span>`
           : "";
@@ -476,9 +516,6 @@ const HF_ROUTER = (() => {
 
   // ─── Route to role dashboard renderer ──────────────────────
   const _routeTo = (view, session) => {
-    document.getElementById("admin-verification-alert")?.remove();
-    document.getElementById("verification-alert")?.remove();
-
     const handlers = {
       player: window.HF_PLAYER,
       coach: window.HF_COACH,

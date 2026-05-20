@@ -2525,6 +2525,80 @@ const HF_DB = (() => {
     return { data };
   };
 
+  const createTicket = async (fromId, subject, body, category = "general") => {
+    const { data, error } = await _client
+      .from("tickets")
+      .insert({ from_id: fromId, subject, body, category })
+      .select()
+      .single();
+    if (error) return { error: error.message };
+
+    // notify all admins
+    await _notifyAdmins(
+      `New ticket: ${subject}`,
+      `A new support ticket has been submitted.\n\nCategory: ${category}\n\nMessage: ${body}`,
+    );
+
+    return { success: true, ticket: data };
+  };
+
+  const getTickets = async (status = null) => {
+    let query = _client
+      .from("tickets")
+      .select(
+        "*, from:users!tickets_from_id_fkey(id, name, role, profile), claimer:users!tickets_claimed_by_fkey(id, name)",
+      )
+      .order("created_at", { ascending: false });
+
+    if (status) query = query.eq("status", status);
+
+    const { data, error } = await query;
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const claimTicket = async (ticketId, adminId) => {
+    const { error } = await _client
+      .from("tickets")
+      .update({
+        claimed_by: adminId,
+        claimed_at: new Date().toISOString(),
+        status: "claimed",
+      })
+      .eq("id", ticketId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const resolveTicket = async (ticketId) => {
+    const { error } = await _client
+      .from("tickets")
+      .update({ status: "resolved", resolved_at: new Date().toISOString() })
+      .eq("id", ticketId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const reopenTicket = async (ticketId) => {
+    const { error } = await _client
+      .from("tickets")
+      .update({ status: "open", claimed_by: null, claimed_at: null })
+      .eq("id", ticketId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const getMyTickets = async (adminId) => {
+    const { data, error } = await _client
+      .from("tickets")
+      .select("*, from:users!tickets_from_id_fkey(id, name, role, profile)")
+      .eq("claimed_by", adminId)
+      .neq("status", "resolved")
+      .order("created_at", { ascending: false });
+    if (error) return { data: [] };
+    return { data };
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     localDate: _localDate,
@@ -2654,6 +2728,12 @@ const HF_DB = (() => {
     getUserSecurityQuestion,
     verifySecurityAnswer,
     resetPassword,
+    createTicket,
+    getTickets,
+    claimTicket,
+    resolveTicket,
+    reopenTicket,
+    getMyTickets,
   };
 })();
 
