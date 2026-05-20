@@ -424,7 +424,7 @@ const HF_ADMIN = (() => {
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
               <span style="font-size:13px;font-weight:600;color:var(--text)">${t.subject}</span>
               <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:1px 6px;background:${roleColor}22;color:${roleColor};">${t.from?.role || "-"}</span>
-              <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:1px 6px;background:var(--bg);color:var(--text3);">${t.category}</span>
+              <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:1px 6px;background:var(--bg);color:var(--text3);">${t.category?.charAt(0).toUpperCase() + t.category?.slice(1) || "-"}</span>
             </div>
             <div style="font-size:12px;color:var(--text2);margin-bottom:4px;">
               From: ${t.from?.name || "-"} · ${HF_UTILS.timeAgo(t.created_at)}
@@ -446,34 +446,45 @@ const HF_ADMIN = (() => {
             ${
               t.status === "open"
                 ? `
-              <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.claimTicket('${t.id}')">
+                <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.claimTicket('${t.id}')">
                 <i class="ti ti-hand-stop"></i> Claim
-              </button>`
+                </button>`
                 : ""
             }
+
             ${
-              t.status === "claimed" && t.claimed_by === s.userId
+              t.status === "claimed"
                 ? `
-              <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.replyTicket('${t.id}', '${t.from_id}', '${t.subject.replace(/'/g, "\\'")}')">
-                <i class="ti ti-message"></i> Reply
-              </button>
-              <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.resolveTicket('${t.id}', '${t.from_id}', '${t.subject.replace(/'/g, "\\'")}')">
-                <i class="ti ti-circle-check"></i> Resolve
-              </button>`
+                <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.replyTicket('${t.id}', '${t.subject.replace(/'/g, "\\'")}')">
+                <i class="ti ti-message"></i> ${t.claimed_by === s.userId ? "Reply" : "View thread"}
+                </button>
+                ${
+                  t.claimed_by === s.userId
+                    ? `
+                <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.resolveTicket('${t.id}', '${t.from_id}', '${t.subject.replace(/'/g, "\\'")}')">
+                    <i class="ti ti-circle-check"></i> Resolve
+                </button>`
+                    : ""
+                }`
                 : ""
             }
+
             ${
               t.status === "resolved"
                 ? `
-              <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.reopenTicket('${t.id}')">
-                <i class="ti ti-refresh"></i> Reopen
-              </button>`
+                <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.replyTicket('${t.id}', '${t.subject.replace(/'/g, "\\'")}')">
+                <i class="ti ti-message"></i> View
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.reopenTicket('${t.id}')">
+                <i class="ti ti-arrow-back-up"></i> Reopen
+                </button>`
                 : ""
             }
+
             <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.viewTicketUser('${t.from_id}')">
-              <i class="ti ti-user"></i> Profile
+                <i class="ti ti-user"></i> Profile
             </button>
-          </div>
+            </div>
         </div>
       </div>`;
     };
@@ -1484,37 +1495,70 @@ const HF_ADMIN = (() => {
     tickets(session);
   };
 
-  const replyTicket = async (ticketId, fromId, subject) => {
+  const replyTicket = async (ticketId, subject) => {
+    const { data: msgs } = await HF_DB.getTicketMessages(ticketId);
     const session = HF_DB.getSession();
+
     setMain(`
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Reply to ticket: ${subject}</div>
-      <div class="fg">
-        <label class="required">Message</label>
-        <textarea id="ticket-reply" rows="5" placeholder="Write your response..."
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
+    <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);">
+      <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('tickets')">
+        <i class="ti ti-arrow-left"></i> Back
+      </button>
+      <div style="font-size:14px;font-weight:700;color:var(--text);">${subject}</div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:var(--sp-lg);display:flex;flex-direction:column;gap:var(--sp-md);min-height:200px;max-height:50vh;overflow-y:auto;" id="ticket-thread">
+        ${(msgs || [])
+          .map((m) => {
+            const isMine = m.from_id === session.userId;
+            return `
+            <div style="display:flex;flex-direction:column;align-items:${isMine ? "flex-end" : "flex-start"};">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">
+                ${m.from_name} · ${HF_UTILS.timeAgo(m.created_at)}
+              </div>
+              <div style="max-width:75%;padding:10px 14px;background:${isMine ? "var(--gold)" : "var(--bg2)"};color:${isMine ? "#0f0f0d" : "var(--text)"};font-size:13px;line-height:1.5;">
+                ${m.body}
+              </div>
+            </div>`;
+          })
+          .join("")}
       </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" onclick="HF_ADMIN.sendTicketReply('${ticketId}', '${fromId}', '${subject.replace(/'/g, "\\'")}')">
-          <i class="ti ti-send"></i> Send reply
+      <div style="padding:var(--sp-md);border-top:0.5px solid var(--border);display:flex;gap:8px;align-items:center;">
+        <input type="text" id="ticket-reply-input" placeholder="Write a reply..."
+          style="flex:1;padding:0 12px;height:42px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;font-family:var(--font);outline:none;"
+          onkeydown="if(event.key==='Enter')HF_ADMIN.sendTicketReply('${ticketId}', '${subject.replace(/'/g, "\\'")}')">
+        <button class="btn btn-primary" style="height:42px;width:42px;padding:0;display:flex;align-items:center;justify-content:center;"
+          onclick="HF_ADMIN.sendTicketReply('${ticketId}', '${subject.replace(/'/g, "\\'")}')">
+          <i class="ti ti-send"></i>
         </button>
-        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('tickets')">Cancel</button>
       </div>
     </div>`);
+
+    setTimeout(() => {
+      const el = document.getElementById("ticket-thread");
+      if (el) el.scrollTop = el.scrollHeight;
+    }, 100);
   };
 
-  const sendTicketReply = async (ticketId, fromId, subject) => {
+  const sendTicketReply = async (ticketId, subject) => {
     const session = HF_DB.getSession();
-    const body = document.getElementById("ticket-reply")?.value.trim();
-    if (!body) {
-      HF_UTILS.toast("Please enter a message.", "error");
+    const body = document.getElementById("ticket-reply-input")?.value.trim();
+    if (!body) return;
+
+    const result = await HF_DB.addTicketMessage(
+      ticketId,
+      session.userId,
+      body,
+      true,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
       return;
     }
 
-    await HF_DB._sendMessage(session.userId, fromId, `Re: ${subject}`, body);
-
-    HF_UTILS.toast("Reply sent!", "success");
-    HF_ROUTER.navTo("tickets");
+    document.getElementById("ticket-reply-input").value = "";
+    replyTicket(ticketId, subject);
   };
 
   const viewTicketUser = async (userId) => {

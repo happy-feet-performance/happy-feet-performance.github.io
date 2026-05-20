@@ -2526,31 +2526,95 @@ const HF_DB = (() => {
   };
 
   const createTicket = async (fromId, subject, body, category = "general") => {
+    const { data: user } = await _client
+      .from("users")
+      .select("name")
+      .eq("id", fromId)
+      .single();
+
+    const initialMessage = {
+      id: crypto.randomUUID(),
+      from_id: fromId,
+      from_name: user?.name || "User",
+      body,
+      created_at: new Date().toISOString(),
+      is_admin: false,
+    };
+
     const { data, error } = await _client
       .from("tickets")
-      .insert({ from_id: fromId, subject, body, category })
+      .insert({
+        from_id: fromId,
+        subject,
+        body,
+        category,
+        messages: [initialMessage],
+      })
       .select()
       .single();
+
     if (error) return { error: error.message };
-
-    // notify all admins
-    await _notifyAdmins(
-      `New ticket: ${subject}`,
-      `A new support ticket has been submitted.
-
-      Category: ${category}
-
-      Message: ${body}`,
-    );
-
     return { success: true, ticket: data };
+  };
+
+  const addTicketMessage = async (ticketId, fromId, body, isAdmin = false) => {
+    const { data: user } = await _client
+      .from("users")
+      .select("name")
+      .eq("id", fromId)
+      .single();
+
+    const newMessage = {
+      id: crypto.randomUUID(),
+      from_id: fromId,
+      from_name: user?.name || (isAdmin ? "HappyFeet Support" : "User"),
+      body,
+      created_at: new Date().toISOString(),
+      is_admin: isAdmin,
+    };
+
+    // use rpc to atomically append to avoid race conditions
+    const { data: ticket, error: fetchError } = await _client
+      .from("tickets")
+      .select("messages")
+      .eq("id", ticketId)
+      .single();
+
+    if (fetchError) return { error: fetchError.message };
+
+    const updatedMessages = [...(ticket?.messages || []), newMessage];
+
+    const { error } = await _client
+      .from("tickets")
+      .update({
+        messages: updatedMessages,
+        status: isAdmin && ticket.status === "open" ? "claimed" : ticket.status,
+      })
+      .eq("id", ticketId);
+
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const getTicketMessages = async (ticketId) => {
+    const { data, error } = await _client
+      .from("tickets")
+      .select("messages")
+      .eq("id", ticketId)
+      .single();
+    if (error) return { data: [] };
+    return { data: data?.messages || [] };
   };
 
   const getTickets = async (status = null) => {
     let query = _client
       .from("tickets")
       .select(
-        "*, from:users!tickets_from_id_fkey(id, name, role, profile), claimer:users!tickets_claimed_by_fkey(id, name)",
+        `
+      *,
+      from:users!tickets_from_id_fkey(id, name, role, profile),
+      claimer:users!tickets_claimed_by_fkey(id, name)
+    `,
       )
       .order("created_at", { ascending: false });
 
@@ -2601,6 +2665,48 @@ const HF_DB = (() => {
       .order("created_at", { ascending: false });
     if (error) return { data: [] };
     return { data };
+  };
+
+  const getUserTickets = async (userId) => {
+    const { data, error } = await _client
+      .from("tickets")
+      .select("*, claimer:users!tickets_claimed_by_fkey(id, name)")
+      .eq("from_id", userId)
+      .order("created_at", { ascending: false });
+    if (error) return { data: [] };
+    return { data };
+  };
+
+  const subscribeToTickets = (callback) => {
+    return _client
+      .channel(`realtime-tickets-${Math.random().toString(36).slice(2)}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "tickets" },
+        callback,
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "tickets" },
+        callback,
+      )
+      .subscribe();
+  };
+
+  const subscribeToUserTickets = (userId, callback) => {
+    return _client
+      .channel(`realtime-user-tickets-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "tickets",
+          filter: `from_id=eq.${userId}`,
+        },
+        callback,
+      )
+      .subscribe();
   };
 
   // ─── Public API ────────────────────────────────────────────
@@ -2734,10 +2840,15 @@ const HF_DB = (() => {
     resetPassword,
     createTicket,
     getTickets,
+    getUserTickets,
     claimTicket,
     resolveTicket,
     reopenTicket,
     getMyTickets,
+    addTicketMessage,
+    getTicketMessages,
+    subscribeToTickets,
+    subscribeToUserTickets,
   };
 })();
 

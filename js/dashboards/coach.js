@@ -1243,11 +1243,11 @@ const HF_COACH = (() => {
           <div class="card-dot"></div>Messages
         </div>
         <div style="display:flex;gap:6px;">
-          <button class="btn btn-primary btn-sm" onclick="HF_COACH.composeMessage()">
+          <button class="btn btn-primary btn-sm" onclick="HF_PLAYER.composeMessage()">
             <i class="ti ti-edit"></i> New message
           </button>
-          <button class="btn btn-outline btn-sm" onclick="HF_COACH.contactAdmin()">
-            <i class="ti ti-headset"></i> Contact admin
+          <button class="btn btn-outline btn-sm" onclick="HF_PLAYER.contactAdmin()">
+            <i class="ti ti-headset"></i> Support
           </button>
         </div>
       </div>
@@ -2327,45 +2327,10 @@ const HF_COACH = (() => {
   };
 
   const contactAdmin = () => {
-    const session = HF_DB.getSession();
-    setMain(`
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Contact support</div>
-      <div style="font-size:13px;color:var(--text2);margin-bottom:var(--sp-lg);">
-        Submit a support ticket and an admin will respond shortly.
-      </div>
-      <div class="fg">
-        <label class="required">Category</label>
-        <select id="ticket-category"
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-          <option value="general">General Inquiry</option>
-          <option value="verification">Verification Issue</option>
-          <option value="account">Account Issue</option>
-          <option value="technical">Technical Problem</option>
-          <option value="report">Report a User</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-      <div class="fg">
-        <label class="required">Subject</label>
-        <input type="text" id="ticket-subject" placeholder="Brief description of your issue"
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-      </div>
-      <div class="fg">
-        <label class="required">Message</label>
-        <textarea id="ticket-body" rows="5" placeholder="Describe your issue in detail..."
-          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
-      </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" onclick="HF_${session.role.toUpperCase()}.sendTicket()">
-          <i class="ti ti-send"></i> Submit ticket
-        </button>
-        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('messages')">Cancel</button>
-      </div>
-    </div>`);
+    myTickets(HF_DB.getSession(), false);
   };
 
-  const sendTicket = async () => {
+  const sendTicket = async (fromMessages = false) => {
     const session = HF_DB.getSession();
     const category = document.getElementById("ticket-category")?.value;
     const subject = document.getElementById("ticket-subject")?.value.trim();
@@ -2391,16 +2356,11 @@ const HF_COACH = (() => {
       return;
     }
 
-    // confirm to user via message
-    await HF_DB._sendMessage(
-      "system",
-      session.userId,
-      `Ticket submitted: ${subject}`,
-      `Your support ticket has been received. An admin will respond shortly.\n\nTicket ID: ${result.ticket.id}\nCategory: ${category}\n\nMessage: ${body}`,
+    HF_UTILS.toast(
+      "Ticket submitted! An admin will respond shortly.",
+      "success",
     );
-
-    HF_UTILS.toast("Ticket submitted! We'll be in touch shortly.", "success");
-    HF_ROUTER.navTo("messages");
+    myTickets(session, fromMessages);
   };
 
   const toggleCustomSubject = (value) => {
@@ -3769,6 +3729,319 @@ const HF_COACH = (() => {
     HF_COACH.filterPlayers();
   };
 
+  const myTickets = async (s, fromMessages = false) => {
+    const { data: tickets } = await HF_DB.getUserTickets(s.userId);
+
+    setMain(`
+    <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);">
+      <button class="btn btn-outline btn-sm" onclick="${fromMessages ? `HF_ROUTER.navTo('messages')` : `HF_${s.role.toUpperCase()}.contactAdmin()`}">
+        <i class="ti ti-arrow-left"></i> Back
+      </button>
+      <div style="font-size:14px;font-weight:700;color:var(--text);">My support tickets</div>
+    </div>
+
+    ${
+      !tickets || tickets.length === 0
+        ? `
+      <div class="card">
+        <div style="text-align:center;padding:48px 32px;">
+          <i class="ti ti-ticket" style="font-size:48px;margin-bottom:16px;display:block;color:var(--text3)"></i>
+          <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px">No tickets yet</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:24px">Submit a support ticket if you need help with anything.</div>
+          <button class="btn btn-primary btn-sm" onclick="HF_${s.role.toUpperCase()}.contactAdmin()">
+            <i class="ti ti-plus"></i> New ticket
+          </button>
+        </div>
+      </div>`
+        : tickets
+            .map((t) => {
+              const statusColor =
+                t.status === "open"
+                  ? "var(--red)"
+                  : t.status === "claimed"
+                    ? "var(--gold)"
+                    : "var(--green)";
+              const statusLabel =
+                t.status === "open"
+                  ? "Open"
+                  : t.status === "claimed"
+                    ? "In progress"
+                    : "Resolved";
+              const msgCount = t.messages?.length || 0;
+              const lastMsg = t.messages?.[t.messages.length - 1];
+              const hasNewAdminReply = lastMsg && lastMsg.is_admin;
+
+              return `
+          <div style="background:var(--bg);border:0.5px solid var(--border);border-left:4px solid ${statusColor};margin-bottom:var(--sp-md);cursor:pointer;transition:background 0.15s ease;"
+            onmouseover="this.style.background='var(--bg2)'"
+            onmouseout="this.style.background='var(--bg)'"
+            onclick="HF_${s.role.toUpperCase()}.viewTicketThread('${t.id}', '${t.subject.replace(/'/g, "\\'")}', ${fromMessages})">
+            <div style="padding:var(--sp-md) var(--sp-lg);">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-md);margin-bottom:8px;">
+                <div style="flex:1;">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+                    <span style="font-size:14px;font-weight:600;color:var(--text)">${t.subject}</span>
+                    ${
+                      hasNewAdminReply
+                        ? `
+                      <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
+                        New reply
+                      </span>`
+                        : ""
+                    }
+                  </div>
+                  <div style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap;">
+                    <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;background:${statusColor}22;color:${statusColor};white-space:nowrap;">
+                      ${statusLabel}
+                    </span>
+                    <span style="font-size:10px;color:var(--text3);">·</span>
+                    <span style="font-size:11px;color:var(--text2);">${t.category.charAt(0).toUpperCase() + t.category.slice(1)}</span>
+                    <span style="font-size:10px;color:var(--text3);">·</span>
+                    <span style="font-size:11px;color:var(--text3);">${HF_UTILS.timeAgo(t.created_at)}</span>
+                    <span style="font-size:10px;color:var(--text3);">·</span>
+                    <span style="font-size:11px;color:var(--text3);">${msgCount} message${msgCount !== 1 ? "s" : ""}</span>
+                  </div>
+                </div>
+                <i class="ti ti-chevron-right" style="color:var(--text3);font-size:16px;flex-shrink:0;margin-top:2px;"></i>
+              </div>
+              ${
+                t.status === "claimed"
+                  ? `
+                <div style="font-size:11px;color:var(--text2);padding-top:8px;border-top:0.5px solid var(--border);">
+                  <i class="ti ti-user" style="margin-right:4px;color:var(--gold)"></i>
+                  Being handled by <strong style="color:var(--text)">${t.claimer?.name || "HappyFeet Support"}</strong>
+                </div>`
+                  : ""
+              }
+              ${
+                lastMsg
+                  ? `
+                <div style="font-size:12px;color:var(--text2);margin-top:8px;padding:8px 12px;background:var(--bg2);">
+                  <span style="font-weight:600;color:${lastMsg.is_admin ? "var(--gold)" : "var(--text)"};">
+                    ${lastMsg.is_admin ? "Support" : "You"}:
+                  </span>
+                  ${lastMsg.body.slice(0, 80)}${lastMsg.body.length > 80 ? "..." : ""}
+                </div>`
+                  : ""
+              }
+            </div>
+          </div>`;
+            })
+            .join("")
+    }
+
+    <div style="margin-top:var(--sp-lg);">
+      <button class="btn btn-primary" onclick="HF_${s.role.toUpperCase()}.newTicket(HF_DB.getSession(), ${fromMessages})">
+        <i class="ti ti-plus"></i> New ticket
+      </button>
+    </div>`);
+  };
+
+  const viewTicketThread = async (ticketId, subject, fromMessages = false) => {
+    const s = HF_DB.getSession();
+    const { data: msgs } = await HF_DB.getTicketMessages(ticketId);
+    const { data: tickets } = await HF_DB.getUserTickets(s.userId);
+    const ticket = tickets?.find((t) => t.id === ticketId);
+    const statusColor =
+      ticket?.status === "open"
+        ? "var(--red)"
+        : ticket?.status === "claimed"
+          ? "var(--gold)"
+          : "var(--green)";
+    const statusLabel =
+      ticket?.status === "open"
+        ? "Open"
+        : ticket?.status === "claimed"
+          ? "In progress"
+          : "Resolved";
+
+    setMain(`
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-lg);">
+      <div style="display:flex;align-items:center;gap:var(--sp-md);">
+        <button class="btn btn-outline btn-sm" onclick="HF_${s.role.toUpperCase()}.myTickets(HF_DB.getSession(), ${fromMessages})">
+          <i class="ti ti-arrow-left"></i> My tickets
+        </button>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--text);">${subject}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:1px 6px;background:${statusColor}22;color:${statusColor};">
+              ${statusLabel}
+            </span>
+            <span style="font-size:11px;color:var(--text3);">${ticket?.category || ""}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    ${
+      ticket?.status === "claimed"
+        ? `
+      <div style="padding:10px 14px;background:rgba(196,154,10,.06);border-left:3px solid var(--gold);margin-bottom:var(--sp-lg);font-size:12px;color:var(--text2);">
+        <i class="ti ti-user" style="margin-right:6px;color:var(--gold)"></i>
+        Your ticket is being handled by <strong style="color:var(--text)">${ticket.claimer?.name || "HappyFeet Support"}</strong>
+      </div>`
+        : ""
+    }
+
+    ${
+      ticket?.status === "resolved"
+        ? `
+      <div style="padding:10px 14px;background:rgba(26,122,46,.06);border-left:3px solid var(--green);margin-bottom:var(--sp-lg);font-size:12px;color:var(--text2);">
+        <i class="ti ti-circle-check" style="margin-right:6px;color:var(--green)"></i>
+        This ticket has been resolved. You can still view the conversation or submit a new ticket if needed.
+      </div>`
+        : ""
+    }
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:var(--sp-lg);display:flex;flex-direction:column;gap:var(--sp-md);min-height:200px;max-height:55vh;overflow-y:auto;" id="ticket-thread">
+        ${(msgs || [])
+          .map((m) => {
+            const isMine = m.from_id === s.userId;
+            return `
+            <div style="display:flex;flex-direction:column;align-items:${isMine ? "flex-end" : "flex-start"};">
+              <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">
+                ${isMine ? "You" : "HappyFeet Support"} · ${HF_UTILS.timeAgo(m.created_at)}
+              </div>
+              <div style="max-width:75%;padding:10px 14px;
+                background:${isMine ? "var(--gold)" : "var(--bg2)"};
+                color:${isMine ? "#0f0f0d" : "var(--text)"};
+                font-size:13px;line-height:1.5;">
+                ${m.body}
+              </div>
+            </div>`;
+          })
+          .join("")}
+      </div>
+      ${
+        ticket?.status !== "resolved"
+          ? `
+          <div style="padding:var(--sp-md);border-top:0.5px solid var(--border);display:flex;flex-direction:column;gap:8px;background:var(--bg);">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input type="text" id="ticket-reply-input" placeholder="Add a message..."
+                style="flex:1;padding:0 12px;height:42px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;font-family:var(--font);outline:none;"
+                onkeydown="if(event.key==='Enter')HF_${s.role.toUpperCase()}.sendUserTicketReply('${ticketId}', '${subject.replace(/'/g, "\\'")}', ${fromMessages})">
+              <button class="btn btn-primary" style="height:42px;width:42px;padding:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;"
+                onclick="HF_${s.role.toUpperCase()}.sendUserTicketReply('${ticketId}', '${subject.replace(/'/g, "\\'")}', ${fromMessages})">
+                <i class="ti ti-send"></i>
+              </button>
+            </div>
+            ${
+              ticket?.status === "claimed"
+                ? `
+              <button class="btn btn-outline btn-sm" style="align-self:flex-end;"
+                onclick="HF_${s.role.toUpperCase()}.markTicketResolved('${ticketId}', '${subject.replace(/'/g, "\\'")}', ${fromMessages})">
+                <i class="ti ti-circle-check"></i> Mark as resolved
+              </button>`
+                : ""
+            }
+          </div>`
+          : `
+          <div style="padding:var(--sp-md);border-top:0.5px solid var(--border);background:var(--bg);display:flex;justify-content:flex-end;">
+            <button class="btn btn-outline btn-sm"
+              onclick="HF_${s.role.toUpperCase()}.reopenUserTicket('${ticketId}', '${subject.replace(/'/g, "\\'")}', ${fromMessages})">
+              <i class="ti ti-arrow-back-up"></i> Reopen ticket
+            </button>
+          </div>`
+      }
+    </div>`);
+
+    setTimeout(() => {
+      const el = document.getElementById("ticket-thread");
+      if (el) el.scrollTop = el.scrollHeight;
+    }, 100);
+  };
+
+  const sendUserTicketReply = async (
+    ticketId,
+    subject,
+    fromMessages = false,
+  ) => {
+    const s = HF_DB.getSession();
+    const body = document.getElementById("ticket-reply-input")?.value.trim();
+    if (!body) return;
+
+    const result = await HF_DB.addTicketMessage(
+      ticketId,
+      s.userId,
+      body,
+      false,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    document.getElementById("ticket-reply-input").value = "";
+    viewTicketThread(ticketId, subject, fromMessages);
+  };
+
+  const markTicketResolved = async (ticketId, subject, fromMessages) => {
+    const result = await HF_DB.resolveTicket(ticketId);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+    HF_UTILS.toast("Ticket marked as resolved.", "success");
+    viewTicketThread(ticketId, subject, fromMessages);
+  };
+
+  const reopenUserTicket = async (ticketId, subject, fromMessages) => {
+    const result = await HF_DB.reopenTicket(ticketId);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+    HF_UTILS.toast("Ticket reopened.", "success");
+    viewTicketThread(ticketId, subject, fromMessages);
+  };
+
+  const newTicket = (s, fromMessages = false) => {
+    setMain(`
+    <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);">
+      <button class="btn btn-outline btn-sm" onclick="HF_${s.role.toUpperCase()}.myTickets(HF_DB.getSession(), ${fromMessages})">
+        <i class="ti ti-arrow-left"></i> My tickets
+      </button>
+      <div style="font-size:14px;font-weight:700;color:var(--text);">New support ticket</div>
+    </div>
+
+    <div class="card">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:var(--sp-lg);">
+        Submit a support ticket and an admin will respond shortly.
+      </div>
+      <div class="fg">
+        <label class="required">Category</label>
+        <select id="ticket-category"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+          <option value="general">General inquiry</option>
+          <option value="verification">Verification issue</option>
+          <option value="account">Account issue</option>
+          <option value="technical">Technical problem</option>
+          <option value="report">Report a user</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="required">Subject</label>
+        <input type="text" id="ticket-subject" placeholder="Brief description of your issue"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+      <div class="fg">
+        <label class="required">Message</label>
+        <textarea id="ticket-body" rows="5" placeholder="Describe your issue in detail..."
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);resize:vertical;"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="HF_${s.role.toUpperCase()}.sendTicket(${fromMessages})">
+          <i class="ti ti-send"></i> Submit ticket
+        </button>
+        <button class="btn btn-outline" onclick="HF_${s.role.toUpperCase()}.myTickets(HF_DB.getSession(), ${fromMessages})">
+          Cancel
+        </button>
+      </div>
+    </div>`);
+  };
+
   return {
     render,
     readMessage,
@@ -3824,6 +4097,12 @@ const HF_COACH = (() => {
     previewAvatar,
     selectNeededPosition,
     sendTicket,
+    myTickets,
+    newTicket,
+    viewTicketThread,
+    sendUserTicketReply,
+    markTicketResolved,
+    reopenUserTicket,
   };
 })();
 

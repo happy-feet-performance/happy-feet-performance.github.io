@@ -190,15 +190,29 @@ const HF_ROUTER = (() => {
       openTicketCount = openTickets?.length || 0;
     }
 
+    // check unread ticket replies for non-admins
+    let unreadTicketReplies = 0;
+    if (session.role !== "admin") {
+      const { data: userTickets } = await HF_DB.getUserTickets(session.userId);
+      unreadTicketReplies =
+        userTickets?.filter((t) => {
+          const msgs = t.messages || [];
+          const lastMsg = msgs[msgs.length - 1];
+          return lastMsg?.is_admin && t.status !== "resolved";
+        }).length || 0;
+    }
+
+    const totalUnread = unreadCount + unreadTicketReplies;
+
+    // single _buildSidenav call
     _buildSidenav(
       session,
-      unreadCount,
+      totalUnread,
       pendingVerifications,
       null,
       openTicketCount,
     );
 
-    _buildSidenav(session, unreadCount, pendingVerifications);
     _routeTo("dashboard", session);
     HF_AGENT.show();
 
@@ -251,6 +265,53 @@ const HF_ROUTER = (() => {
             "success",
           );
         });
+
+        HF_DB.subscribeToUserTickets(session.userId, async (payload) => {
+          const ticket = payload.new;
+          const oldTicket = payload.old;
+          const msgs = ticket.messages || [];
+          const oldMsgs = oldTicket.messages || [];
+
+          if (msgs.length > oldMsgs.length) {
+            const lastMsg = msgs[msgs.length - 1];
+            if (lastMsg?.is_admin)
+              HF_UTILS.toast("An admin replied to your ticket!", "success");
+          }
+          if (ticket.status === "claimed" && oldTicket.status === "open")
+            HF_UTILS.toast(
+              "Your ticket has been claimed by an admin!",
+              "success",
+            );
+          if (ticket.status === "resolved" && oldTicket.status !== "resolved")
+            HF_UTILS.toast("Your support ticket has been resolved!", "success");
+
+          const { data: userTickets } = await HF_DB.getUserTickets(
+            session.userId,
+          );
+          const unreadReplies =
+            userTickets?.filter((t) => {
+              const m = t.messages || [];
+              const lastMsg = m[m.length - 1];
+              return lastMsg?.is_admin && t.status !== "resolved";
+            }).length || 0;
+          const { data: msgs2 } = await HF_DB.getMessages(session.userId);
+          const unreadMsgs = msgs2?.filter((m) => !m.read).length || 0;
+          HF_ROUTER.refreshSidenavBadge(
+            "messages",
+            unreadMsgs + unreadReplies,
+            "var(--red)",
+          );
+
+          const activeNav = document.querySelector(".nav-item.active");
+          if (activeNav?.dataset.view === "messages") {
+            const handlers = {
+              player: window.HF_PLAYER,
+              coach: window.HF_COACH,
+              scout: window.HF_SCOUT,
+            };
+            handlers[session.role]?.messages?.(session);
+          }
+        });
       }
 
       if (session.role === "admin") {
@@ -282,21 +343,21 @@ const HF_ROUTER = (() => {
             `New message: ${newMessage.subject || "You have a new message"}`,
             "success",
           );
+        });
 
-          // add to admin subscriptions
-          HF_DB._client
-            .channel("realtime-tickets")
-            .on(
-              "postgres_changes",
-              { event: "INSERT", schema: "public", table: "tickets" },
-              async () => {
-                const { data: openTickets } = await HF_DB.getTickets("open");
-                const count = openTickets?.length || 0;
-                _buildSidenav(session, 0, 0, null, count);
-                HF_UTILS.toast("New support ticket received!", "success");
-              },
-            )
-            .subscribe();
+        HF_DB.subscribeToTickets(async (payload) => {
+          const { data: openTickets } = await HF_DB.getTickets("open");
+          const count = openTickets?.length || 0;
+          HF_ROUTER.refreshSidenavBadge("tickets", count, "var(--red)");
+
+          if (payload.eventType === "INSERT") {
+            HF_UTILS.toast("New support ticket received!", "success");
+          }
+
+          const activeNav = document.querySelector(".nav-item.active");
+          if (activeNav?.dataset.view === "tickets") {
+            window.HF_ADMIN?.tickets?.(HF_DB.getSession());
+          }
         });
 
         HF_DB.subscribeToPendingVerifications(async (payload) => {
