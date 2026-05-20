@@ -526,7 +526,7 @@ const HF_AUTH = (() => {
       } else {
         showError(
           "login-err",
-          `${state.loginTab === "phone" ? "Phone number or password incorrect." : "Email or password incorrect."} ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining before lockout.`,
+          `${state.loginTab === "phone" ? "Phone number or password incorrect." : "Email or password incorrect."}${remaining === 1 ? " 1 attempt remaining before lockout." : ""}`,
         );
       }
       return;
@@ -736,7 +736,7 @@ const HF_AUTH = (() => {
       } else {
         showError(
           "admin-err",
-          `Invalid email or password. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining before lockout.`,
+          `Invalid email or password.${remaining === 1 ? " 1 attempt remaining before lockout." : ""}`,
         );
       }
       return;

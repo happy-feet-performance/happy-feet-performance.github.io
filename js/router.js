@@ -167,13 +167,15 @@ const HF_ROUTER = (() => {
   let _subscriptionsActive = false;
 
   const launch = async (session) => {
+    document.getElementById("admin-verification-alert")?.remove();
+    document.getElementById("verification-alert")?.remove();
+    document.getElementById("nav-overlay")?.classList.remove("open");
+
     document.getElementById("auth-screens").style.display = "none";
     const shell = el("app-shell");
     shell.classList.add("visible");
     shell.className = `app-shell visible role-${session.role}`;
 
-    // reset any stuck overlays
-    document.getElementById("nav-overlay")?.classList.remove("open");
     el("sidenav")?.classList.remove("open");
 
     const rolePill = el("topbar-role-pill");
@@ -523,6 +525,9 @@ const HF_ROUTER = (() => {
 
   // ─── Route to role dashboard renderer ──────────────────────
   const _routeTo = (view, session) => {
+    document.getElementById("admin-verification-alert")?.remove();
+    document.getElementById("verification-alert")?.remove();
+
     const handlers = {
       player: window.HF_PLAYER,
       coach: window.HF_COACH,
