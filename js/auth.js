@@ -458,9 +458,9 @@ const HF_AUTH = (() => {
       return;
     }
 
-    const hashedPassword = await HF_UTILS.hashPassword(pass);
-    const user = await HF_DB.findUser(contact, hashedPassword);
-    if (!user) {
+    // fetch user first to check lockout before hashing password
+    const userCheck = await HF_DB.findUserByContact(contact);
+    if (!userCheck) {
       showError(
         "login-err",
         state.loginTab === "phone"
@@ -470,26 +470,69 @@ const HF_AUTH = (() => {
       return;
     }
 
-    if (user.banned) {
+    // check lockout
+    if (
+      userCheck.locked_until &&
+      new Date(userCheck.locked_until) > new Date()
+    ) {
+      const mins = Math.ceil(
+        (new Date(userCheck.locked_until) - new Date()) / 60000,
+      );
       showError(
         "login-err",
-        `Your account has been banned. ${user.banReason ? "Reason: " + user.banReason : "Please contact support."}`,
+        `Account locked. Try again in ${mins} minute${mins !== 1 ? "s" : ""}.`,
       );
       return;
     }
 
+    // check banned
+    if (userCheck.banned) {
+      showError(
+        "login-err",
+        `Your account has been banned. ${userCheck.banReason ? "Reason: " + userCheck.banReason : "Please contact support."}`,
+      );
+      return;
+    }
+
+    // check kicked
     if (
-      user.kicked &&
-      user.kickedUntil &&
-      new Date(user.kickedUntil) > new Date()
+      userCheck.kicked &&
+      userCheck.kickedUntil &&
+      new Date(userCheck.kickedUntil) > new Date()
     ) {
-      const until = new Date(user.kickedUntil).toLocaleTimeString();
+      const until = new Date(userCheck.kickedUntil).toLocaleTimeString();
       showError(
         "login-err",
         `You have been kicked and cannot sign in until ${until}.`,
       );
       return;
     }
+
+    // now hash and verify password
+    const hashedPassword = await HF_UTILS.hashPassword(pass);
+    const user = await HF_DB.findUser(contact, hashedPassword);
+
+    if (!user) {
+      // wrong password — increment attempts
+      const { attempts, lockedUntil } = await HF_DB.incrementLoginAttempts(
+        userCheck.id,
+      );
+      const remaining = 5 - attempts;
+      if (lockedUntil) {
+        showError(
+          "login-err",
+          "Too many failed attempts. Account locked for 15 minutes.",
+        );
+      } else {
+        showError(
+          "login-err",
+          `${state.loginTab === "phone" ? "Phone number or password incorrect." : "Email or password incorrect."} ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining before lockout.`,
+        );
+      }
+      return;
+    }
+
+    await HF_DB.resetLoginAttempts(user.id);
 
     hideError("login-err");
     const session = _makeSession(user);
@@ -654,13 +697,52 @@ const HF_AUTH = (() => {
       return;
     }
 
+    // fetch user first to check lockout
+    const userCheck = await HF_DB.findUserByContact(email);
+    if (!userCheck || userCheck.role !== "admin") {
+      showError("admin-err", "Invalid email or password.");
+      return;
+    }
+
+    // check lockout
+    if (
+      userCheck.locked_until &&
+      new Date(userCheck.locked_until) > new Date()
+    ) {
+      const mins = Math.ceil(
+        (new Date(userCheck.locked_until) - new Date()) / 60000,
+      );
+      showError(
+        "admin-err",
+        `Account locked. Try again in ${mins} minute${mins !== 1 ? "s" : ""}.`,
+      );
+      return;
+    }
+
+    // hash and verify
     const hashedPassword = await HF_UTILS.hashPassword(pass);
     const user = await HF_DB.findUser(email, hashedPassword);
 
     if (!user || user.role !== "admin") {
-      showError("admin-err", "Invalid email or password.");
+      const { attempts, lockedUntil } = await HF_DB.incrementLoginAttempts(
+        userCheck.id,
+      );
+      const remaining = 5 - attempts;
+      if (lockedUntil) {
+        showError(
+          "admin-err",
+          "Too many failed attempts. Account locked for 15 minutes.",
+        );
+      } else {
+        showError(
+          "admin-err",
+          `Invalid email or password. ${remaining} attempt${remaining !== 1 ? "s" : ""} remaining before lockout.`,
+        );
+      }
       return;
     }
+
+    await HF_DB.resetLoginAttempts(user.id);
 
     const session = _makeSession(user);
     HF_DB.saveSession(session);

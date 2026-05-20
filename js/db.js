@@ -1812,8 +1812,7 @@ const HF_DB = (() => {
   const removeAllChannels = () => {
     try {
       _client.removeAllChannels();
-    } catch (e) {
-    }
+    } catch (e) {}
   };
 
   const saveProspectReport = async (scoutId, playerId, report) => {
@@ -2383,6 +2382,56 @@ const HF_DB = (() => {
     return { success: true, url: data.publicUrl };
   };
 
+  const getLoginAttempts = async (contact) => {
+    const { data, error } = await _client
+      .from("users")
+      .select("id, login_attempts, locked_until")
+      .eq("contact", contact)
+      .maybeSingle();
+    if (error) return { data: null };
+    return { data };
+  };
+
+  const incrementLoginAttempts = async (userId) => {
+    const { data: user } = await _client
+      .from("users")
+      .select("login_attempts")
+      .eq("id", userId)
+      .single();
+
+    const attempts = (user?.login_attempts || 0) + 1;
+    const lockedUntil =
+      attempts >= 5
+        ? new Date(Date.now() + 15 * 60 * 1000).toISOString() // 15 min lockout
+        : null;
+
+    await _client
+      .from("users")
+      .update({ login_attempts: attempts, locked_until: lockedUntil })
+      .eq("id", userId);
+
+    return { attempts, lockedUntil };
+  };
+
+  const resetLoginAttempts = async (userId) => {
+    await _client
+      .from("users")
+      .update({ login_attempts: 0, locked_until: null })
+      .eq("id", userId);
+  };
+
+  const findUserByContact = async (contact) => {
+    const { data, error } = await _client
+      .from("users")
+      .select(
+        "id, name, role, banned, ban_reason, kicked, kicked_until, login_attempts, locked_until",
+      )
+      .eq("contact", contact)
+      .maybeSingle();
+    if (error || !data) return null;
+    return data;
+  };
+
   // ─── Public API ────────────────────────────────────────────
   return {
     localDate: _localDate,
@@ -2504,6 +2553,10 @@ const HF_DB = (() => {
     getApprovedClubNetwork,
     getAgentThread,
     uploadAvatar,
+    getLoginAttempts,
+    incrementLoginAttempts,
+    resetLoginAttempts,
+    findUserByContact,
   };
 })();
 
