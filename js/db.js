@@ -2506,6 +2506,15 @@ const HF_DB = (() => {
     return { success: true, userId: data.id };
   };
 
+  const resetPassword = async (userId, newPassword) => {
+    const { error } = await _client
+      .from("users")
+      .update({ password: newPassword, login_attempts: 0, locked_until: null })
+      .eq("id", userId);
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
   const getUserSecurityQuestion = async (contact) => {
     const { data, error } = await _client
       .from("users")
