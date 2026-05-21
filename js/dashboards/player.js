@@ -571,12 +571,14 @@ const HF_PLAYER = (() => {
     const view = window._trainingView || "week";
 
     const dayView = () => {
-      const selected = schedule[today];
+      const todayISO = HF_DB.localDate();
+      const selected =
+        schedule[todayISO] || schedule[today] || schedule[String(today)];
       const color = selected ? typeColors[selected] : "var(--border)";
 
       return `
       <div style="padding:var(--sp-xl);background:${selected ? color + "22" : "var(--bg2)"};border:${selected ? "2px solid " + color : "0.5px solid var(--border)"};text-align:center;margin-bottom:var(--sp-md);cursor:pointer;"
-        onclick="HF_UTILS.showDayPicker(${today})">
+        onclick="HF_UTILS.showDayPicker(${today}, '${HF_DB.localDate()}')">
         <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
           ${new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
         </div>
@@ -595,7 +597,9 @@ const HF_PLAYER = (() => {
         ${days
           .map((day, i) => {
             const isToday = i === today;
-            const selected = schedule[i];
+            const dateISO = HF_UTILS.getDateForDayISO(i);
+            const selected =
+              schedule[dateISO] || schedule[i] || schedule[String(i)];
             const color = selected ? typeColors[selected] : null;
             const logDate = HF_UTILS.getDateForDayISO(i);
             const hasLog = logs?.find((l) => l.date === logDate);
@@ -605,13 +609,13 @@ const HF_PLAYER = (() => {
               <div style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isToday ? "var(--text)" : "var(--text3)"};">
                 ${day}
               </div>
-              <div style="font-size:9px;color:var(--text3);">${HF_UTILS.getDateForDay(i)}</div>
-              <div style="width:100%;padding:8px 4px;
-                background:${selected ? color + "33" : "transparent"};
-                border:${isToday ? "2px solid var(--text)" : selected ? "0.5px solid " + color : "0.5px solid var(--border)"};
-                text-align:center;cursor:pointer;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;"
+              <div data-date="${HF_UTILS.getDateForDayISO(i)}"
+                style="width:100%;padding:8px 4px;
+                  background:${selected ? color + "33" : "transparent"};
+                  border:${isToday ? "2px solid var(--text)" : selected ? "2px solid " + color : "0.5px solid var(--border)"};
+                  text-align:center;cursor:pointer;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;"
                 onclick="HF_PLAYER.selectTrainingDay('${HF_UTILS.getDateForDayISO(i)}', ${i})">
-                <span style="font-size:9px;font-weight:600;color:${selected ? color : "var(--text3)"};font-family:var(--font);letter-spacing:0.04em;text-transform:uppercase;">
+                <span class="cell-label" style="font-size:9px;font-weight:600;color:${selected ? color : "var(--text3)"};font-family:var(--font);letter-spacing:0.04em;text-transform:uppercase;">
                   ${selected || "+"}
                 </span>
                 ${hasLog ? `<i class="ti ti-circle-check" style="font-size:10px;color:var(--green);"></i>` : ""}
@@ -646,19 +650,19 @@ const HF_PLAYER = (() => {
         const hasLog = logs?.find((l) => l.date === dateStr);
 
         cells += `
-          <div style="
-            display:flex;flex-direction:column;align-items:center;justify-content:center;
-            height:40px;
-            background:${isToday ? "var(--text)" : selected ? color + "33" : "transparent"};
-            border:${isToday ? "none" : selected ? "0.5px solid " + color : "0.5px solid transparent"};
-            opacity:${isFuture ? 0.4 : 1};
-            cursor:${!isFuture ? "pointer" : "default"};
-            font-size:11px;
-            color:${isToday ? "var(--bg)" : selected ? color : "var(--text2)"};
-            font-weight:${isToday ? "700" : "400"};
-            position:relative;
-          " onclick="${!isFuture ? `HF_PLAYER.selectTrainingDay('${dateStr}', ${dayOfWeek})` : ""}">
-            ${d}
+          <div data-date="${dateStr}"
+            style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+              height:40px;
+              background:transparent;
+              border:${isToday && selected ? `2px solid var(--text)` : isToday ? "2px solid var(--text)" : selected ? "2px solid " + color : "0.5px solid var(--border)"};
+              color:${isToday ? "var(--text)" : selected ? color : "var(--text2)"};
+              font-weight:${isToday ? "700" : "400"};
+              opacity:${isFuture ? 0.4 : 1};
+              cursor:${!isFuture ? "pointer" : "default"};
+              font-size:11px;
+              position:relative;"
+            onclick="${!isFuture ? `HF_PLAYER.selectTrainingDay('${dateStr}', ${dayOfWeek})` : ""}">
+            <span class="cell-label">${d}</span>
             ${
               hasLog
                 ? `<div style="width:4px;height:4px;background:var(--green);border-radius:50%;position:absolute;bottom:4px;"></div>`
@@ -737,19 +741,19 @@ const HF_PLAYER = (() => {
     const schedule = existing?.schedule || {};
 
     if (specificDate) {
-      // store by specific date for month view
       schedule[specificDate] = type;
     } else {
-      // store by weekday for week/day view
       schedule[dayIndex] = type;
     }
 
     await HF_DB.saveTraining(session.userId, { ...existing, schedule });
+    window._trainingSchedule = schedule;
 
     HF_UTILS.toast(
       `${specificDate || ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dayIndex]} set to ${type}`,
       "success",
     );
+
     training(session);
   };
 
@@ -1887,7 +1891,7 @@ const HF_PLAYER = (() => {
       HF_DB.saveSession(session);
 
       // update coach team size
-      await HF_DB.updateTeamSize(coachId, 1)
+      await HF_DB.updateTeamSize(coachId, 1);
 
       HF_UTILS.toast(`Welcome to ${squadName}!`, "success");
     } else {

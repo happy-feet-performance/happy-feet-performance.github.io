@@ -115,7 +115,7 @@ const HF_DB = (() => {
 
     if (error) return { error: error.message };
 
-    // ── Insert default data rows for new user ──────────────────
+    // Insert default data rows for new user
     const userId = user.id;
 
     await _client.from("tracker").insert({
@@ -144,37 +144,6 @@ const HF_DB = (() => {
         sessions: [],
         schedule: {},
         currentPlan: null,
-      },
-    });
-
-    await _client.from("scout").insert({
-      user_id: userId,
-      data: {
-        prospects: [],
-        placements: [],
-        clubs: [
-          {
-            name: "WAFA SC Academy",
-            country: "Ghana",
-            tier: "National",
-            needs: "CM, ST, CB",
-            color: "#C9961A",
-          },
-          {
-            name: "FC Nordsjælland",
-            country: "Denmark",
-            tier: "European",
-            needs: "All positions U17-U21",
-            color: "#185FA5",
-          },
-          {
-            name: "Philadelphia Union II",
-            country: "USA",
-            tier: "MLS Next Pro",
-            needs: "CB, ST",
-            color: "#c8102e",
-          },
-        ],
       },
     });
 
@@ -388,7 +357,9 @@ const HF_DB = (() => {
   };
 
   const setSecurityQuestion = async (userId, question, answer) => {
-    const hashedAnswer = await HF_UTILS.hashPassword(answer.toLowerCase().trim());
+    const hashedAnswer = await HF_UTILS.hashPassword(
+      answer.toLowerCase().trim(),
+    );
     const { error } = await _client
       .from("users")
       .update({ security_question: question, security_answer: hashedAnswer })
@@ -429,7 +400,9 @@ const HF_DB = (() => {
       };
     }
 
-    const hashedAnswer = await HF_UTILS.hashPassword(answer.toLowerCase().trim());
+    const hashedAnswer = await HF_UTILS.hashPassword(
+      answer.toLowerCase().trim(),
+    );
 
     if (hashedAnswer !== data.security_answer) {
       const attempts = (data.security_attempts || 0) + 1;
@@ -668,13 +641,56 @@ const HF_DB = (() => {
   const getPendingVerifications = async (type = "squad") => {
     const table =
       type === "squad" ? "squad_verifications" : "agency_verifications";
+    const fkName =
+      type === "squad"
+        ? "users!squad_verifications_claimed_by_fkey"
+        : "users!agency_verifications_claimed_by_fkey";
+
     const { data, error } = await _client
       .from(table)
-      .select("*")
+      .select(`*, claimer:${fkName}(id, name)`)
       .eq("status", "pending")
       .order("submitted_at", { ascending: true });
+
     if (error) return { data: [] };
     return { data };
+  };
+
+  const claimVerification = async (verificationId, adminId, type = "squad") => {
+    const table =
+      type === "squad" ? "squad_verifications" : "agency_verifications";
+
+    // check if already claimed by someone else
+    const { data: existing } = await _client
+      .from(table)
+      .select("claimed_by")
+      .eq("id", verificationId)
+      .single();
+
+    if (existing?.claimed_by && existing.claimed_by !== adminId) {
+      return {
+        error: "This verification is already being reviewed by another admin.",
+      };
+    }
+
+    const { error } = await _client
+      .from(table)
+      .update({ claimed_by: adminId, claimed_at: new Date().toISOString() })
+      .eq("id", verificationId);
+
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  const unclaimVerification = async (verificationId, type = "squad") => {
+    const table =
+      type === "squad" ? "squad_verifications" : "agency_verifications";
+    const { error } = await _client
+      .from(table)
+      .update({ claimed_by: null, claimed_at: null })
+      .eq("id", verificationId);
+    if (error) return { error: error.message };
+    return { success: true };
   };
 
   const getAllVerifications = async (type = "squad") => {
@@ -2497,6 +2513,8 @@ const HF_DB = (() => {
     submitAgencyVerification,
     checkTeamExists,
     getPendingVerifications,
+    claimVerification,
+    unclaimVerification,
     getAllVerifications,
     approveVerification,
     rejectVerification,

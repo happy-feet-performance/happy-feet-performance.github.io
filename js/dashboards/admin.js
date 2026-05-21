@@ -12,8 +12,8 @@ const HF_ADMIN = (() => {
   const render = async (view, session) => {
     const views = {
       dashboard,
-      "squad-verifications": squadVerifications,
-      "agency-verifications": agencyVerifications,
+      "squad-verifications": (s) => verifications(s, "squad"),
+      "agency-verifications": (s) => verifications(s, "agency"),
       users,
       messages,
       tickets,
@@ -93,7 +93,7 @@ const HF_ADMIN = (() => {
             <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
                 Squads
             </div>
-            ${pending.map((v) => _verificationRow(v)).join("")}`
+            ${pending.map((v) => _verificationRow(v, "squad", s)).join("")}`
                 : ""
             }
             ${
@@ -102,7 +102,7 @@ const HF_ADMIN = (() => {
             <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);margin:12px 0 8px;">
                 Agencies
             </div>
-            ${agencyPending.map((v) => _agencyVerificationRow(v)).join("")}`
+            ${agencyPending.map((v) => _verificationRow(v, "agency", s)).join("")}`
                 : ""
             }`
         }
@@ -118,23 +118,16 @@ const HF_ADMIN = (() => {
       "squad",
     );
     if (result.error) {
-      toast(result.error, "error");
+      HF_UTILS.toast(result.error, "error");
       return;
     }
-    const { data: pending } = await HF_DB.getPendingVerifications("squad");
-    const { data: agencyPending } =
-      await HF_DB.getPendingVerifications("agency");
-    HF_ROUTER.refreshSidenavBadge(
-      "squad-verifications",
-      pending?.length || 0,
-      "var(--gold)",
-    );
-    toast(`${teamName} has been verified!`, "success");
-    squadVerifications(HF_DB.getSession());
+    HF_UTILS.toast(`${teamName} approved!`, "success");
+    await HF_DB.unclaimVerification(verificationId, "squad");
+    verifications(HF_DB.getSession(), "squad");
   };
 
   const rejectSquad = async (verificationId, coachId, teamName) => {
-    const reason = prompt("Enter rejection reason:");
+    const reason = prompt(`Reason for rejecting ${teamName}?`);
     if (!reason) return;
     const result = await HF_DB.rejectVerification(
       verificationId,
@@ -144,17 +137,12 @@ const HF_ADMIN = (() => {
       "squad",
     );
     if (result.error) {
-      toast(result.error, "error");
+      HF_UTILS.toast(result.error, "error");
       return;
     }
-    const { data: pending } = await HF_DB.getPendingVerifications();
-    HF_ROUTER.refreshSidenavBadge(
-      "squad-verifications",
-      pending?.length || 0,
-      "var(--gold)",
-    );
-    toast(`${teamName} has been rejected.`, "success");
-    squadVerifications(HF_DB.getSession());
+    HF_UTILS.toast(`${teamName} rejected.`, "error");
+    await HF_DB.unclaimVerification(verificationId, "squad");
+    verifications(HF_DB.getSession(), "squad");
   };
 
   const approveAgency = async (verificationId, scoutId, agencyName) => {
@@ -165,24 +153,16 @@ const HF_ADMIN = (() => {
       "agency",
     );
     if (result.error) {
-      toast(result.error, "error");
+      HF_UTILS.toast(result.error, "error");
       return;
     }
-
-    const { data: agencyPending } =
-      await HF_DB.getPendingVerifications("agency");
-    HF_ROUTER.refreshSidenavBadge(
-      "agency-verifications",
-      agencyPending?.length || 0,
-      "var(--gold)",
-    );
-
-    toast(`${agencyName} has been verified!`, "success");
-    agencyVerifications(HF_DB.getSession());
+    HF_UTILS.toast(`${agencyName} approved!`, "success");
+    await HF_DB.unclaimVerification(verificationId, "agency");
+    verifications(HF_DB.getSession(), "agency");
   };
 
   const rejectAgency = async (verificationId, scoutId, agencyName) => {
-    const reason = prompt(`Rejection reason for ${agencyName}:`);
+    const reason = prompt(`Reason for rejecting ${agencyName}?`);
     if (!reason) return;
     const result = await HF_DB.rejectVerification(
       verificationId,
@@ -192,278 +172,220 @@ const HF_ADMIN = (() => {
       "agency",
     );
     if (result.error) {
-      toast(result.error, "error");
+      HF_UTILS.toast(result.error, "error");
       return;
     }
-
-    const { data: agencyPending } =
-      await HF_DB.getPendingVerifications("agency");
-    HF_ROUTER.refreshSidenavBadge(
-      "agency-verifications",
-      agencyPending?.length || 0,
-      "var(--gold)",
-    );
-
-    toast(`${agencyName} has been rejected.`, "success");
-    agencyVerifications(HF_DB.getSession());
+    HF_UTILS.toast(`${agencyName} rejected.`, "error");
+    await HF_DB.unclaimVerification(verificationId, "agency");
+    verifications(HF_DB.getSession(), "agency");
   };
 
   // ── SQUAD/AGENCY VERIFICATIONS ──────────────────────────────────────────
+  const _verificationRow = (v, type, s) => {
+    const isSquad = type === "squad";
+    const name = isSquad ? v.team_name : v.agency_name;
+    const subInfo = isSquad
+      ? `${v.league || "-"} · ${v.home_ground || "-"} · Founded ${v.founding_year || "-"}`
+      : `Regions: ${Array.isArray(v.regions_covered) ? v.regions_covered.join(", ") : "-"}`;
+    const color = isSquad ? "var(--gold)" : "var(--blue)";
+    const userId = isSquad ? v.coach_id : v.scout_id;
+    const safeName = name.replace(/'/g, "\\'");
+    const isMine = v.claimed_by === s.userId;
+    const isClaimed = v.claimed_by && !isMine;
 
-  const _verificationRow = (v) => `
-    <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+    return `
+    <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid ${isMine ? "var(--gold)" : isClaimed ? "var(--border)" : color};margin-bottom:var(--sp-sm);opacity:${isClaimed ? "0.6" : "1"};">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
         <div>
-            <div style="font-size:14px;font-weight:600;color:var(--text)">${v.team_name}</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:2px">
-            ${v.league} · ${v.home_ground || "-"} · Founded ${v.founding_year || "-"}
-            </div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px">
-            Submitted ${new Date(v.submitted_at).toLocaleDateString()}
-            </div>
+          <div style="font-size:14px;font-weight:600;color:var(--text)">${name}</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">${subInfo}</div>
+          ${v.website ? `<div style="font-size:11px;color:var(--blue);margin-top:2px">${v.website}</div>` : ""}
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Submitted ${HF_UTILS.timeAgo(v.submitted_at)}</div>
+          ${
+            isClaimed
+              ? `
+            <div style="font-size:11px;color:var(--text3);margin-top:4px;">
+              <i class="ti ti-lock" style="margin-right:4px"></i>
+              Being reviewed by ${v.claimer?.name || "another admin"}
+            </div>`
+              : ""
+          }
+          ${
+            isMine
+              ? `
+            <div style="font-size:11px;color:var(--gold);margin-top:4px;">
+              <i class="ti ti-user" style="margin-right:4px"></i>
+              Claimed by you
+            </div>`
+              : ""
+          }
         </div>
-        ${badgeHTML("Pending", "gold")}
-        </div>
+        ${badgeHTML(isClaimed ? "In review" : "Pending", isClaimed ? "gold" : isSquad ? "gold" : "blue")}
+      </div>
 
+      ${
+        isMine && isSquad
+          ? `
         <div id="edit-form-${v.id}" style="display:none;margin-bottom:12px;padding:12px;background:var(--bg);border:0.5px solid var(--border);">
-        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
-            Edit verification details
-        </div>
-        <div class="fg">
+          <div style="font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">Edit verification details</div>
+          <div class="fg">
             <label>Team name</label>
             <input type="text" id="edit-name-${v.id}" value="${v.team_name}" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
-        </div>
-        <div class="fg">
+          </div>
+          <div class="fg">
             <label>League / division</label>
             <input type="text" id="edit-league-${v.id}" value="${v.league || ""}" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
-        </div>
-        <div class="form-row">
+          </div>
+          <div class="form-row">
             <div class="fg">
-            <label>Founding year</label>
-            <input type="number" id="edit-year-${v.id}" value="${v.founding_year || ""}" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
+              <label>Founding year</label>
+              <input type="number" id="edit-year-${v.id}" value="${v.founding_year || ""}" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
             </div>
             <div class="fg">
-            <label>Home ground</label>
-            <input type="text" id="edit-ground-${v.id}" value="${v.home_ground || ""}" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
+              <label>Home ground</label>
+              <input type="text" id="edit-ground-${v.id}" value="${v.home_ground || ""}" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
             </div>
-        </div>
-        <div class="fg">
+          </div>
+          <div class="fg">
             <label>Admin notes to coach</label>
-            <input type="text" id="edit-notes-${v.id}" placeholder="e.g. Team name corrected to match league records" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
-        </div>
-        <div style="display:flex;gap:8px;margin-top:8px;">
-            <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.saveEdits('${v.id}', '${v.coach_id}', '${v.team_name}')">
-            <i class="ti ti-circle-check"></i> Save & notify coach
+            <input type="text" id="edit-notes-${v.id}" placeholder="e.g. Team name corrected" style="padding:8px 12px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.saveEdits('${v.id}','${userId}','${safeName}')">
+              <i class="ti ti-circle-check"></i> Save & notify
             </button>
-            <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.toggleEditForm('${v.id}')">
-            Cancel
-            </button>
-        </div>
-        </div>
+            <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.toggleEditForm('${v.id}')">Cancel</button>
+          </div>
+        </div>`
+          : ""
+      }
 
-        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
-        <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.approveSquad('${v.id}','${v.coach_id}','${v.team_name}')">
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        ${
+          !isClaimed && !isMine
+            ? `
+          <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.claimAndReview('${v.id}', '${type}')">
+            <i class="ti ti-eye"></i> Claim & review
+          </button>`
+            : ""
+        }
+        ${
+          isMine
+            ? `
+          <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.approveVerification('${v.id}','${userId}','${safeName}','${type}')">
             <i class="ti ti-circle-check"></i> Approve
-        </button>
-        <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.toggleEditForm('${v.id}')">
-            <i class="ti ti-edit"></i> Edit
-        </button>
-        <button class="btn btn-danger btn-sm" onclick="HF_ADMIN.rejectSquad('${v.id}','${v.coach_id}','${v.team_name}')">
+          </button>
+          ${
+            isSquad
+              ? `
+            <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.toggleEditForm('${v.id}')">
+              <i class="ti ti-edit"></i> Edit
+            </button>`
+              : ""
+          }
+          <button class="btn btn-danger btn-sm" onclick="HF_ADMIN.rejectVerification('${v.id}','${userId}','${safeName}','${type}')">
             <i class="ti ti-x"></i> Reject
-        </button>
-        </div>
-    </div>`;
-
-  const _agencyVerificationRow = (v) => `
-  <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--blue);margin-bottom:var(--sp-sm);">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-      <div>
-        <div style="font-size:14px;font-weight:600;color:var(--text)">${v.agency_name}</div>
-        <div style="font-size:12px;color:var(--text2);margin-top:2px">
-          Regions: ${Array.isArray(v.regions_covered) ? v.regions_covered.join(", ") : v.region || "-"}
-        </div>
-        <div style="font-size:12px;color:var(--text2);margin-top:2px">
-          Targets: ${Array.isArray(v.target_leagues) ? v.target_leagues.join(", ") : "-"}
-        </div>
-        ${v.website ? `<div style="font-size:11px;color:var(--blue);margin-top:2px">${v.website}</div>` : ""}
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">
-          Submitted ${HF_UTILS.timeAgo(v.submitted_at)}
-        </div>
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="HF_ADMIN.unclaimVerification('${v.id}','${type}')">
+            <i class="ti ti-x"></i> Release
+          </button>`
+            : ""
+        }
       </div>
-      ${badgeHTML("Pending", "blue")}
-    </div>
-    <div style="display:flex;gap:8px;margin-top:8px;">
-      <button class="btn btn-primary btn-sm" onclick="HF_ADMIN.approveAgency('${v.id}','${v.scout_id}','${v.agency_name}')">
-        <i class="ti ti-circle-check"></i> Approve
-      </button>
-      <button class="btn btn-danger btn-sm" onclick="HF_ADMIN.rejectAgency('${v.id}','${v.scout_id}','${v.agency_name}')">
-        <i class="ti ti-x"></i> Reject
-      </button>
-    </div>
-  </div>`;
+    </div>`;
+  };
 
-  const squadVerifications = async (s) => {
-    const { data: allVerifications } = await HF_DB.getAllVerifications("squad");
-    const pending =
-      allVerifications?.filter((v) => v.status === "pending") || [];
-    const verified =
-      allVerifications?.filter((v) => v.status === "verified") || [];
-    const rejected =
-      allVerifications?.filter((v) => v.status === "rejected") || [];
+  const verifications = async (s, type = "squad") => {
+    const isSquad = type === "squad";
+    const { data: all } = await HF_DB.getAllVerifications(type);
 
-    const section = (title, count, color, content, startOpen = false) => `
+    const pending = all?.filter((v) => v.status === "pending") || [];
+    const verified = all?.filter((v) => v.status === "verified") || [];
+    const rejected = all?.filter((v) => v.status === "rejected") || [];
+
+    const nameKey = isSquad ? "team_name" : "agency_name";
+    const color = isSquad ? "var(--gold)" : "var(--blue)";
+
+    const section = (
+      title,
+      count,
+      sectionColor,
+      content,
+      startOpen = false,
+    ) => `
     <div class="card">
       <div class="card-title" style="cursor:pointer;justify-content:space-between;"
         onclick="const c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none';this.querySelector('i').className='ti '+(c.style.display==='none'?'ti-chevron-down':'ti-chevron-up');">
         <div style="display:flex;align-items:center;gap:var(--sp-sm);">
           <div class="card-dot"></div>${title}
-          <span style="color:${color};margin-left:4px">${count}</span>
+          <span style="color:${sectionColor};margin-left:4px">${count}</span>
         </div>
         <i class="ti ${startOpen ? "ti-chevron-up" : "ti-chevron-down"}" style="font-size:14px;color:var(--text3)"></i>
       </div>
       <div style="display:${startOpen ? "block" : "none"}">
-        ${count === 0 ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">Nothing here yet.</div>` : content}
+        ${
+          count === 0
+            ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">Nothing here yet.</div>`
+            : content
+        }
+      </div>
+    </div>`;
+
+    const verifiedRow = (v) => `
+    <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--green);margin-bottom:var(--sp-sm);">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--text)">${v[nameKey]}</div>
+          <div style="font-size:11px;color:var(--text2)">Verified ${v.reviewed_at ? HF_UTILS.timeAgo(v.reviewed_at) : "-"}</div>
+        </div>
+        ${badgeHTML("Verified", "green")}
+      </div>
+    </div>`;
+
+    const rejectedRow = (v) => `
+    <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--red);margin-bottom:var(--sp-sm);">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--text)">${v[nameKey]}</div>
+          <div style="font-size:11px;color:var(--red)">Reason: ${v.rejection_reason || "-"}</div>
+          <div style="font-size:11px;color:var(--text3)">${HF_UTILS.timeAgo(v.submitted_at)}</div>
+        </div>
+        ${badgeHTML("Rejected", "red")}
       </div>
     </div>`;
 
     setMain(`
     <div style="font-family:var(--font);font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-lg);">
-      Squad Verifications
+      ${isSquad ? "Squad" : "Agency"} Verifications
     </div>
-
-    ${section(
-      "Pending",
-      pending.length,
-      "var(--gold)",
-      pending.map((v) => _verificationRow(v)).join(""),
-      true,
-    )}
-
-    ${section(
-      "Verified",
-      verified.length,
-      "var(--green)",
-      verified
-        .map(
-          (v) => `
-        <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--green);margin-bottom:var(--sp-sm);">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <div style="font-size:14px;font-weight:600;color:var(--text)">${v.team_name}</div>
-              <div style="font-size:12px;color:var(--text2)">${v.league} · Verified ${v.reviewed_at ? HF_UTILS.timeAgo(v.reviewed_at) : "-"}</div>
-            </div>
-            ${badgeHTML("Verified", "green")}
-          </div>
-        </div>`,
-        )
-        .join(""),
-    )}
-
-    ${section(
-      "Rejected",
-      rejected.length,
-      "var(--red)",
-      rejected
-        .map(
-          (v) => `
-        <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--red);margin-bottom:var(--sp-sm);">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <div style="font-size:14px;font-weight:600;color:var(--text)">${v.team_name}</div>
-              <div style="font-size:11px;color:var(--red)">Reason: ${v.rejection_reason || "-"}</div>
-              <div style="font-size:11px;color:var(--text3)">${HF_UTILS.timeAgo(v.submitted_at)}</div>
-            </div>
-            ${badgeHTML("Rejected", "red")}
-          </div>
-        </div>`,
-        )
-        .join(""),
-    )}
+    ${section("Pending", pending.length, color, pending.map((v) => _verificationRow(v, type, s)).join(""), true)}
+    ${section("Verified", verified.length, "var(--green)", verified.map((v) => verifiedRow(v)).join(""))}
+    ${section("Rejected", rejected.length, "var(--red)", rejected.map((v) => rejectedRow(v)).join(""))}
   `);
   };
 
-  const agencyVerifications = async (s) => {
-    const { data: allAgencyVerifications } =
-      await HF_DB.getAllVerifications("agency");
-    const pending =
-      allAgencyVerifications?.filter((v) => v.status === "pending") || [];
-    const verified =
-      allAgencyVerifications?.filter((v) => v.status === "verified") || [];
-    const rejected =
-      allAgencyVerifications?.filter((v) => v.status === "rejected") || [];
+  const claimAndReview = async (verificationId, type) => {
+    const session = HF_DB.getSession();
+    const result = await HF_DB.claimVerification(
+      verificationId,
+      session.userId,
+      type,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+    verifications(session, type);
+  };
 
-    const section = (title, count, color, content, startOpen = false) => `
-    <div class="card">
-      <div class="card-title" style="cursor:pointer;justify-content:space-between;"
-        onclick="const c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none';this.querySelector('i').className='ti '+(c.style.display==='none'?'ti-chevron-down':'ti-chevron-up');">
-        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-          <div class="card-dot"></div>${title}
-          <span style="color:${color};margin-left:4px">${count}</span>
-        </div>
-        <i class="ti ${startOpen ? "ti-chevron-up" : "ti-chevron-down"}" style="font-size:14px;color:var(--text3)"></i>
-      </div>
-      <div style="display:${startOpen ? "block" : "none"}">
-        ${count === 0 ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">Nothing here yet.</div>` : content}
-      </div>
-    </div>`;
-
-    setMain(`
-    <div style="font-family:var(--font);font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-lg);">
-      Agency Verifications
-    </div>
-
-    ${section(
-      "Pending",
-      pending.length,
-      "var(--gold)",
-      pending.map((v) => _agencyVerificationRow(v)).join(""),
-      true,
-    )}
-
-    ${section(
-      "Verified",
-      verified.length,
-      "var(--green)",
-      verified
-        .map(
-          (v) => `
-        <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--green);margin-bottom:var(--sp-sm);">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <div style="font-size:14px;font-weight:600;color:var(--text)">${v.agency_name}</div>
-              <div style="font-size:12px;color:var(--text2)">
-                Regions: ${Array.isArray(v.regions_covered) ? v.regions_covered.join(", ") : v.region || "-"}
-              </div>
-              <div style="font-size:11px;color:var(--text2)">Verified ${v.reviewed_at ? HF_UTILS.timeAgo(v.reviewed_at) : "-"}</div>
-            </div>
-            ${badgeHTML("Verified", "green")}
-          </div>
-        </div>`,
-        )
-        .join(""),
-    )}
-
-    ${section(
-      "Rejected",
-      rejected.length,
-      "var(--red)",
-      rejected
-        .map(
-          (v) => `
-        <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--red);margin-bottom:var(--sp-sm);">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <div>
-              <div style="font-size:14px;font-weight:600;color:var(--text)">${v.agency_name}</div>
-              <div style="font-size:11px;color:var(--red)">Reason: ${v.rejection_reason || "-"}</div>
-              <div style="font-size:11px;color:var(--text3)">${HF_UTILS.timeAgo(v.submitted_at)}</div>
-            </div>
-            ${badgeHTML("Rejected", "red")}
-          </div>
-        </div>`,
-        )
-        .join(""),
-    )}
-  `);
+  const unclaimVerification = async (verificationId, type) => {
+    const result = await HF_DB.unclaimVerification(verificationId, type);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+    HF_UTILS.toast("Verification released.", "success");
+    verifications(HF_DB.getSession(), type);
   };
 
   // ── TICKETS ─────────────────────────────────────────────────
@@ -1075,10 +997,6 @@ const HF_ADMIN = (() => {
 
   return {
     render,
-    approveSquad,
-    rejectSquad,
-    approveAgency,
-    rejectAgency,
     kickUser,
     banUser,
     unbanUser,
@@ -1092,6 +1010,9 @@ const HF_ADMIN = (() => {
     replyTicket,
     sendTicketReply,
     viewTicketUser,
+    claimAndReview,
+    verifications,
+    unclaimVerification,
   };
 })();
 

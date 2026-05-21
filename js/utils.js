@@ -490,7 +490,7 @@ const HF_UTILS = (() => {
       .map(
         (t) => `
     <button class="btn btn-outline btn-sm"
-      onclick="HF_PLAYER.updateTrainingDay(${dayIndex}, '${t}', ${specificDate ? `'${specificDate}'` : "null"});document.getElementById('day-picker').style.display='none'">
+      onclick="window['HF_' + HF_DB.getSession().role.toUpperCase()]?.updateTrainingDay(${dayIndex}, '${t}', ${specificDate ? `'${specificDate}'` : 'null'});document.getElementById('day-picker').style.display='none'">
       ${t}
     </button>`,
       )

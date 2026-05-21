@@ -359,7 +359,7 @@ const HF_AUTH = (() => {
       }
     }
 
-    const hashedPassword = await HF_DB.hashPassword(pass);
+    const hashedPassword = await HF_UTILS.hashPassword(pass);
     state.signup = {
       name,
       contact,
