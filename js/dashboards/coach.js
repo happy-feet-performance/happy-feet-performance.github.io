@@ -898,7 +898,7 @@ const HF_COACH = (() => {
       return;
     }
 
-    await HF_DB.updateSquadStatus(session.userId, "pending");
+    await HF_DB.updateVerificationStatus(session.userId, "squad", "pending");
     session.squadStatus = "pending";
     HF_DB.saveSession(session);
 
@@ -944,7 +944,7 @@ const HF_COACH = (() => {
     }
 
     // decrement team size
-    await HF_DB.decrementTeamSize(session.userId);
+    await HF_DB.updateTeamSize(session.userId, -1);
     session.profile = {
       ...session.profile,
       teamSize: Math.max(0, (session.profile?.teamSize || 1) - 1),
@@ -2551,77 +2551,6 @@ const HF_COACH = (() => {
     }
 
     HF_COACH.filterPlayers();
-  };
-
-  const recruitment = async (s) => {
-    // fetch players flagged by scouts where report has been shared
-    const { data: allProspects } = await HF_DB.getFlaggedProspects();
-
-    setMain(`
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Recruitment prospects</div>
-      <div style="font-size:13px;color:var(--text2);margin-bottom:var(--sp-lg)">
-        Players flagged and shared by verified scouts.
-      </div>
-      ${
-        !allProspects || allProspects.length === 0
-          ? `
-        <div style="text-align:center;padding:32px;color:var(--text2)">
-          <i class="ti ti-search" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No prospects yet</div>
-          <div style="font-size:13px">Players flagged by verified scouts will appear here once scouts share reports.</div>
-        </div>`
-          : allProspects
-              .map((sp) => {
-                const player = sp.player || {};
-                const p = player.profile || {};
-                const scout = sp.scout || {};
-                const overall = p.ratings
-                  ? Math.round(
-                      (p.ratings.speed +
-                        p.ratings.tech +
-                        p.ratings.tact +
-                        p.ratings.phys) /
-                        4,
-                    )
-                  : null;
-                const safeName = (player.name || "").replace(/'/g, "\\'");
-                const safeScout = (scout.name || "").replace(/'/g, "\\'");
-
-                return `
-            <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
-              <div class="avatar avatar-md" style="background:var(--green)">${HF_UTILS.initials(player.name || "?")}</div>
-              <div style="flex:1">
-                <div style="font-size:13px;font-weight:600;color:var(--text)">${player.name || "-"}</div>
-                <div style="font-size:11px;color:var(--text2)">${p.pos || "-"} · ${p.tier || "-"} · ${p.hometown || "-"}</div>
-                <div style="font-size:11px;color:var(--text3);margin-top:2px">
-                  Flagged by ${scout.name || "Scout"} · ${sp.scout_agency || ""}
-                </div>
-              </div>
-              <div style="text-align:right;flex-shrink:0;">
-                ${overall !== null ? `<div style="font-size:16px;font-weight:700;color:var(--gold)">${overall}%</div>` : '<div style="font-size:13px;color:var(--text3)">Unrated</div>'}
-                ${
-                  sp.report_shared
-                    ? `
-                  <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
-                    Report available
-                  </span>`
-                    : ""
-                }
-              </div>
-              <div style="display:flex;flex-direction:column;gap:4px;">
-                <button class="btn btn-primary btn-sm" onclick="HF_COACH.invitePlayer('${player.id}', '${safeName}')">
-                  <i class="ti ti-send"></i> Invite
-                </button>
-                <button class="btn btn-outline btn-sm" onclick="HF_COACH.messageScout('${sp.scout_id}', '${safeScout}')">
-                  <i class="ti ti-message"></i> Scout
-                </button>
-              </div>
-            </div>`;
-              })
-              .join("")
-      }
-    </div>`);
   };
 
   const showInvitePanel = () => {

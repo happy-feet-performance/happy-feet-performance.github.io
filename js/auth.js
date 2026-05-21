@@ -690,7 +690,7 @@ const HF_AUTH = (() => {
       return;
     }
 
-    await HF_DB.updateSquadStatus(session.userId, "pending");
+    await HF_DB.updateVerificationStatus(session.userId, "squad", "pending");
     session.squadStatus = "pending";
     HF_DB.saveSession(session);
 
@@ -867,7 +867,7 @@ const HF_AUTH = (() => {
       return;
     }
 
-    await HF_DB.updateAgencyStatus(session.userId, "pending");
+    await HF_DB.updateVerificationStatus(session.userId, "agency", "pending");
     session.agencyStatus = "pending";
     HF_DB.saveSession(session);
 

@@ -24,11 +24,12 @@ const HF_ADMIN = (() => {
 
   // ── DASHBOARD ──────────────────────────────────────────────
   const dashboard = async (s) => {
-    const { data: pending } = await HF_DB.getPendingVerifications();
-    const { data: agencyPending } = await HF_DB.getPendingAgencyVerifications();
-    const { data: allVerifications } = await HF_DB.getAllVerifications();
+    const { data: pending } = await HF_DB.getPendingVerifications("squad");
+    const { data: agencyPending } =
+      await HF_DB.getPendingVerifications("agency");
+    const { data: allVerifications } = await HF_DB.getAllVerifications("squad");
     const { data: allAgencyVerifications } =
-      await HF_DB.getAllAgencyVerifications();
+      await HF_DB.getAllVerifications("agency");
     const { data: allUsers } = await HF_DB.getAllUsers();
 
     const pendingCount = (pending?.length || 0) + (agencyPending?.length || 0);
@@ -110,17 +111,19 @@ const HF_ADMIN = (() => {
 
   // ── SQUAD/AGENCY ACTIONS ──────────────────────────────────────────
   const approveSquad = async (verificationId, coachId, teamName) => {
-    const result = await HF_DB.approveSquadVerification(
+    const result = await HF_DB.approveVerification(
       verificationId,
       coachId,
       teamName,
+      "squad",
     );
     if (result.error) {
       toast(result.error, "error");
       return;
     }
-    const { data: pending } = await HF_DB.getPendingVerifications();
-    const { data: agencyPending } = await HF_DB.getPendingAgencyVerifications();
+    const { data: pending } = await HF_DB.getPendingVerifications("squad");
+    const { data: agencyPending } =
+      await HF_DB.getPendingVerifications("agency");
     HF_ROUTER.refreshSidenavBadge(
       "squad-verifications",
       pending?.length || 0,
@@ -133,11 +136,12 @@ const HF_ADMIN = (() => {
   const rejectSquad = async (verificationId, coachId, teamName) => {
     const reason = prompt("Enter rejection reason:");
     if (!reason) return;
-    const result = await HF_DB.rejectSquadVerification(
+    const result = await HF_DB.rejectVerification(
       verificationId,
       coachId,
       teamName,
       reason,
+      "squad",
     );
     if (result.error) {
       toast(result.error, "error");
@@ -154,17 +158,19 @@ const HF_ADMIN = (() => {
   };
 
   const approveAgency = async (verificationId, scoutId, agencyName) => {
-    const result = await HF_DB.approveAgencyVerification(
+    const result = await HF_DB.approveVerification(
       verificationId,
       scoutId,
       agencyName,
+      "agency",
     );
     if (result.error) {
       toast(result.error, "error");
       return;
     }
 
-    const { data: agencyPending } = await HF_DB.getPendingAgencyVerifications();
+    const { data: agencyPending } =
+      await HF_DB.getPendingVerifications("agency");
     HF_ROUTER.refreshSidenavBadge(
       "agency-verifications",
       agencyPending?.length || 0,
@@ -178,18 +184,20 @@ const HF_ADMIN = (() => {
   const rejectAgency = async (verificationId, scoutId, agencyName) => {
     const reason = prompt(`Rejection reason for ${agencyName}:`);
     if (!reason) return;
-    const result = await HF_DB.rejectAgencyVerification(
+    const result = await HF_DB.rejectVerification(
       verificationId,
       scoutId,
       agencyName,
       reason,
+      "agency",
     );
     if (result.error) {
       toast(result.error, "error");
       return;
     }
 
-    const { data: agencyPending } = await HF_DB.getPendingAgencyVerifications();
+    const { data: agencyPending } =
+      await HF_DB.getPendingVerifications("agency");
     HF_ROUTER.refreshSidenavBadge(
       "agency-verifications",
       agencyPending?.length || 0,
@@ -295,7 +303,7 @@ const HF_ADMIN = (() => {
   </div>`;
 
   const squadVerifications = async (s) => {
-    const { data: allVerifications } = await HF_DB.getAllVerifications();
+    const { data: allVerifications } = await HF_DB.getAllVerifications("squad");
     const pending =
       allVerifications?.filter((v) => v.status === "pending") || [];
     const verified =
@@ -376,7 +384,7 @@ const HF_ADMIN = (() => {
 
   const agencyVerifications = async (s) => {
     const { data: allAgencyVerifications } =
-      await HF_DB.getAllAgencyVerifications();
+      await HF_DB.getAllVerifications("agency");
     const pending =
       allAgencyVerifications?.filter((v) => v.status === "pending") || [];
     const verified =

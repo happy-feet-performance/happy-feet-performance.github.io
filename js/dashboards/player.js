@@ -1887,7 +1887,7 @@ const HF_PLAYER = (() => {
       HF_DB.saveSession(session);
 
       // update coach team size
-      await HF_DB.incrementTeamSize(coachId);
+      await HF_DB.updateTeamSize(coachId, 1)
 
       HF_UTILS.toast(`Welcome to ${squadName}!`, "success");
     } else {
@@ -2026,7 +2026,7 @@ const HF_PLAYER = (() => {
 
   // ── FIND MY TEAM ───────────────────────────────────────
   const findmyteam = async (s) => {
-    const { data: coaches } = await HF_DB.getOpenCoaches();
+    const { data: coaches } = await HF_DB.getVerifiedCoaches(true);
 
     // fetch trial request status for each coach
     const coachesWithStatus = await Promise.all(

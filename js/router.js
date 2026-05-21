@@ -178,9 +178,9 @@ const HF_ROUTER = (() => {
     // check pending verifications for admin
     let pendingVerifications = 0;
     if (session.role === "admin") {
-      const { data: pending } = await HF_DB.getPendingVerifications();
+      const { data: pending } = await HF_DB.getPendingVerifications("squad");
       const { data: agencyPending } =
-        await HF_DB.getPendingAgencyVerifications();
+        await HF_DB.getPendingVerifications("agency");
       pendingVerifications =
         (pending?.length || 0) + (agencyPending?.length || 0);
     }
@@ -362,10 +362,11 @@ const HF_ROUTER = (() => {
           }
         });
 
-        HF_DB.subscribeToPendingVerifications(async (payload) => {
-          const { data: pending } = await HF_DB.getPendingVerifications();
+        HF_DB.subscribeToVerifications("squad", async (payload) => {
+          const { data: pending } =
+            await HF_DB.getPendingVerifications("squad");
           const { data: agencyPending } =
-            await HF_DB.getPendingAgencyVerifications();
+            await HF_DB.getPendingVerifications("agency");
           HF_ROUTER.refreshSidenavBadge(
             "squad-verifications",
             pending?.length || 0,
@@ -389,9 +390,9 @@ const HF_ROUTER = (() => {
           }, 500);
         });
 
-        HF_DB.subscribeToAgencyVerifications(async (payload) => {
+        HF_DB.subscribeToVerifications("agency", async (payload) => {
           const { data: agencyPending } =
-            await HF_DB.getPendingAgencyVerifications();
+            await HF_DB.getPendingVerifications("agency");
           HF_ROUTER.refreshSidenavBadge(
             "agency-verifications",
             agencyPending?.length || 0,
@@ -604,7 +605,7 @@ const HF_ROUTER = (() => {
 
     // check user status on every navigation
     if (session.role !== "admin") {
-      HF_DB.checkUserStatus(session.userId).then((status) => {
+      HF_DB.getUserStatus(session.userId).then((status) => {
         if (!status) {
           HF_DB.clearSession();
           document.getElementById("app-shell").classList.remove("visible");
@@ -655,7 +656,7 @@ const HF_ROUTER = (() => {
     }
 
     if (session.role === "coach") {
-      HF_DB.getLatestSquadStatus(session.userId).then((status) => {
+      HF_DB.getUserStatus(session.userId, "squad").then((status) => {
         if (status && status !== session.squadStatus) {
           session.squadStatus = status;
           HF_DB.saveSession(session);
@@ -672,7 +673,7 @@ const HF_ROUTER = (() => {
     }
 
     if (session.role === "scout") {
-      HF_DB.getLatestAgencyStatus(session.userId).then((status) => {
+      HF_DB.getUserStatus(session.userId, "agency").then((status) => {
         if (status && status !== session.agencyStatus) {
           session.agencyStatus = status;
           HF_DB.saveSession(session);
