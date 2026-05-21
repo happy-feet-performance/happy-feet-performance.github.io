@@ -137,6 +137,26 @@ const HF_ROUTER = (() => {
   // ─── Role accent colours ────────────────────────────────────
   const ROLE_COLORS = { player: "#1a7a2e", coach: "#C9961A", scout: "#185FA5" };
 
+  // ─── Forced Logout in case it's necessary ───────────────────
+  const _forceLogout = () => {
+    HF_DB.clearSession();
+    HF_DB.removeAllChannels();
+    HF_AGENT.hide();
+    _subscriptionsActive = false;
+
+    const shell = document.getElementById("app-shell");
+    if (shell) shell.classList.remove("visible");
+    document.getElementById("auth-screens").style.display = "flex";
+    HF_AUTH.showScreen("screen-login");
+
+    setTimeout(() => {
+      HF_UTILS.toast(
+        "Your password was changed. Please log in again.",
+        "error",
+      );
+    }, 500);
+  };
+
   // ─── Launch app after login/signup ─────────────────────────
   let _subscriptionsActive = false;
 
@@ -331,8 +351,25 @@ const HF_ROUTER = (() => {
         });
       }
 
+      if (session.role === "player" || session.role === "admin") {
+        HF_DB.subscribeToUserStatus(session.userId, async (updatedUser) => {
+          if (
+            (updatedUser.password_version || 1) > (session.passwordVersion || 1)
+          ) {
+            _forceLogout();
+          }
+        });
+      }
+
       if (session.role === "coach") {
         HF_DB.subscribeToUserStatus(session.userId, async (updatedUser) => {
+          if (
+            (updatedUser.password_version || 1) > (session.passwordVersion || 1)
+          ) {
+            _forceLogout();
+            return;
+          }
+
           const newStatus = updatedUser.squad_status;
           const newProfile = updatedUser.profile;
           let changed = false;
@@ -379,6 +416,13 @@ const HF_ROUTER = (() => {
 
       if (session.role === "scout") {
         HF_DB.subscribeToUserStatus(session.userId, async (updatedUser) => {
+          if (
+            (updatedUser.password_version || 1) > (session.passwordVersion || 1)
+          ) {
+            _forceLogout();
+            return;
+          }
+
           const newStatus = updatedUser.agency_status;
           if (newStatus && newStatus !== session.agencyStatus) {
             session.agencyStatus = newStatus;
@@ -690,6 +734,7 @@ const HF_ROUTER = (() => {
   };
 
   return {
+    _forceLogout,
     launch,
     navTo,
     toggleMobileNav,

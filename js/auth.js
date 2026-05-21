@@ -556,15 +556,16 @@ const HF_AUTH = (() => {
   // ─── Session helper ────────────────────────────────────────
   const _makeSession = (user) => ({
     userId: user.id,
-    role: user.role,
     name: user.name,
+    role: user.role,
     contact: user.contact,
     contactType: user.contactType,
-    displayContact: user.displayContact || user.contact,
-    profile: user.profile,
-    squadStatus: user.squadStatus || "unregistered",
-    agencyStatus: user.agencyStatus || "unregistered",
-    created: user.created,
+    displayContact: user.displayContact,
+    localPhone: user.localPhone,
+    profile: user.profile || {},
+    squadStatus: user.squadStatus,
+    agencyStatus: user.agencyStatus,
+    passwordVersion: user.passwordVersion || 1, // add this
   });
 
   const logout = () => {

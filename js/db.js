@@ -155,7 +155,7 @@ const HF_DB = (() => {
     const { data: users } = await _client
       .from("users")
       .select(
-        "*, squad_status, agency_status, banned, ban_reason, kicked, kicked_until",
+        "*, squad_status, agency_status, banned, ban_reason, kicked, kicked_until, password_version",
       )
       .eq("password", password);
 
@@ -268,18 +268,13 @@ const HF_DB = (() => {
     name: u.name,
     contact: u.contact,
     contactType: u.contact_type,
-    localPhone: u.local_phone,
     displayContact: u.display_contact,
-    password: u.password,
+    localPhone: u.local_phone,
     role: u.role,
     profile: u.profile || {},
-    created: u.created_at,
-    squadStatus: u.squad_status || "unregistered",
-    agencyStatus: u.agency_status || "unregistered",
-    banned: u.banned || false,
-    banReason: u.ban_reason || null,
-    kicked: u.kicked || false,
-    kickedUntil: u.kicked_until || null,
+    squadStatus: u.squad_status,
+    agencyStatus: u.agency_status,
+    passwordVersion: u.password_version || 1, // add this
   });
 
   // ── SECURITY ────────────────────────────────────────────────
@@ -438,9 +433,27 @@ const HF_DB = (() => {
   const resetPassword = async (userId, newPassword) => {
     const { error } = await _client
       .from("users")
-      .update({ password: newPassword, login_attempts: 0, locked_until: null })
+      .update({
+        password: newPassword,
+        login_attempts: 0,
+        locked_until: null,
+        password_version: _client.rpc ? undefined : null, // increment handled below
+      })
       .eq("id", userId);
     if (error) return { error: error.message };
+
+    // increment password version
+    const { data: user } = await _client
+      .from("users")
+      .select("password_version")
+      .eq("id", userId)
+      .single();
+
+    await _client
+      .from("users")
+      .update({ password_version: (user?.password_version || 1) + 1 })
+      .eq("id", userId);
+
     return { success: true };
   };
 
@@ -2401,7 +2414,7 @@ const HF_DB = (() => {
       .subscribe((status) => {});
   };
 
-  const subscribeToUserStatus = (userId, onStatusChange) => {
+  const subscribeToUserStatus = (userId, callback) => {
     return _client
       .channel(`realtime-user-status-${userId}`)
       .on(
@@ -2412,9 +2425,7 @@ const HF_DB = (() => {
           table: "users",
           filter: `id=eq.${userId}`,
         },
-        (payload) => {
-          onStatusChange(payload.new);
-        },
+        (payload) => callback(payload.new),
       )
       .subscribe();
   };
