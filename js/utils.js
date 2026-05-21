@@ -403,8 +403,8 @@ const HF_UTILS = (() => {
         flex-direction:column;gap:2px;
         font-size:12px;
         font-weight:${isToday ? "700" : "400"};
-        color:${isFuture ? "var(--text3)" : hasLog ? "#fff" : isThisWeek ? "var(--text)" : "var(--text2)"};
-        background:${hasLog ? color : isThisWeek && !isFuture ? "var(--bg2)" : "transparent"};
+        color:${isFuture ? "var(--text3)" : hasLog ? "#fff" : "var(--text2)"};
+        background:${hasLog ? color : "transparent"};
         opacity:${isFuture ? 0.35 : 1};
         position:relative;
       ">

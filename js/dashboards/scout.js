@@ -2095,6 +2095,13 @@ const HF_SCOUT = (() => {
 
   return {
     render,
+    dashboard,
+    messages,
+    prospects,
+    pipeline,
+    profile,
+    discover,
+    findmyteam,
     resubmitAgency,
     submitAgencyResubmission,
     savePlayer,

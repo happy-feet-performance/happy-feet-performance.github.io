@@ -2768,6 +2768,14 @@ const HF_COACH = (() => {
 
   return {
     render,
+    dashboard,
+    squad,
+    messages,
+    profile,
+    training,
+    tracking,
+    health,
+    findmyteam,
     showInvitePanel,
     searchPlayers,
     invitePlayer,

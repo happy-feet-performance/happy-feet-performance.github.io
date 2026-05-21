@@ -572,8 +572,7 @@ const HF_PLAYER = (() => {
 
     const dayView = () => {
       const todayISO = HF_DB.localDate();
-      const selected =
-        schedule[todayISO] || schedule[today] || schedule[String(today)];
+      const selected = schedule[todayISO] || null;
       const color = selected ? typeColors[selected] : "var(--border)";
 
       return `
@@ -598,8 +597,7 @@ const HF_PLAYER = (() => {
           .map((day, i) => {
             const isToday = i === today;
             const dateISO = HF_UTILS.getDateForDayISO(i);
-            const selected =
-              schedule[dateISO] || schedule[i] || schedule[String(i)];
+            const selected = schedule[dateISO] || null;
             const color = selected ? typeColors[selected] : null;
             const logDate = HF_UTILS.getDateForDayISO(i);
             const hasLog = logs?.find((l) => l.date === logDate);
@@ -644,8 +642,7 @@ const HF_PLAYER = (() => {
         const isFuture = date > now;
         const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 
-        // check specific date first, fall back to weekday
-        const selected = schedule[dateStr] || schedule[dayOfWeek];
+        const selected = !isFuture ? (schedule[dateStr] || null) : null;
         const color = selected ? typeColors[selected] : null;
         const hasLog = logs?.find((l) => l.date === dateStr);
 
@@ -881,6 +878,7 @@ const HF_PLAYER = (() => {
   // ── HEALTH ─────────────────────────────────────────────────
   const health = async (s) => {
     const { data: todayLog } = await HF_DB.getTodayHealthLog(s.userId);
+    window._todayHealthLog = todayLog; // cache it
     const { data: logs } = await HF_DB.getHealthLogs(s.userId);
 
     const metrics = [
@@ -948,8 +946,8 @@ const HF_PLAYER = (() => {
             </span>
           </div>
           <input type="range" min="1" max="10" value="${todayLog?.[m.id] || 5}" step="1"
-            style="width:100%;accent-color:var(--gold);"
-            oninput="document.getElementById('hv-${m.id}').textContent=this.value">
+            disabled
+            style="width:100%;accent-color:var(--gold);opacity:0.5;pointer-events:none;">
           <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:4px;">
             <span>1: Low</span><span>10: High</span>
           </div>
@@ -978,13 +976,13 @@ const HF_PLAYER = (() => {
               <i class="ti ${m.icon}" style="color:var(--text2)"></i>
               <span style="font-size:13px;font-weight:600;color:var(--text)">${m.label}</span>
             </div>
-            <span id="hv-${m.id}" style="font-family:var(--font);font-size:14px;font-weight:700;color:var(--gold)">
+            <span id="sv-${m.id}" style="font-family:var(--font);font-size:14px;font-weight:700;color:var(--gold)">
               ${todayLog?.[m.id] || 5}
             </span>
           </div>
           <input type="range" min="1" max="10" value="${todayLog?.[m.id] || 5}" step="1"
             style="width:100%;accent-color:var(--gold)"
-            oninput="document.getElementById('hv-${m.id}').textContent=this.value">
+            oninput="document.getElementById('sv-${m.id}').textContent=this.value">
         </div>`,
         )
         .join("")}
@@ -1098,6 +1096,20 @@ const HF_PLAYER = (() => {
   const showHealthSliders = () => {
     document.getElementById("health-logged-view").style.display = "none";
     document.getElementById("health-slider-view").style.display = "block";
+
+    const todayLog = window._todayHealthLog;
+    if (!todayLog) return;
+
+    ["energy", "mood", "sleep", "soreness", "hydration"].forEach((k) => {
+      const val = todayLog[k] || 5;
+      const slider = document.querySelector(`input[oninput*="sv-${k}"]`);
+      const display = document.getElementById(`sv-${k}`);
+      if (slider) slider.value = val;
+      if (display) display.textContent = val;
+    });
+
+    const notes = document.getElementById("health-notes");
+    if (notes) notes.value = todayLog.notes || "";
   };
 
   const showHealthCards = () => {
@@ -1109,14 +1121,14 @@ const HF_PLAYER = (() => {
     const session = HF_DB.getSession();
 
     const data = {
-      energy: parseInt(document.getElementById("hv-energy")?.textContent || 5),
-      mood: parseInt(document.getElementById("hv-mood")?.textContent || 5),
-      sleep: parseInt(document.getElementById("hv-sleep")?.textContent || 5),
+      energy: parseInt(document.getElementById("sv-energy")?.textContent || 5),
+      mood: parseInt(document.getElementById("sv-mood")?.textContent || 5),
+      sleep: parseInt(document.getElementById("sv-sleep")?.textContent || 5),
       soreness: parseInt(
-        document.getElementById("hv-soreness")?.textContent || 5,
+        document.getElementById("sv-soreness")?.textContent || 5,
       ),
       hydration: parseInt(
-        document.getElementById("hv-hydration")?.textContent || 5,
+        document.getElementById("sv-hydration")?.textContent || 5,
       ),
       notes: document.getElementById("health-notes")?.value.trim() || null,
     };
@@ -1911,7 +1923,7 @@ const HF_PLAYER = (() => {
   const faith = async (s) => {
     const todayKey = HF_DB.localDate();
     const storageKey = `hf_faith_checklist_${s.userId}_${todayKey}`;
-    const checked = JSON.parse(localStorage.getItem(storageKey) || "[]");
+    const checked = JSON.parse(localStorage.getItem(storageKey) || "{}");
 
     const prayers = [
       {
@@ -1936,7 +1948,7 @@ const HF_PLAYER = (() => {
       },
     ];
 
-    const allChecked = prayers.every((p) => checked.includes(p.id));
+    const allChecked = prayers.every((p) => checked[p.id]);
 
     setMain(`
     <div class="faith-hero">
@@ -1963,17 +1975,17 @@ const HF_PLAYER = (() => {
           </span>`
             : `
           <span style="font-family:var(--font);font-size:10px;color:var(--text3);">
-            ${checked.length}/${prayers.length} completed
+            ${Object.values(checked).filter(Boolean).length}/${prayers.length} completed
           </span>`
         }
       </div>
 
       ${prayers
         .map((p) => {
-          const isChecked = checked.includes(p.id);
+          const isChecked = !!checked[p.id];
           return `
           <div style="display:flex;align-items:flex-start;gap:var(--sp-md);padding:var(--sp-md);background:var(--bg2);border-left:2px solid ${isChecked ? "var(--green)" : "var(--faith)"};margin-bottom:var(--sp-sm);cursor:pointer;transition:var(--trans);"
-            onclick="HF_ROLE_UTILS.togglePrayer('${p.id}', '${todayKey}', '${s.userId}')">
+            onclick="HF_ROLE_UTILS.togglePrayer('${p.id}', 'player')">
             <div style="width:20px;height:20px;border:2px solid ${isChecked ? "var(--green)" : "var(--faith)"};background:${isChecked ? "var(--green)" : "transparent"};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">
               ${isChecked ? '<i class="ti ti-check" style="font-size:12px;color:#fff;"></i>' : ""}
             </div>
@@ -2210,6 +2222,13 @@ const HF_PLAYER = (() => {
   return {
     render,
     training,
+    faith,
+    messages,
+    stats,
+    health,
+    findmyteam,
+    profile,
+    dashboard,
     updateTrainingDay,
     logSessionComplete,
     toggleSessionComplete,

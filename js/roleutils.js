@@ -1092,10 +1092,10 @@ const HF_ROLE_UTILS = (() => {
     localStorage.setItem(key, JSON.stringify(checklist));
 
     const morningIds = ["morning", "prematch", "struggle"];
-    const eveningIds = ["evening"];
     const allMorningDone = morningIds.every((id) => checklist[id]);
-    const allEveningDone = eveningIds.every((id) => checklist[id]);
+    const allEveningDone = !!checklist["evening"];
 
+    // save streak
     if (allMorningDone) {
       const p = session.profile || {};
       const lastFaith = p.lastFaithDate;
@@ -1103,7 +1103,6 @@ const HF_ROLE_UTILS = (() => {
       let newStreak = 1;
       if (lastFaith === yesterday) newStreak = (p.faithStreak || 0) + 1;
       else if (lastFaith === today) newStreak = p.faithStreak || 1;
-
       const updatedProfile = {
         ...p,
         faithStreak: newStreak,
@@ -1114,15 +1113,22 @@ const HF_ROLE_UTILS = (() => {
       HF_DB.saveSession(session);
     }
 
-    if (allMorningDone && allEveningDone) {
-      HF_UTILS.toast("Full day devotion complete! 🙏", "success");
-      HF_UTILS.launchConfetti();
-    } else if (allMorningDone) {
-      HF_UTILS.toast("Morning devotion complete! 🙏", "success");
-    }
-
+    // re-render immediately to show checked state
     const handler = _getHandler(role);
-    handler?.faith?.(session);
+    handler?.faith?.(HF_DB.getSession());
+
+    // then confetti on top after render
+    if (allMorningDone && allEveningDone) {
+      setTimeout(() => {
+        HF_UTILS.toast("Full day devotion complete! 🙏", "success");
+        HF_UTILS.launchConfetti();
+      }, 100);
+    } else if (allMorningDone) {
+      setTimeout(
+        () => HF_UTILS.toast("Morning devotion complete! 🙏", "success"),
+        100,
+      );
+    }
   };
 
   // ── FILTERING ──────────────────────────────────────────────

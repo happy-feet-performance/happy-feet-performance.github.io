@@ -2435,7 +2435,6 @@ const HF_DB = (() => {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "tickets" },
         (payload) => {
-          console.log("ticket INSERT fired", payload);
           callback({ ...payload, eventType: "INSERT" });
         },
       )
@@ -2443,13 +2442,10 @@ const HF_DB = (() => {
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "tickets" },
         (payload) => {
-          console.log("ticket UPDATE fired", payload);
           callback({ ...payload, eventType: "UPDATE" });
         },
       )
-      .subscribe((status) =>
-        console.log("ticket subscription status:", status),
-      );
+      .subscribe();
     return channel;
   };
 
