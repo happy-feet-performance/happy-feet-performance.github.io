@@ -431,29 +431,36 @@ const HF_DB = (() => {
   };
 
   const resetPassword = async (userId, newPassword) => {
+    // fetch current password and history
+    const { data: user } = await _client
+      .from("users")
+      .select("password, password_history, password_version")
+      .eq("id", userId)
+      .single();
+
+    if (!user) return { error: "User not found." };
+
+    // check against last 5 passwords
+    const history = user.password_history || [];
+    if (history.includes(newPassword)) {
+      return { error: "You cannot reuse one of your last 5 passwords." };
+    }
+
+    // build new history — add current password to front, keep last 5
+    const newHistory = [user.password, ...history].slice(0, 5);
+
     const { error } = await _client
       .from("users")
       .update({
         password: newPassword,
+        password_history: newHistory,
+        password_version: (user.password_version || 1) + 1,
         login_attempts: 0,
         locked_until: null,
-        password_version: _client.rpc ? undefined : null, // increment handled below
       })
       .eq("id", userId);
+
     if (error) return { error: error.message };
-
-    // increment password version
-    const { data: user } = await _client
-      .from("users")
-      .select("password_version")
-      .eq("id", userId)
-      .single();
-
-    await _client
-      .from("users")
-      .update({ password_version: (user?.password_version || 1) + 1 })
-      .eq("id", userId);
-
     return { success: true };
   };
 
