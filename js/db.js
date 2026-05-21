@@ -2429,19 +2429,28 @@ const HF_DB = (() => {
   };
 
   const subscribeToTickets = (callback) => {
-    return _client
-      .channel(`realtime-tickets-${Math.random().toString(36).slice(2)}`)
+    const channel = _client
+      .channel(`realtime-tickets-admin`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "tickets" },
-        (payload) => callback({ ...payload, eventType: "INSERT" }),
+        (payload) => {
+          console.log("ticket INSERT fired", payload);
+          callback({ ...payload, eventType: "INSERT" });
+        },
       )
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "tickets" },
-        (payload) => callback({ ...payload, eventType: "UPDATE" }),
+        (payload) => {
+          console.log("ticket UPDATE fired", payload);
+          callback({ ...payload, eventType: "UPDATE" });
+        },
       )
-      .subscribe();
+      .subscribe((status) =>
+        console.log("ticket subscription status:", status),
+      );
+    return channel;
   };
 
   const subscribeToUserTickets = (userId, callback) => {

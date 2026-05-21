@@ -611,16 +611,18 @@ const HF_ROLE_UTILS = (() => {
 
     const unread =
       tickets?.filter((t) => {
-        const msgs = t.messages || [];
-        const lastMsg = msgs[msgs.length - 1];
-        return lastMsg?.is_admin && t.status !== "resolved";
+        const last = (t.messages || [])[t.messages?.length - 1];
+        return last?.is_admin && t.status !== "resolved";
       }) || [];
 
     const replied =
       tickets?.filter((t) => {
-        const msgs = t.messages || [];
-        const lastMsg = msgs[msgs.length - 1];
-        return !lastMsg?.is_admin && msgs.length > 1 && t.status !== "resolved";
+        const last = (t.messages || [])[t.messages?.length - 1];
+        return (
+          !last?.is_admin &&
+          (t.messages?.length || 0) > 1 &&
+          t.status !== "resolved"
+        );
       }) || [];
 
     const resolved = tickets?.filter((t) => t.status === "resolved") || [];
@@ -642,60 +644,68 @@ const HF_ROLE_UTILS = (() => {
       const lastMsg = t.messages?.[t.messages.length - 1];
 
       return `
-        <div style="background:var(--bg);border:0.5px solid ${isUnread ? "var(--gold)" : "var(--border)"};border-left:4px solid ${isUnread ? "var(--gold)" : statusColor};margin-bottom:var(--sp-sm);cursor:pointer;transition:background 0.15s ease;position:relative;"
-          onmouseover="this.style.background='var(--bg2)'"
-          onmouseout="this.style.background='var(--bg)'"
-          onclick="HF_ROLE_UTILS.viewTicketThread('${t.id}','${t.subject.replace(/'/g, "\\'")}',${fromMessages},'${role}')">
+      <div style="background:var(--bg);border:0.5px solid ${isUnread ? "var(--gold)" : "var(--border)"};border-left:4px solid ${isUnread ? "var(--gold)" : statusColor};margin-bottom:var(--sp-sm);cursor:pointer;transition:background 0.15s ease;position:relative;"
+        onmouseover="this.style.background='var(--bg2)'"
+        onmouseout="this.style.background='var(--bg)'"
+        onclick="HF_ROLE_UTILS.viewTicketThread('${t.id}','${t.subject.replace(/'/g, "\\'")}',${fromMessages},'${role}')">
+        ${
+          isUnread
+            ? `
+          <div style="position:absolute;top:0;right:0;background:var(--gold);padding:2px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#0f0f0d;">
+            New reply
+          </div>`
+            : ""
+        }
+        <div style="padding:var(--sp-md) var(--sp-lg);">
+
+          <!-- subject + status + chevron -->
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+            <div style="flex:1;min-width:0;font-size:13px;font-weight:${isUnread ? "700" : "600"};color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+              ${t.subject}
+            </div>
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 6px;background:${statusColor}22;color:${statusColor};flex-shrink:0;">
+              ${statusLabel}
+            </span>
+            <i class="ti ti-chevron-right" style="color:var(--text3);font-size:16px;flex-shrink:0;"></i>
+          </div>
+
+          <!-- metadata -->
+          <div style="font-size:11px;color:var(--text3);">
+            ${[
+              t.category
+                ? t.category.charAt(0).toUpperCase() + t.category.slice(1)
+                : "General",
+              HF_UTILS.timeAgo(t.created_at),
+              `${msgCount} message${msgCount !== 1 ? "s" : ""}`,
+            ].join(" · ")}
+          </div>
+
+          <!-- claimed by -->
           ${
-            isUnread
+            t.status === "claimed"
               ? `
-            <div style="position:absolute;top:0;right:0;background:var(--gold);padding:2px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#0f0f0d;">
-              New reply
+            <div style="font-size:11px;color:var(--text2);margin-top:6px;padding-top:6px;border-top:0.5px solid var(--border);display:flex;align-items:center;gap:4px;">
+              <i class="ti ti-user" style="color:var(--gold)"></i>
+              <span>Being handled by <strong style="color:var(--text)">${t.claimer?.name || "HappyFeet Support"}</strong></span>
             </div>`
               : ""
           }
-          <div style="padding:var(--sp-md) var(--sp-lg);">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--sp-md);margin-bottom:6px;">
-              <div style="flex:1;min-width:0;">
-                <div style="font-size:13px;font-weight:${isUnread ? "700" : "600"};color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                  ${t.subject}
-                </div>
-                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px;">
-                  <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;background:${statusColor}22;color:${statusColor};white-space:nowrap;">
-                    ${statusLabel}
-                  </span>
-                  <span style="font-size:10px;color:var(--text3);">·</span>
-                  <span style="font-size:11px;color:var(--text2);">${t.category?.charAt(0).toUpperCase() + t.category?.slice(1) || ""}</span>
-                  <span style="font-size:10px;color:var(--text3);">·</span>
-                  <span style="font-size:11px;color:var(--text3);">${HF_UTILS.timeAgo(t.created_at)}</span>
-                  <span style="font-size:10px;color:var(--text3);">·</span>
-                  <span style="font-size:11px;color:var(--text3);">${msgCount} message${msgCount !== 1 ? "s" : ""}</span>
-                </div>
-              </div>
-              <i class="ti ti-chevron-right" style="color:var(--text3);font-size:16px;flex-shrink:0;"></i>
-            </div>
-            ${
-              t.status === "claimed"
-                ? `
-              <div style="font-size:11px;color:var(--text2);padding-top:6px;border-top:0.5px solid var(--border);display:flex;align-items:center;gap:4px;">
-                <i class="ti ti-user" style="color:var(--gold)"></i>
-                <span>Being handled by <strong style="color:var(--text)">${t.claimer?.name || "HappyFeet Support"}</strong></span>
-              </div>`
-                : ""
-            }
-            ${
-              lastMsg
-                ? `
-              <div style="font-size:12px;color:var(--text2);margin-top:6px;padding:8px 12px;background:${isUnread ? "rgba(196,154,10,.06)" : "var(--bg2)"};border-left:${isUnread ? "2px solid var(--gold)" : "none"};">
-                <span style="font-weight:600;color:${lastMsg.is_admin ? "var(--gold)" : "var(--text)"};">
-                  ${lastMsg.is_admin ? "Support" : "You"}:
-                </span>
-                ${lastMsg.body.slice(0, 100)}${lastMsg.body.length > 100 ? "..." : ""}
-              </div>`
-                : ""
-            }
-          </div>
-        </div>`;
+
+          <!-- last message -->
+          ${
+            lastMsg
+              ? `
+            <div style="font-size:12px;color:var(--text2);margin-top:6px;padding:8px 12px;background:${isUnread ? "rgba(196,154,10,.06)" : "var(--bg2)"};border-left:${isUnread ? "2px solid var(--gold)" : "none"};">
+              <span style="font-weight:600;color:${lastMsg.is_admin ? "var(--gold)" : "var(--text)"};">
+                ${lastMsg.is_admin ? "Support" : "You"}:
+              </span>
+              ${lastMsg.body.slice(0, 100)}${lastMsg.body.length > 100 ? "..." : ""}
+            </div>`
+              : ""
+          }
+
+        </div>
+      </div>`;
     };
 
     const section = (
@@ -705,68 +715,65 @@ const HF_ROLE_UTILS = (() => {
       defaultOpen = true,
       isUnreadSection = false,
     ) => `
-      <div class="card" style="margin-bottom:var(--sp-md);${isUnreadSection ? "border-top:3px solid var(--gold);" : ""}">
-        <div class="card-title" style="cursor:pointer;justify-content:space-between;"
-          onclick="const c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none';this.querySelector('i').className='ti '+(c.style.display==='none'?'ti-chevron-down':'ti-chevron-up');">
-          <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-            <div class="card-dot" style="background:${color}"></div>${title}
-            ${
-              isUnreadSection
-                ? `
-              <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">
-                ${items.length} new
-              </span>`
-                : `<span style="font-size:11px;color:var(--text3)">${items.length}</span>`
-            }
-          </div>
-          <i class="ti ${defaultOpen ? "ti-chevron-up" : "ti-chevron-down"}" style="font-size:14px;color:var(--text3)"></i>
-        </div>
-        <div style="display:${defaultOpen ? "block" : "none"}">
+    <div class="card" style="margin-bottom:var(--sp-md);${isUnreadSection ? "border-top:3px solid var(--gold);" : ""}">
+      <div class="card-title" style="cursor:pointer;justify-content:space-between;"
+        onclick="const c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none';this.querySelector('i').className='ti '+(c.style.display==='none'?'ti-chevron-down':'ti-chevron-up');">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot" style="background:${color}"></div>${title}
           ${
-            items.length === 0
-              ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No tickets here.</div>`
-              : items.map((t) => ticketCard(t, isUnreadSection)).join("")
+            isUnreadSection
+              ? `<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">${items.length} new</span>`
+              : `<span style="font-size:11px;color:var(--text3)">${items.length}</span>`
           }
         </div>
-      </div>`;
+        <i class="ti ${defaultOpen ? "ti-chevron-up" : "ti-chevron-down"}" style="font-size:14px;color:var(--text3)"></i>
+      </div>
+      <div style="display:${defaultOpen ? "block" : "none"}">
+        ${
+          items.length === 0
+            ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No tickets here.</div>`
+            : items.map((t) => ticketCard(t, isUnreadSection)).join("")
+        }
+      </div>
+    </div>`;
 
     setMain(`
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-lg);">
-        <div style="display:flex;align-items:center;gap:var(--sp-md);">
-          <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('${fromMessages ? "messages" : "dashboard"}')">
-            <i class="ti ti-arrow-left"></i> Back
-          </button>
-          <div style="font-size:14px;font-weight:700;color:var(--text);">My support tickets</div>
-        </div>
-        <button class="btn btn-primary btn-sm" onclick="HF_ROLE_UTILS.newTicket(HF_DB.getSession(), ${fromMessages}, '${role}')">
-          <i class="ti ti-plus"></i> New ticket
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-lg);">
+      <div style="display:flex;align-items:center;gap:var(--sp-md);">
+        <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('${fromMessages ? "messages" : "dashboard"}')">
+          <i class="ti ti-arrow-left"></i> Back
         </button>
+        <div style="font-size:14px;font-weight:700;color:var(--text);">My support tickets</div>
       </div>
+      <button class="btn btn-primary btn-sm" onclick="HF_ROLE_UTILS.newTicket(HF_DB.getSession(), ${fromMessages}, '${role}')">
+        <i class="ti ti-plus"></i> New ticket
+      </button>
+    </div>
 
+    ${
+      !tickets || tickets.length === 0
+        ? `
+      <div class="card">
+        <div style="text-align:center;padding:48px 32px;">
+          <i class="ti ti-ticket" style="font-size:48px;margin-bottom:16px;display:block;color:var(--text3)"></i>
+          <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px">No tickets yet</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:24px">Submit a support ticket if you need help.</div>
+          <button class="btn btn-primary btn-sm" onclick="HF_ROLE_UTILS.newTicket(HF_DB.getSession(), ${fromMessages}, '${role}')">
+            <i class="ti ti-plus"></i> New ticket
+          </button>
+        </div>
+      </div>`
+        : `
+      ${unread.length > 0 ? section("Needs your attention", "var(--gold)", unread, true, true) : ""}
+      ${replied.length > 0 ? section("Awaiting response", "var(--blue)", replied, true, false) : ""}
+      ${resolved.length > 0 ? section("Resolved", "var(--green)", resolved, false, false) : ""}
       ${
-        !tickets || tickets.length === 0
-          ? `
-        <div class="card">
-          <div style="text-align:center;padding:48px 32px;">
-            <i class="ti ti-ticket" style="font-size:48px;margin-bottom:16px;display:block;color:var(--text3)"></i>
-            <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px">No tickets yet</div>
-            <div style="font-size:13px;color:var(--text2);margin-bottom:24px">Submit a support ticket if you need help.</div>
-            <button class="btn btn-primary btn-sm" onclick="HF_ROLE_UTILS.newTicket(HF_DB.getSession(), ${fromMessages}, '${role}')">
-              <i class="ti ti-plus"></i> New ticket
-            </button>
-          </div>
-        </div>`
-          : `
-        ${unread.length > 0 ? section("Needs your attention", "var(--gold)", unread, true, true) : ""}
-        ${replied.length > 0 ? section("Awaiting response", "var(--blue)", replied, true, false) : ""}
-        ${resolved.length > 0 ? section("Resolved", "var(--green)", resolved, false, false) : ""}
-        ${
-          unread.length === 0 && replied.length === 0 && resolved.length === 0
-            ? section("All tickets", "var(--text3)", tickets, true, false)
-            : ""
-        }`
-      }
-    `);
+        unread.length === 0 && replied.length === 0 && resolved.length === 0
+          ? section("All tickets", "var(--text3)", tickets, true, false)
+          : ""
+      }`
+    }
+  `);
   };
 
   const newTicket = (s, fromMessages = false, role) => {

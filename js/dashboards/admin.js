@@ -971,30 +971,6 @@ const HF_ADMIN = (() => {
     setMain(html);
   };
 
-  // ── ADMIN FUNCTIONS ───────────────────────────────────────
-  const composeMessage = () => HF_ROLE_UTILS.composeMessage("admin");
-  const searchRecipients = (q) => HF_ROLE_UTILS.searchRecipients(q, "admin");
-  const selectRecipient = (id, name, role) =>
-    HF_ROLE_UTILS.selectRecipient(id, name, role, "admin");
-  const removeRecipient = (id) => HF_ROLE_UTILS.removeRecipient(id);
-  const sendComposedMessage = () => HF_ROLE_UTILS.sendComposedMessage("admin");
-  const viewThread = (tid, uid, sub) =>
-    HF_ROLE_UTILS.viewThread(tid, uid, sub, "admin");
-  const sendReply = (tid, sub, thid) =>
-    HF_ROLE_UTILS.sendReply(tid, sub, thid, "admin");
-  const toggleMsgActions = (mid) => HF_ROLE_UTILS.toggleMsgActions(mid);
-  const replyToMessage = (mid, fid, sn, sub, thid) =>
-    HF_ROLE_UTILS.replyToMessage(mid, fid, sn, sub, thid, "admin");
-  const viewSenderProfile = (uid) =>
-    HF_ROLE_UTILS.viewSenderProfile(uid, "admin");
-  const reportToAdmin = (fid, sn) =>
-    HF_ROLE_UTILS.reportToAdmin(fid, sn, "admin");
-  const archiveMessage = (mid, el) =>
-    HF_ROLE_UTILS.archiveMessage(mid, el, "admin");
-  const unarchiveMessage = (mid) =>
-    HF_ROLE_UTILS.unarchiveMessage(mid, "admin");
-  const readMessage = (mid, el) => HF_ROLE_UTILS.readMessage(mid, el, "admin");
-
   return {
     render,
     kickUser,

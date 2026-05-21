@@ -208,58 +208,58 @@ const HF_UTILS = (() => {
     };
 
     const msgRow = (m) => `
-      <div class="msg-item" id="msg-${m.id}" onclick="${
-        m.from_id === "admin" || m.from_id === "system"
-          ? `HF_${role.toUpperCase()}.readMessage('${m.id}', document.getElementById('msg-${m.id}'))`
-          : `HF_${role.toUpperCase()}.viewThread('${m.thread_id || m.id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')`
-      }">
-        <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
-          <i class="ti ti-shield" style="font-size:16px;color:${!m.read ? "var(--gold)" : "var(--text2)"}"></i>
-        </div>
-        <div style="flex:1">
-          <div style="font-size:11px;font-family:var(--font);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
-            From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : m.from_id === "admin" ? "HappyFeet Admin" : "HappyFeet")}
+        <div class="msg-item" id="msg-${m.id}" onclick="${
+          m.from_id === "admin" || m.from_id === "system"
+            ? `HF_ROLE_UTILS.readMessage('${m.id}', document.getElementById('msg-${m.id}'), '${role}')`
+            : `HF_ROLE_UTILS.viewThread('${m.thread_id || m.id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}', '${role}')`
+        }">
+          <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
+            <i class="ti ti-shield" style="font-size:16px;color:${!m.read ? "var(--gold)" : "var(--text2)"}"></i>
           </div>
-          <div class="msg-name">${m.subject || "Message"}</div>
-          <div class="msg-preview">${m.body}</div>
-          <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-          ${!m.read ? `<div class="msg-unread" id="badge-${m.id}">1</div>` : ""}
-          <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
-            title="Archive message"
-            onclick="event.stopPropagation();HF_${role.toUpperCase()}.archiveMessage('${m.id}', this)">
-            <i class="ti ti-archive"></i>
-          </button>
-          <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
-            title="More options"
-            onclick="event.stopPropagation();HF_${role.toUpperCase()}.toggleMsgActions('${m.id}', '${m.from_id}', '${(m.senderName || "HappyFeet").replace(/'/g, "\\'")}')">
-            <i class="ti ti-dots-vertical"></i>
-          </button>
-        </div>
-      </div>
-      <div id="msg-actions-${m.id}" style="display:none;padding:var(--sp-sm);background:var(--bg2);border-left:2px solid var(--border);margin-bottom:4px;">
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          ${
-            m.from_id && m.from_id !== "admin" && m.from_id !== "system"
-              ? `
-            <button class="btn btn-outline btn-sm" onclick="HF_${role.toUpperCase()}.viewThread('${m.thread_id || m.id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')">
-              <i class="ti ti-arrow-back-up"></i> Reply
+          <div style="flex:1">
+            <div style="font-size:11px;font-family:var(--font);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+              From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : m.from_id === "admin" ? "HappyFeet Admin" : "HappyFeet")}
+            </div>
+            <div class="msg-name">${m.subject || "Message"}</div>
+            <div class="msg-preview">${m.body}</div>
+            <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+            ${!m.read ? `<div class="msg-unread" id="badge-${m.id}">1</div>` : ""}
+            <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
+              title="Archive message"
+              onclick="event.stopPropagation();HF_ROLE_UTILS.archiveMessage('${m.id}', this, '${role}')">
+              <i class="ti ti-archive"></i>
             </button>
-            <button class="btn btn-outline btn-sm" onclick="HF_${role.toUpperCase()}.viewSenderProfile('${m.from_id}')">
-              <i class="ti ti-user"></i> View profile
+            <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
+              title="More options"
+              onclick="event.stopPropagation();HF_ROLE_UTILS.toggleMsgActions('${m.id}')">
+              <i class="ti ti-dots-vertical"></i>
             </button>
-            <button class="btn btn-danger btn-sm" onclick="HF_ROLE_UTILS.reportToAdmin('${m.from_id}', '${(m.senderName || "").replace(/'/g, "\\'")}', '${role}')">
-              <i class="ti ti-flag"></i> Report
-            </button>`
-              : `
-            <div style="font-size:12px;color:var(--text2);padding:4px">
-              <i class="ti ti-info-circle" style="margin-right:4px"></i>
-              System message: no actions available.
-            </div>`
-          }
+          </div>
         </div>
-      </div>`;
+        <div id="msg-actions-${m.id}" style="display:none;padding:var(--sp-sm);background:var(--bg2);border-left:2px solid var(--border);margin-bottom:4px;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${
+              m.from_id && m.from_id !== "admin" && m.from_id !== "system"
+                ? `
+              <button class="btn btn-outline btn-sm" onclick="HF_ROLE_UTILS.viewThread('${m.thread_id || m.id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}', '${role}')">
+                <i class="ti ti-arrow-back-up"></i> Reply
+              </button>
+              <button class="btn btn-outline btn-sm" onclick="HF_ROLE_UTILS.viewSenderProfile('${m.from_id}', '${role}', 'messages')">
+                <i class="ti ti-user"></i> View profile
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="HF_ROLE_UTILS.reportToAdmin('${m.from_id}', '${(m.senderName || "").replace(/'/g, "\\'")}', '${role}')">
+                <i class="ti ti-flag"></i> Report
+              </button>`
+                : `
+              <div style="font-size:12px;color:var(--text2);padding:4px">
+                <i class="ti ti-info-circle" style="margin-right:4px"></i>
+                System message: no actions available.
+              </div>`
+            }
+          </div>
+        </div>`;
 
     return `
     ${
@@ -490,7 +490,7 @@ const HF_UTILS = (() => {
       .map(
         (t) => `
     <button class="btn btn-outline btn-sm"
-      onclick="window['HF_' + HF_DB.getSession().role.toUpperCase()]?.updateTrainingDay(${dayIndex}, '${t}', ${specificDate ? `'${specificDate}'` : 'null'});document.getElementById('day-picker').style.display='none'">
+      onclick="window['HF_' + HF_DB.getSession().role.toUpperCase()]?.updateTrainingDay(${dayIndex}, '${t}', ${specificDate ? `'${specificDate}'` : "null"});document.getElementById('day-picker').style.display='none'">
       ${t}
     </button>`,
       )

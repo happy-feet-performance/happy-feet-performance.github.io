@@ -138,147 +138,277 @@ const HF_ROUTER = (() => {
   const ROLE_COLORS = { player: "#1a7a2e", coach: "#C9961A", scout: "#185FA5" };
 
   // ─── Launch app after login/signup ─────────────────────────
-
   let _subscriptionsActive = false;
 
   const launch = async (session) => {
+    // ── Shell setup ──────────────────────────────────────────────
     document.getElementById("nav-overlay")?.classList.remove("open");
-
     document.getElementById("auth-screens").style.display = "none";
-    const shell = el("app-shell");
-    shell.classList.add("visible");
-    shell.className = `app-shell visible role-${session.role}`;
-
     el("sidenav")?.classList.remove("open");
 
-    const rolePill = el("topbar-role-pill");
-    rolePill.textContent =
+    const shell = el("app-shell");
+    shell.className = `app-shell visible role-${session.role}`;
+    el("topbar-role-pill").textContent =
       session.role.charAt(0).toUpperCase() + session.role.slice(1);
+    el("topbar-name-display").textContent = session.name;
 
-    const nameDisplay = el("topbar-name-display");
-    if (nameDisplay) nameDisplay.textContent = session.name;
+    // ── Pre-launch data ──────────────────────────────────────────
+    const isAdmin = session.role === "admin";
 
-    // fetch team size for coach before building sidenav
     if (session.role === "coach" && session.squadStatus === "verified") {
       const { data: squadPlayers } = await HF_DB.getSquadPlayers(
         session.userId,
       );
-      const teamSize = squadPlayers?.length || 0;
-      session.profile = { ...session.profile, teamSize };
+      session.profile = {
+        ...session.profile,
+        teamSize: squadPlayers?.length || 0,
+      };
       HF_DB.saveSession(session);
     }
 
-    // check unread messages
-    let unreadCount = 0;
-    if (session.role !== "admin" && session.userId) {
-      const { data: msgs } = await HF_DB.getMessages(session.userId);
-      unreadCount = msgs?.filter((m) => !m.read).length || 0;
-    }
+    const [
+      unreadCount,
+      pendingVerifications,
+      openTicketCount,
+      unreadTicketReplies,
+    ] = await Promise.all([
+      // unread messages
+      !isAdmin
+        ? HF_DB.getMessages(session.userId).then(
+            ({ data }) => data?.filter((m) => !m.read).length || 0,
+          )
+        : Promise.resolve(0),
 
-    // check pending verifications for admin
-    let pendingVerifications = 0;
-    if (session.role === "admin") {
-      const { data: pending } = await HF_DB.getPendingVerifications("squad");
-      const { data: agencyPending } =
-        await HF_DB.getPendingVerifications("agency");
-      pendingVerifications =
-        (pending?.length || 0) + (agencyPending?.length || 0);
-    }
+      // pending verifications (admin only)
+      isAdmin
+        ? Promise.all([
+            HF_DB.getPendingVerifications("squad"),
+            HF_DB.getPendingVerifications("agency"),
+          ]).then(
+            ([{ data: s }, { data: a }]) => (s?.length || 0) + (a?.length || 0),
+          )
+        : Promise.resolve(0),
 
-    // check unread tickets
-    let openTicketCount = 0;
-    if (session.role === "admin") {
-      const { data: openTickets } = await HF_DB.getTickets("open");
-      openTicketCount = openTickets?.length || 0;
-    }
+      // open tickets (admin only)
+      isAdmin
+        ? HF_DB.getTickets("open").then(({ data }) => data?.length || 0)
+        : Promise.resolve(0),
 
-    // check unread ticket replies for non-admins
-    let unreadTicketReplies = 0;
-    if (session.role !== "admin") {
-      const { data: userTickets } = await HF_DB.getUserTickets(session.userId);
-      unreadTicketReplies =
-        userTickets?.filter((t) => {
-          const msgs = t.messages || [];
-          const lastMsg = msgs[msgs.length - 1];
-          return lastMsg?.is_admin && t.status !== "resolved";
-        }).length || 0;
-    }
+      // unread ticket replies (non-admin)
+      !isAdmin
+        ? HF_DB.getUserTickets(session.userId).then(
+            ({ data }) =>
+              data?.filter((t) => {
+                const msgs = t.messages || [];
+                const last = msgs[msgs.length - 1];
+                return last?.is_admin && t.status !== "resolved";
+              }).length || 0,
+          )
+        : Promise.resolve(0),
+    ]);
 
-    const totalUnread = unreadCount + unreadTicketReplies;
-
-    // single _buildSidenav call
     _buildSidenav(
       session,
-      totalUnread,
+      unreadCount + unreadTicketReplies,
       pendingVerifications,
       null,
       openTicketCount,
     );
 
+    // ── Ticket subscription (admin, immediate) ───────────────────
+    if (isAdmin) {
+      HF_DB.subscribeToTickets(async (payload) => {
+        const { data: openTickets } = await HF_DB.getTickets("open");
+        const count = openTickets?.length || 0;
+        HF_ROUTER.refreshSidenavBadge("tickets", count, "var(--red)");
+        if (payload.eventType === "INSERT")
+          HF_UTILS.toast("New support ticket received!", "success");
+
+        // always refresh tickets view if open
+        const activeNav = document.querySelector(".nav-item.active");
+        if (activeNav?.dataset.view === "tickets") {
+          window.HF_ADMIN?.tickets?.(HF_DB.getSession());
+        }
+
+        // also refresh dashboard metrics if on dashboard
+        if (activeNav?.dataset.view === "dashboard") {
+          window.HF_ADMIN?.render?.("dashboard", HF_DB.getSession());
+        }
+      });
+    }
+
     _routeTo("dashboard", session);
     HF_AGENT.show();
 
-    // start real-time subscriptions after 1 second
+    // ── Realtime subscriptions (after 1s) ───────────────────────
     setTimeout(() => {
       if (_subscriptionsActive) return;
       _subscriptionsActive = true;
 
-      if (session.role !== "admin" && session.userId) {
-        HF_DB.subscribeToMessages(session.userId, async (newMessage) => {
-          const { data: msgs } = await HF_DB.getMessages(session.userId);
-          const unreadCount = msgs?.filter((m) => !m.read).length || 0;
-          HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
+      const _onNewMessage = async (newMessage, role) => {
+        const { data: msgs } = await HF_DB.getMessages(session.userId);
+        const count = msgs?.filter((m) => !m.read).length || 0;
+        HF_ROUTER.refreshSidenavBadge("messages", count, "var(--red)");
+        HF_UTILS.toast(
+          `New message: ${newMessage.subject || "You have a new message"}`,
+          "success",
+        );
 
-          const activeNav = document.querySelector(".nav-item.active");
-          const s = HF_DB.getSession();
-          const handlers = {
-            player: window.HF_PLAYER,
-            coach: window.HF_COACH,
-            scout: window.HF_SCOUT,
-          };
+        const activeNav = document.querySelector(".nav-item.active");
+        const view = activeNav?.dataset.view;
+        const handler = {
+          player: window.HF_PLAYER,
+          coach: window.HF_COACH,
+          scout: window.HF_SCOUT,
+          admin: window.HF_ADMIN,
+        }[role];
 
-          if (activeNav?.dataset.view === "dashboard") {
-            // update just the message metric card without full re-render
-            const metricEl = document.querySelector(
-              '.metric-card[data-type="messages"]',
+        if (view === "dashboard") {
+          const metricEl = document.querySelector(
+            '.metric-card[data-type="messages"]',
+          );
+          if (metricEl) {
+            metricEl.querySelector(".metric-val").textContent = count;
+            metricEl.querySelector(".metric-sub").textContent =
+              count > 0 ? `${count} unread` : "All caught up";
+          }
+        } else if (view === "messages") {
+          if (newMessage.thread_id) {
+            handler?.viewThread?.(
+              newMessage.thread_id,
+              newMessage.from_id,
+              newMessage.subject,
             );
-            if (metricEl) {
-              metricEl.querySelector(".metric-val").textContent = unreadCount;
-              metricEl.querySelector(".metric-sub").textContent =
-                unreadCount > 0 ? `${unreadCount} unread` : "All caught up";
-            } else {
-              handlers[s.role]?.render?.(s);
-            }
-          } else if (activeNav?.dataset.view === "messages") {
-            const threadMessages = document.getElementById("thread-messages");
-            if (threadMessages && newMessage.thread_id) {
-              handlers[s.role]?.viewThread?.(
-                newMessage.thread_id,
-                newMessage.from_id,
-                newMessage.subject,
+          } else {
+            handler?.messages?.(HF_DB.getSession());
+          }
+        }
+      };
+
+      HF_DB.subscribeToMessages(session.userId, (msg) =>
+        _onNewMessage(msg, session.role),
+      );
+
+      if (isAdmin) {
+        HF_DB.subscribeToVerifications("squad", async () => {
+          const [{ data: s }, { data: a }] = await Promise.all([
+            HF_DB.getPendingVerifications("squad"),
+            HF_DB.getPendingVerifications("agency"),
+          ]);
+          HF_ROUTER.refreshSidenavBadge(
+            "squad-verifications",
+            s?.length || 0,
+            "var(--gold)",
+          );
+          HF_ROUTER.refreshSidenavBadge(
+            "agency-verifications",
+            a?.length || 0,
+            "var(--gold)",
+          );
+          HF_UTILS.toast("New squad verification submitted.", "success");
+          setTimeout(() => {
+            const view =
+              document.querySelector(".nav-item.active")?.dataset.view;
+            if (view === "dashboard" || view === "squad-verifications")
+              window.HF_ADMIN?.render?.(view, HF_DB.getSession());
+          }, 500);
+        });
+
+        HF_DB.subscribeToVerifications("agency", async () => {
+          const { data: a } = await HF_DB.getPendingVerifications("agency");
+          HF_ROUTER.refreshSidenavBadge(
+            "agency-verifications",
+            a?.length || 0,
+            "var(--gold)",
+          );
+          HF_UTILS.toast("New agency verification submitted.", "success");
+          setTimeout(() => {
+            const view =
+              document.querySelector(".nav-item.active")?.dataset.view;
+            if (view === "dashboard" || view === "agency-verifications")
+              window.HF_ADMIN?.render?.(view, HF_DB.getSession());
+          }, 500);
+        });
+      }
+
+      if (session.role === "coach") {
+        HF_DB.subscribeToUserStatus(session.userId, async (updatedUser) => {
+          const newStatus = updatedUser.squad_status;
+          const newProfile = updatedUser.profile;
+          let changed = false;
+
+          if (newStatus && newStatus !== session.squadStatus) {
+            session.squadStatus = newStatus;
+            changed = true;
+            if (newStatus === "verified") {
+              const { data: sp } = await HF_DB.getSquadPlayers(session.userId);
+              session.profile = {
+                ...session.profile,
+                teamSize: sp?.length || 0,
+              };
+              HF_UTILS.toast(
+                "Your squad has been verified! Full access unlocked.",
+                "success",
               );
-            } else {
-              handlers[s.role]?.messages?.(s);
+            } else if (newStatus === "rejected") {
+              HF_UTILS.toast(
+                "Your squad verification was rejected. Check your messages.",
+                "error",
+              );
             }
           }
 
-          HF_UTILS.toast(
-            `New message: ${newMessage.subject || "You have a new message"}`,
-            "success",
-          );
-        });
+          if (newProfile?.teamSize !== session.profile?.teamSize) {
+            session.profile = {
+              ...session.profile,
+              teamSize: newProfile.teamSize,
+            };
+            changed = true;
+          }
 
+          if (changed) {
+            HF_DB.saveSession(session);
+            _buildSidenav(session, 0, 0);
+            const view =
+              document.querySelector(".nav-item.active")?.dataset.view ||
+              "dashboard";
+            _routeTo(view, session);
+          }
+        });
+      }
+
+      if (session.role === "scout") {
+        HF_DB.subscribeToUserStatus(session.userId, async (updatedUser) => {
+          const newStatus = updatedUser.agency_status;
+          if (newStatus && newStatus !== session.agencyStatus) {
+            session.agencyStatus = newStatus;
+            const { data: freshUser } = await HF_DB.getUserById(session.userId);
+            if (freshUser) session.profile = freshUser.profile;
+            HF_DB.saveSession(session);
+            _buildSidenav(session, 0, 0);
+            HF_UTILS.toast(
+              newStatus === "verified"
+                ? "Your agency has been verified! Full access unlocked."
+                : "Your agency verification was rejected. Check your messages.",
+              newStatus === "verified" ? "success" : "error",
+            );
+            const view =
+              document.querySelector(".nav-item.active")?.dataset.view ||
+              "dashboard";
+            _routeTo(view, session);
+          }
+        });
+      }
+
+      if (!isAdmin) {
         HF_DB.subscribeToUserTickets(session.userId, async (payload) => {
           const ticket = payload.new;
           const oldTicket = payload.old;
           const msgs = ticket.messages || [];
           const oldMsgs = oldTicket.messages || [];
 
-          if (msgs.length > oldMsgs.length) {
-            const lastMsg = msgs[msgs.length - 1];
-            if (lastMsg?.is_admin)
-              HF_UTILS.toast("An admin replied to your ticket!", "success");
-          }
+          if (msgs.length > oldMsgs.length && msgs[msgs.length - 1]?.is_admin)
+            HF_UTILS.toast("An admin replied to your ticket!", "success");
           if (ticket.status === "claimed" && oldTicket.status === "open")
             HF_UTILS.toast(
               "Your ticket has been claimed by an admin!",
@@ -293,8 +423,7 @@ const HF_ROUTER = (() => {
           const unreadReplies =
             userTickets?.filter((t) => {
               const m = t.messages || [];
-              const lastMsg = m[m.length - 1];
-              return lastMsg?.is_admin && t.status !== "resolved";
+              return m[m.length - 1]?.is_admin && t.status !== "resolved";
             }).length || 0;
           const { data: msgs2 } = await HF_DB.getMessages(session.userId);
           const unreadMsgs = msgs2?.filter((m) => !m.read).length || 0;
@@ -303,200 +432,12 @@ const HF_ROUTER = (() => {
             unreadMsgs + unreadReplies,
             "var(--red)",
           );
-
-          const activeNav = document.querySelector(".nav-item.active");
-          if (activeNav?.dataset.view === "messages") {
-            const handlers = {
-              player: window.HF_PLAYER,
-              coach: window.HF_COACH,
-              scout: window.HF_SCOUT,
-            };
-            handlers[session.role]?.messages?.(session);
-          }
-        });
-      }
-
-      if (session.role === "admin") {
-        HF_DB.subscribeToMessages(session.userId, (newMessage) => {
-          HF_DB.getMessages(session.userId).then(({ data: msgs }) => {
-            const unreadCount = msgs?.filter((m) => !m.read).length || 0;
-            HF_ROUTER.refreshSidenavBadge(
-              "messages",
-              unreadCount,
-              "var(--red)",
-            );
-
-            const activeNav = document.querySelector(".nav-item.active");
-            if (activeNav?.dataset.view === "messages") {
-              const threadMessages = document.getElementById("thread-messages");
-              if (threadMessages && newMessage.thread_id) {
-                window.HF_ADMIN?.viewThread?.(
-                  newMessage.thread_id,
-                  newMessage.from_id,
-                  newMessage.subject,
-                );
-              } else {
-                window.HF_ADMIN?.messages?.(HF_DB.getSession());
-              }
-            }
-          });
-
-          HF_UTILS.toast(
-            `New message: ${newMessage.subject || "You have a new message"}`,
-            "success",
-          );
-        });
-
-        HF_DB.subscribeToTickets(async (payload) => {
-          const { data: openTickets } = await HF_DB.getTickets("open");
-          const count = openTickets?.length || 0;
-          HF_ROUTER.refreshSidenavBadge("tickets", count, "var(--red)");
-
-          if (payload.eventType === "INSERT") {
-            HF_UTILS.toast("New support ticket received!", "success");
-          }
-
-          const activeNav = document.querySelector(".nav-item.active");
-          if (activeNav?.dataset.view === "tickets") {
-            window.HF_ADMIN?.tickets?.(HF_DB.getSession());
-          }
-        });
-
-        HF_DB.subscribeToVerifications("squad", async (payload) => {
-          const { data: pending } =
-            await HF_DB.getPendingVerifications("squad");
-          const { data: agencyPending } =
-            await HF_DB.getPendingVerifications("agency");
-          HF_ROUTER.refreshSidenavBadge(
-            "squad-verifications",
-            pending?.length || 0,
-            "var(--gold)",
-          );
-          HF_ROUTER.refreshSidenavBadge(
-            "agency-verifications",
-            agencyPending?.length || 0,
-            "var(--gold)",
-          );
-          HF_UTILS.toast("New squad verification submitted.", "success");
-          setTimeout(() => {
-            const activeNav = document.querySelector(".nav-item.active");
-            const currentView = activeNav?.dataset.view;
-            if (
-              currentView === "dashboard" ||
-              currentView === "squad-verifications"
-            ) {
-              window.HF_ADMIN?.render?.(currentView, HF_DB.getSession());
-            }
-          }, 500);
-        });
-
-        HF_DB.subscribeToVerifications("agency", async (payload) => {
-          const { data: agencyPending } =
-            await HF_DB.getPendingVerifications("agency");
-          HF_ROUTER.refreshSidenavBadge(
-            "agency-verifications",
-            agencyPending?.length || 0,
-            "var(--gold)",
-          );
-          HF_UTILS.toast("New agency verification submitted.", "success");
-          setTimeout(() => {
-            const activeNav = document.querySelector(".nav-item.active");
-            const currentView = activeNav?.dataset.view;
-            if (
-              currentView === "dashboard" ||
-              currentView === "agency-verifications"
-            ) {
-              window.HF_ADMIN?.render?.(currentView, HF_DB.getSession());
-            }
-          }, 500);
-        });
-      }
-
-      if (session.role === "coach") {
-        HF_DB.subscribeToUserStatus(session.userId, async (updatedUser) => {
-          const newStatus = updatedUser.squad_status;
-          const newProfile = updatedUser.profile;
-          let changed = false;
-
-          if (newStatus && newStatus !== session.squadStatus) {
-            session.squadStatus = newStatus;
-            changed = true;
-
-            if (newStatus === "verified") {
-              const { data: squadPlayers } = await HF_DB.getSquadPlayers(
-                session.userId,
-              );
-              session.profile = {
-                ...session.profile,
-                teamSize: squadPlayers?.length || 0,
-              };
-              HF_UTILS.toast(
-                "Your squad has been verified! Full access unlocked.",
-                "success",
-              );
-            } else if (newStatus === "rejected") {
-              HF_UTILS.toast(
-                "Your squad verification was rejected. Check your messages.",
-                "error",
-              );
-            }
-          }
-
-          // check if team size changed
-          if (newProfile?.teamSize !== session.profile?.teamSize) {
-            session.profile = {
-              ...session.profile,
-              teamSize: newProfile.teamSize,
-            };
-            changed = true;
-          }
-
-          if (changed) {
-            HF_DB.saveSession(session);
-            _buildSidenav(session, 0, 0);
-            const activeNav = document.querySelector(".nav-item.active");
-            const currentView = activeNav?.dataset.view || "dashboard";
-            _routeTo(currentView, session);
-          }
-        });
-      }
-
-      if (session.role === "scout") {
-        HF_DB.subscribeToUserStatus(session.userId, async (updatedUser) => {
-          const newStatus = updatedUser.agency_status;
-          if (newStatus && newStatus !== session.agencyStatus) {
-            session.agencyStatus = newStatus;
-
-            // refresh full profile from db to get regions/leagues
-            const { data: freshUser } = await HF_DB.getUserById(session.userId);
-            if (freshUser) session.profile = freshUser.profile;
-
-            HF_DB.saveSession(session);
-            _buildSidenav(session, 0, 0);
-
-            if (newStatus === "verified") {
-              HF_UTILS.toast(
-                "Your agency has been verified! Full access unlocked.",
-                "success",
-              );
-            } else if (newStatus === "rejected") {
-              HF_UTILS.toast(
-                "Your agency verification was rejected. Check your messages.",
-                "error",
-              );
-            }
-
-            const activeNav = document.querySelector(".nav-item.active");
-            const currentView = activeNav?.dataset.view || "dashboard";
-            _routeTo(currentView, session);
-          }
         });
       }
     }, 1000);
   };
 
   // ─── Build sidenav ─────────────────────────────────────────
-
   const _buildSidenav = (
     session,
     unreadCount = 0,
