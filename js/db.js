@@ -27,15 +27,6 @@ const HF_DB = (() => {
 
   const _nameCache = {};
 
-  // ─── Password Hashing Helper ──────────────────────────────────
-  const _hashString = async (str) => {
-    const encoded = new TextEncoder().encode(str);
-    const buffer = await crypto.subtle.digest("SHA-256", encoded);
-    return Array.from(new Uint8Array(buffer))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-  };
-
   // ─── Generic data table getters and setters ────────────────────────────
   const _getData = async (table, userId) => {
     const { data } = await _client
@@ -397,7 +388,7 @@ const HF_DB = (() => {
   };
 
   const setSecurityQuestion = async (userId, question, answer) => {
-    const hashedAnswer = await _hashString(answer.toLowerCase().trim());
+    const hashedAnswer = await HF_UTILS.hashPassword(answer.toLowerCase().trim());
     const { error } = await _client
       .from("users")
       .update({ security_question: question, security_answer: hashedAnswer })
@@ -438,7 +429,7 @@ const HF_DB = (() => {
       };
     }
 
-    const hashedAnswer = await _hashString(answer.toLowerCase().trim());
+    const hashedAnswer = await HF_UTILS.hashPassword(answer.toLowerCase().trim());
 
     if (hashedAnswer !== data.security_answer) {
       const attempts = (data.security_attempts || 0) + 1;

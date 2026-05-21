@@ -1,9 +1,5 @@
 /**
  * HappyFeet Performance Hub: auth.js
- * ─────────────────────────────────────
- * Handles: login (email OR phone), 3-step signup,
- * role selection, session management.
- * Depends on: db.js, utils.js, router.js
  */
 
 const HF_AUTH = (() => {
@@ -363,7 +359,7 @@ const HF_AUTH = (() => {
       }
     }
 
-    const hashedPassword = await HF_UTILS.hashPassword(pass);
+    const hashedPassword = await HF_DB.hashPassword(pass);
     state.signup = {
       name,
       contact,
