@@ -23,6 +23,60 @@ const HF_UTILS = (() => {
     return `${Math.floor(h / 24)} days ago`;
   };
 
+  // ─── Colour helpers ────────────────────────────────────────
+  const AVATAR_COLORS = [
+    "#1a7a2e",
+    "#c8102e",
+    "#C9961A",
+    "#185FA5",
+    "#5E35B1",
+    "#0F6E56",
+    "#993C1D",
+    "#854F0B",
+  ];
+  const avatarColor = (name = "") => {
+    let h = 0;
+    for (const c of name) h = (h * 31 + c.charCodeAt(0)) % AVATAR_COLORS.length;
+    return AVATAR_COLORS[h];
+  };
+
+  const ratingColor = (r) =>
+    r >= 80 ? "var(--green)" : r >= 65 ? "var(--gold)" : "var(--red)";
+
+  // ─── DOM helpers ───────────────────────────────────────────
+  const el = (id) => document.getElementById(id);
+  const qs = (sel, ctx = document) => ctx.querySelector(sel);
+  const qsa = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
+
+  const show = (id) => {
+    const e = el(id);
+    if (e) e.style.display = "block";
+  };
+  const hide = (id) => {
+    const e = el(id);
+    if (e) e.style.display = "none";
+  };
+
+  const showError = (id, msg) => {
+    const e = el(id);
+    if (!e) return;
+    e.textContent = msg;
+    e.classList.add("show");
+  };
+  const hideError = (id) => {
+    const e = el(id);
+    if (e) e.classList.remove("show");
+  };
+
+  const setHTML = (id, html) => {
+    const e = el(id);
+    if (e) e.innerHTML = html;
+  };
+  const setText = (id, text) => {
+    const e = el(id);
+    if (e) e.textContent = text;
+  };
+
   // ─── Avatar HTML ───────────────────────────────────────────
   const avatarHTML = (name, avatarUrl, size = "md", color = "var(--gold)") => {
     const sizes = { sm: "32px", md: "40px", lg: "56px", xl: "72px" };
@@ -44,6 +98,18 @@ const HF_UTILS = (() => {
   </div>`;
   };
 
+  // ─── Bar HTML ──────────────────────────────────────────────
+  const barHTML = (label, value, color = "var(--gold)") => `
+    <div class="bar-row">
+      <div class="bar-head">
+        <span>${label}</span>
+        <span style="font-weight:600;color:${color}">${value}</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${value}%;background:${color}"></div>
+      </div>
+    </div>`;
+
   // ─── Mini chart HTML ───────────────────────────────────────
   const miniChartHTML = (values) => {
     const max = Math.max(...values, 1);
@@ -54,6 +120,21 @@ const HF_UTILS = (() => {
       })
       .join("")}</div>`;
   };
+
+  // ─── Badge HTML ────────────────────────────────────────────
+  const badgeHTML = (text, type = "gold") =>
+    `<span class="badge badge-${type}">${text}</span>`;
+
+  // ─── Activity item HTML ────────────────────────────────────
+  const activityHTML = (icon, bgColor, title, text, time) => `
+    <div class="activity-item">
+      <div class="activity-icon" style="background:${bgColor}">${icon}</div>
+      <div>
+        <div class="activity-title">${title}</div>
+        <div class="activity-text">${text}</div>
+        <div class="activity-time">${time}</div>
+      </div>
+    </div>`;
 
   // ─── Toast notification ────────────────────────────────────
   const toast = (msg, type = "success") => {
@@ -208,6 +289,17 @@ const HF_UTILS = (() => {
     const created = new Date(session.created);
     const now = new Date();
     return now - created < 5 * 60 * 1000;
+  };
+
+  const replyToMessage = (messageId, fromId, senderName, subject, threadId) => {
+    if (!fromId || fromId === "admin" || fromId === "system") {
+      HF_UTILS.toast(
+        "You cannot reply to system messages directly. Use Contact Admin instead.",
+        "error",
+      );
+      return;
+    }
+    viewThread(threadId, fromId, subject);
   };
 
   const launchConfetti = () => {
@@ -407,7 +499,14 @@ const HF_UTILS = (() => {
 
   return {
     initials,
+    age,
+    today,
     timeAgo,
+    avatarColor,
+    ratingColor,
+    el,
+    qs,
+    qsa,
     show,
     hide,
     showError,
