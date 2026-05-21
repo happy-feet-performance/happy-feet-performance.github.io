@@ -499,8 +499,6 @@ const HF_UTILS = (() => {
 
   return {
     initials,
-    age,
-    today,
     timeAgo,
     avatarColor,
     ratingColor,
