@@ -204,14 +204,23 @@ const HF_ROUTER = (() => {
         ? Promise.all([
             HF_DB.getPendingVerifications("squad"),
             HF_DB.getPendingVerifications("agency"),
-          ]).then(
-            ([{ data: s }, { data: a }]) => (s?.length || 0) + (a?.length || 0),
-          )
+          ]).then(([{ data: s }, { data: a }]) => {
+            const sid = session.userId;
+            const unclaimedSquad =
+              s?.filter((v) => !v.claimed_by || v.claimed_by === sid).length ||
+              0;
+            const unclaimedAgency =
+              a?.filter((v) => !v.claimed_by || v.claimed_by === sid).length ||
+              0;
+            return unclaimedSquad + unclaimedAgency;
+          })
         : Promise.resolve(0),
 
       // open tickets (admin only)
       isAdmin
-        ? HF_DB.getTickets("open").then(({ data }) => data?.length || 0)
+        ? HF_DB.getTickets("open").then(
+            ({ data }) => data?.filter((t) => !t.claimed_by).length || 0,
+          )
         : Promise.resolve(0),
 
       // unread ticket replies (non-admin)
@@ -239,7 +248,9 @@ const HF_ROUTER = (() => {
     if (isAdmin) {
       HF_DB.subscribeToTickets(async (payload) => {
         const { data: openTickets } = await HF_DB.getTickets("open");
-        const count = openTickets?.length || 0;
+        const session = HF_DB.getSession();
+        // unclaimed = no claimed_by set
+        const count = openTickets?.filter((t) => !t.claimed_by).length || 0;
         HF_ROUTER.refreshSidenavBadge("tickets", count, "var(--red)");
         if (payload.eventType === "INSERT")
           HF_UTILS.toast("New support ticket received!", "success");
@@ -293,21 +304,51 @@ const HF_ROUTER = (() => {
               count > 0 ? `${count} unread` : "All caught up";
           }
         } else if (view === "messages") {
-          if (newMessage.thread_id) {
-            handler?.viewThread?.(
-              newMessage.thread_id,
-              newMessage.from_id,
-              newMessage.subject,
-            );
+          const threadEl = document.getElementById("thread-messages");
+          if (threadEl) {
+            const currentThreadId = threadEl.dataset.threadId;
+            if (currentThreadId && newMessage.thread_id === currentThreadId) {
+              const isMine = newMessage.from_id === session.userId;
+              const isEmojiOnly =
+                newMessage.body
+                  .replace(
+                    /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu,
+                    "",
+                  )
+                  .trim().length === 0;
+              const renderedBody = newMessage.body.replace(
+                /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu,
+                `<span style="font-size:1.3em;cursor:pointer;display:inline-block;" onclick="HF_UTILS.launchEmojiConfetti('$1')">$1</span>`,
+              );
+              const div = document.createElement("div");
+              div.style.cssText = `display:flex;flex-direction:column;align-items:${isMine ? "flex-end" : "flex-start"};margin-bottom:var(--sp-md);`;
+              div.innerHTML = `
+        <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">
+          ${isMine ? "You" : "Them"} · just now
+        </div>
+        <div style="max-width:75%;padding:${isEmojiOnly ? "4px" : "10px 14px"};
+          background:${isEmojiOnly ? "transparent" : isMine ? "var(--gold)" : "var(--bg2)"};
+          color:${isMine && !isEmojiOnly ? "#0f0f0d" : "var(--text)"};
+          font-size:${isEmojiOnly ? "32px" : "13px"};line-height:1.5;">
+          ${renderedBody}
+        </div>`;
+              threadEl.appendChild(div);
+              threadEl.scrollTop = threadEl.scrollHeight;
+            } else {
+              handler?.messages?.(HF_DB.getSession());
+            }
           } else {
             handler?.messages?.(HF_DB.getSession());
           }
         }
       };
 
-      HF_DB.subscribeToMessages(session.userId, (msg) =>
-        _onNewMessage(msg, session.role),
-      );
+      HF_DB.subscribeToMessages(session.userId, (msg) => {
+        // only process messages sent TO this user, not FROM this user
+        if (msg.from_id === session.userId) return;
+        if (msg.to_id !== session.userId) return;
+        _onNewMessage(msg, session.role);
+      });
 
       if (isAdmin) {
         HF_DB.subscribeToVerifications("squad", async () => {
@@ -315,16 +356,27 @@ const HF_ROUTER = (() => {
             HF_DB.getPendingVerifications("squad"),
             HF_DB.getPendingVerifications("agency"),
           ]);
+
+          // only count unclaimed verifications for badge
+          const session = HF_DB.getSession();
+          const unclaimedSquad =
+            s?.filter((v) => !v.claimed_by || v.claimed_by === session.userId)
+              .length || 0;
+          const unclaimedAgency =
+            a?.filter((v) => !v.claimed_by || v.claimed_by === session.userId)
+              .length || 0;
+
           HF_ROUTER.refreshSidenavBadge(
             "squad-verifications",
-            s?.length || 0,
+            unclaimedSquad,
             "var(--gold)",
           );
           HF_ROUTER.refreshSidenavBadge(
             "agency-verifications",
-            a?.length || 0,
+            unclaimedAgency,
             "var(--gold)",
           );
+
           HF_UTILS.toast("New squad verification submitted.", "success");
           setTimeout(() => {
             const view =
@@ -395,7 +447,10 @@ const HF_ROUTER = (() => {
             }
           }
 
-          if (newProfile?.teamSize !== session.profile?.teamSize) {
+          if (
+            newProfile?.teamSize !== undefined &&
+            newProfile.teamSize !== session.profile?.teamSize
+          ) {
             session.profile = {
               ...session.profile,
               teamSize: newProfile.teamSize,
@@ -405,7 +460,10 @@ const HF_ROUTER = (() => {
 
           if (changed) {
             HF_DB.saveSession(session);
-            _buildSidenav(session, 0, 0);
+            // fetch current unread count before rebuilding sidenav
+            const { data: msgs } = await HF_DB.getMessages(session.userId);
+            const unread = msgs?.filter((m) => !m.read).length || 0;
+            _buildSidenav(session, unread, 0);
             const view =
               document.querySelector(".nav-item.active")?.dataset.view ||
               "dashboard";
@@ -429,13 +487,18 @@ const HF_ROUTER = (() => {
             const { data: freshUser } = await HF_DB.getUserById(session.userId);
             if (freshUser) session.profile = freshUser.profile;
             HF_DB.saveSession(session);
-            _buildSidenav(session, 0, 0);
+
+            const { data: msgs } = await HF_DB.getMessages(session.userId);
+            const unread = msgs?.filter((m) => !m.read).length || 0;
+            _buildSidenav(session, unread, 0);
+
             HF_UTILS.toast(
               newStatus === "verified"
                 ? "Your agency has been verified! Full access unlocked."
                 : "Your agency verification was rejected. Check your messages.",
               newStatus === "verified" ? "success" : "error",
             );
+
             const view =
               document.querySelector(".nav-item.active")?.dataset.view ||
               "dashboard";
@@ -640,16 +703,7 @@ const HF_ROUTER = (() => {
       });
     }
 
-    if (session.role === "coach") {
-      HF_DB.getUserStatus(session.userId, "squad").then((status) => {
-        if (status && status !== session.squadStatus) {
-          session.squadStatus = status;
-          HF_DB.saveSession(session);
-          _buildSidenav(session);
-        }
-      });
-    }
-
+    // update message badge
     if (session.role !== "admin" && session.userId) {
       HF_DB.getMessages(session.userId).then(({ data: msgs }) => {
         const unreadCount = msgs?.filter((m) => !m.read).length || 0;
@@ -657,16 +711,7 @@ const HF_ROUTER = (() => {
       });
     }
 
-    if (session.role === "scout") {
-      HF_DB.getUserStatus(session.userId, "agency").then((status) => {
-        if (status && status !== session.agencyStatus) {
-          session.agencyStatus = status;
-          HF_DB.saveSession(session);
-          _buildSidenav(session);
-        }
-      });
-    }
-
+    // set active nav item
     document
       .querySelectorAll(".nav-item")
       .forEach((i) => i.classList.remove("active"));

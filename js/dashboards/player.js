@@ -642,7 +642,7 @@ const HF_PLAYER = (() => {
         const isFuture = date > now;
         const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 
-        const selected = !isFuture ? (schedule[dateStr] || null) : null;
+        const selected = !isFuture ? schedule[dateStr] || null : null;
         const color = selected ? typeColors[selected] : null;
         const hasLog = logs?.find((l) => l.date === dateStr);
 
@@ -1832,45 +1832,7 @@ const HF_PLAYER = (() => {
       }
     </div>
 
-    ${
-      archived?.length > 0
-        ? `
-      <div class="card">
-        <div class="card-title" style="cursor:pointer;" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none'">
-          <div class="card-dot"></div>Archived
-          <span style="margin-left:auto;font-size:11px;color:var(--text3)">
-            ${archived.length} · click to expand
-          </span>
-        </div>
-        <div style="display:none">
-          ${enrichedArchived
-            .map(
-              (m) => `
-            <div class="msg-item" id="archived-msg-${m.id}" style="cursor:pointer;" 
-              onclick="HF_ROLE_UTILS.viewThread('${m.thread_id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')">
-              <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
-                <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
-              </div>
-              <div style="flex:1;opacity:0.6">
-                <div style="font-size:11px;font-family:var(--font);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
-                  From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : "HappyFeet Admin")}
-                </div>
-                <div class="msg-name">${m.subject || "Message"}</div>
-                <div class="msg-preview">${m.body}</div>
-                <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
-              </div>
-              <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;flex-shrink:0;"
-                title="Move back to inbox"
-                onclick="event.stopPropagation();HF_ROLE_UTILS.unarchiveMessage('${m.id}')">
-                <i class="ti ti-inbox"></i>
-              </button>
-            </div>`,
-            )
-            .join("")}
-        </div>
-      </div>`
-        : ""
-    }`);
+    ${HF_ROLE_UTILS.archivedMessagesHTML(enrichedArchived, "player")}`);
   };
 
   // ── MESSAGES HELPERS ────────────────────────────────────────────────────

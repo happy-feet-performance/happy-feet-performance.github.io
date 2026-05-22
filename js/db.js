@@ -278,7 +278,8 @@ const HF_DB = (() => {
     profile: u.profile || {},
     squadStatus: u.squad_status,
     agencyStatus: u.agency_status,
-    passwordVersion: u.password_version || 1, // add this
+    passwordVersion: u.password_version || 1,
+    createdAt: u.created_at,
   });
 
   // ── SECURITY ────────────────────────────────────────────────
@@ -450,7 +451,7 @@ const HF_DB = (() => {
       return { error: "You cannot reuse one of your last 5 passwords." };
     }
 
-    // build new history — add current password to front, keep last 5
+    // build new history by adding current password to front, keep last 5
     const newHistory = [user.password, ...history].slice(0, 5);
 
     const { error } = await _client
@@ -1078,13 +1079,25 @@ const HF_DB = (() => {
       .eq("status", "accepted");
 
     if (!squadPlayers || squadPlayers.length === 0)
-      return { data: { score: 0, breakdown: {} } };
+      return {
+        data: {
+          score: 0,
+          total: 0,
+          avgRating: 0,
+          wellnessRate: 0,
+          readyRate: 0,
+          checkedInCount: 0,
+          readyCount: 0,
+          ratedCount: 0,
+        },
+      };
 
     const today = _localDate();
     let totalRating = 0,
       ratedCount = 0;
     let checkedInCount = 0,
-      readyCount = 0;
+      readyCount = 0,
+      alertCount = 0;
 
     for (const sp of squadPlayers) {
       // get latest session rating
@@ -1120,6 +1133,7 @@ const HF_DB = (() => {
             5,
         );
         if (avg >= 8) readyCount++;
+        else if (avg < 6) alertCount++;
       }
     }
 
@@ -1145,6 +1159,7 @@ const HF_DB = (() => {
         checkedInCount,
         readyCount,
         ratedCount,
+        alertCount,
       },
     };
   };
@@ -1281,7 +1296,7 @@ const HF_DB = (() => {
       .update({
         status,
         responded_at: _localDate(),
-        declined_at: !accept ? _localDate() : null,
+        declined_at: !accept ? new Date().toISOString() : null,
       })
       .eq("id", inviteId);
     if (error) return { error: error.message };
@@ -1329,9 +1344,8 @@ const HF_DB = (() => {
         read: false,
       });
     } else {
-      // notify coach
       await _client.from("messages").insert({
-        from_id: playerId,
+        from_id: "system",
         to_id: coachId,
         subject: "Invite declined",
         body: `${playerName} has declined your invite to join ${squadName}. You can send another invite after 24 hours.`,
@@ -1569,6 +1583,7 @@ const HF_DB = (() => {
     threadId = null,
     parentId = null,
   ) => {
+    console.log("_sendMessage", { fromId, toId, subject, threadId });
     const newThreadId = threadId || crypto.randomUUID();
     const { data, error } = await _client
       .from("messages")
@@ -2407,9 +2422,9 @@ const HF_DB = (() => {
     (await _getData("tracker", userId)) || {};
 
   // ── REALTIME ────────────────────────────────────────────────
-  const subscribeToMessages = (userId, onMessage) => {
+  const subscribeToMessages = (userId, callback) => {
     return _client
-      .channel(`realtime-messages-${userId}`)
+      .channel(`realtime-messages-${userId}-${Date.now()}`)
       .on(
         "postgres_changes",
         {
@@ -2418,11 +2433,9 @@ const HF_DB = (() => {
           table: "messages",
           filter: `to_id=eq.${userId}`,
         },
-        (payload) => {
-          onMessage(payload.new);
-        },
+        (payload) => callback(payload.new),
       )
-      .subscribe((status) => {});
+      .subscribe();
   };
 
   const subscribeToUserStatus = (userId, callback) => {
@@ -2445,7 +2458,9 @@ const HF_DB = (() => {
     const table =
       type === "squad" ? "squad_verifications" : "agency_verifications";
     return _client
-      .channel(`realtime-${table}-${Math.random().toString(36).slice(2)}`)
+      .channel(
+        `realtime-${type}-verifications-${Math.random().toString(36).slice(2)}`,
+      )
       .on("postgres_changes", { event: "*", schema: "public", table }, callback)
       .subscribe();
   };
@@ -2488,9 +2503,7 @@ const HF_DB = (() => {
   };
 
   const removeAllChannels = () => {
-    try {
-      _client.removeAllChannels();
-    } catch (e) {}
+    _client.removeAllChannels();
   };
 
   // ─── Public API ────────────────────────────────────────────

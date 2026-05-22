@@ -145,20 +145,23 @@ const HF_UTILS = (() => {
 
   // ─── Toast notification ────────────────────────────────────
   const toast = (msg, type = "success") => {
-    const existing = document.querySelector(".hf-toast");
-    if (existing) existing.remove();
+    // clear any existing toast first
+    const existing = document.getElementById("hf-toast");
+    if (existing) {
+      existing.remove();
+    }
+
     const t = document.createElement("div");
-    t.className = "hf-toast";
-    t.style.cssText = `
-      position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
-      padding:10px 20px;border-radius:0;font-size:13px;font-weight:600;
-      z-index:9999;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.2);
-      background:${type === "success" ? "var(--green)" : type === "error" ? "var(--red)" : "var(--gold)"};
-      animation:toastIn .2s ease;
-    `;
+    t.id = "hf-toast";
+    t.className = `toast toast-${type}`;
     t.textContent = msg;
     document.body.appendChild(t);
-    setTimeout(() => t.remove(), 3000);
+
+    setTimeout(() => t.classList.add("toast-show"), 10);
+    setTimeout(() => {
+      t.classList.remove("toast-show");
+      setTimeout(() => t.remove(), 300);
+    }, 3000);
   };
 
   // ─── Country code options ──────────────────────────────────
@@ -231,18 +234,25 @@ const HF_UTILS = (() => {
             <div class="msg-preview">${m.body}</div>
             <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
           </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
             ${!m.read ? `<div class="msg-unread" id="badge-${m.id}">1</div>` : ""}
-            <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
-              title="Archive message"
-              onclick="event.stopPropagation();HF_ROLE_UTILS.archiveMessage('${m.id}', this, '${role}')">
-              <i class="ti ti-archive"></i>
-            </button>
-            <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
-              title="More options"
-              onclick="event.stopPropagation();HF_ROLE_UTILS.toggleMsgActions('${m.id}')">
-              <i class="ti ti-dots-vertical"></i>
-            </button>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
+                title="Archive message"
+                onclick="event.stopPropagation();HF_ROLE_UTILS.archiveMessage('${m.id}', this, '${role}')">
+                <i class="ti ti-archive"></i>
+              </button>
+              ${
+                m.from_id !== "system" && m.from_id !== "admin"
+                  ? `
+                <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
+                  title="More options"
+                  onclick="event.stopPropagation();HF_ROLE_UTILS.toggleMsgActions('${m.id}')">
+                  <i class="ti ti-dots-vertical"></i>
+                </button>`
+                  : ""
+              }
+            </div>
           </div>
         </div>
         <div id="msg-actions-${m.id}" style="display:none;padding:var(--sp-sm);background:var(--bg2);border-left:2px solid var(--border);margin-bottom:4px;">
@@ -292,11 +302,11 @@ const HF_UTILS = (() => {
   };
 
   const isNewUser = (session) => {
-    // new user if no login streak or streak is 1 and last login is today
-    return (
-      !session.profile?.lastLoginDate ||
-      session.profile?.loginStreak === undefined
-    );
+    // check if account was created less than 1 hour ago
+    const createdAt = session.createdAt || session.profile?.createdAt;
+    if (!createdAt) return false;
+    const hourAgo = Date.now() - 60 * 60 * 1000;
+    return new Date(createdAt).getTime() > hourAgo;
   };
 
   const replyToMessage = (messageId, fromId, senderName, subject, threadId) => {

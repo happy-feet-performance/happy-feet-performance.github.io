@@ -225,29 +225,42 @@ const HF_ROLE_UTILS = (() => {
   // ── THREAD VIEW ─────────────────────────────────────────────
 
   const viewThread = async (threadId, otherUserId, subject, role) => {
+    console.log("viewThread", { threadId, otherUserId, subject, role });
     const session = HF_DB.getSession();
     const setMain = _getSetMain(role);
-    const { data: msgs } = await HF_DB.getThread(threadId, session.userId);
+
+    // fetch thread messages
+    const { data: threadMsgs } = await HF_DB.getThread(
+      threadId,
+      session.userId,
+    );
+
+    // mark unread messages as read
+    const unread =
+      threadMsgs?.filter((m) => !m.read && m.to_id === session.userId) || [];
+    for (const m of unread) await HF_DB.markMessageRead(m.id);
+
+    // update badge
+    const { data: allMsgs } = await HF_DB.getMessages(session.userId);
+    const unreadCount = allMsgs?.filter((m) => !m.read).length || 0;
+    HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
 
     const isEmojiOnly = (text) =>
       text
         .replace(/(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, "")
         .trim().length === 0;
+
     const renderMessageBody = (body) =>
       body.replace(
-        /(\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu,
+        /(\p{Emoji_Presentation}|\p{Extended_Pictographic}|\u2764\uFE0F|\u2764)/gu,
         `<span class="emoji-animate" style="font-size:1.3em;cursor:pointer;display:inline-block;"
         onclick="HF_UTILS.launchEmojiConfetti('$1');this.style.transform='scale(1.8)';setTimeout(()=>this.style.transform='scale(1)',200)">$1</span>`,
       );
 
-    const unread =
-      msgs?.filter((m) => !m.read && m.to_id === session.userId) || [];
-    for (const m of unread) await HF_DB.markMessageRead(m.id);
-
-    const allSenderIds = [...new Set((msgs || []).map((m) => m.from_id))];
+    const allSenderIds = [...new Set((threadMsgs || []).map((m) => m.from_id))];
     const senderNames = await HF_DB.getUserNamesByIds(allSenderIds);
 
-    const enriched = (msgs || []).map((m) => ({
+    const enriched = (threadMsgs || []).map((m) => ({
       ...m,
       senderName: senderNames[m.from_id] || "HappyFeet",
     }));
@@ -263,7 +276,7 @@ const HF_ROLE_UTILS = (() => {
       </div>
 
       <div class="card" style="padding:0;overflow:hidden;">
-        <div style="padding:var(--sp-lg);display:flex;flex-direction:column;gap:var(--sp-md);min-height:300px;max-height:60vh;overflow-y:auto;" id="thread-messages">
+        <div style="padding:var(--sp-lg);display:flex;flex-direction:column;gap:var(--sp-md);min-height:300px;max-height:60vh;overflow-y:auto;" id="thread-messages" data-thread-id="${threadId}">
           ${enriched
             .map((m) => {
               const isMine = m.from_id === session.userId;
@@ -346,15 +359,6 @@ const HF_ROLE_UTILS = (() => {
     setTimeout(() => {
       const threadEl = document.getElementById("thread-messages");
       if (threadEl) threadEl.scrollTop = threadEl.scrollHeight;
-      const replyInput = document.getElementById("reply-body");
-      if (replyInput) {
-        replyInput.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            sendReply(otherUserId, subject, threadId, role);
-          }
-        });
-      }
     }, 100);
   };
 
@@ -384,13 +388,28 @@ const HF_ROLE_UTILS = (() => {
       body,
       threadId,
     );
-    if (result.error) {
+    if (result?.error) {
       HF_UTILS.toast(result.error, "error");
       return;
     }
 
+    // clear input
     document.getElementById("reply-body").value = "";
-    viewThread(threadId, toId, subject, role);
+
+    // append message to DOM immediately for sender
+    const threadEl = document.getElementById("thread-messages");
+    if (threadEl) {
+      const div = document.createElement("div");
+      div.style.cssText =
+        "display:flex;flex-direction:column;align-items:flex-end;margin-bottom:var(--sp-md);";
+      div.innerHTML = `
+      <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">You · just now</div>
+      <div style="max-width:75%;padding:${emojiOnly ? "4px" : "10px 14px"};background:${emojiOnly ? "transparent" : "var(--gold)"};color:#0f0f0d;font-size:${emojiOnly ? "32px" : "13px"};line-height:1.5;">
+        ${body}
+      </div>`;
+      threadEl.appendChild(div);
+      threadEl.scrollTop = threadEl.scrollHeight;
+    }
   };
 
   const toggleMsgActions = (messageId) => {
@@ -536,36 +555,101 @@ const HF_ROLE_UTILS = (() => {
     );
     if (!reason) return;
 
-    const adminIds = await HF_DB.getAdminIds();
-    for (const adminId of adminIds) {
-      await HF_DB._sendMessage(
-        session.userId,
-        adminId,
-        `[Report] User: ${senderName}`,
-        `${session.name} has reported ${senderName}.\n\nReason: ${reason}`,
-      );
+    const result = await HF_DB.createTicket(
+      session.userId,
+      `Report: ${senderName}`,
+      `${session.name} has reported ${senderName}.\n\nReason: ${reason}`,
+      "report",
+    );
+
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
     }
-    HF_UTILS.toast(`${senderName} has been reported to admin.`, "success");
+    HF_UTILS.toast(`${senderName} has been reported.`, "success");
   };
 
   // ── MESSAGES ────────────────────────────────────────────────
 
+  const archivedMessagesHTML = (enrichedArchived, role) => {
+    if (!enrichedArchived?.length) return "";
+    const startOpen = window._archivedSectionOpen || false;
+    window._archivedSectionOpen = false;
+
+    return `
+    <div class="card">
+      <div class="card-title" style="cursor:pointer;"
+        onclick="const c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none'">
+        <div class="card-dot"></div>Archived
+        <span style="margin-left:auto;font-size:11px;color:var(--text3)">${enrichedArchived.length} · click to expand</span>
+      </div>
+      <div style="display:${startOpen ? "block" : "none"}">
+        ${enrichedArchived
+          .map((m) => {
+            const isSystem = m.from_id === "system" || m.from_id === "admin";
+            return `
+            <div class="msg-item" id="archived-msg-${m.id}"
+              style="cursor:${isSystem ? "default" : "pointer"};"
+              onclick="${isSystem ? "" : `HF_ROLE_UTILS.viewThread('${m.thread_id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}', '${role}')`}">
+              <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
+                <i class="ti ti-shield" style="font-size:16px;color:var(--text3)"></i>
+              </div>
+              <div style="flex:1;opacity:0.6">
+                <div style="font-size:11px;font-family:var(--font);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+                  From: ${m.senderName || (isSystem ? "HappyFeet System" : "HappyFeet Admin")}
+                </div>
+                <div class="msg-name">${m.subject || "Message"}</div>
+                <div class="msg-preview">${m.body}</div>
+                <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+                <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
+                  title="Move back to inbox"
+                  onclick="event.stopPropagation();HF_ROLE_UTILS.unarchiveMessage('${m.id}', '${role}')">
+                  <i class="ti ti-inbox"></i>
+                </button>
+                ${
+                  !isSystem
+                    ? `
+                  <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
+                    title="View thread"
+                    onclick="event.stopPropagation();HF_ROLE_UTILS.viewThread('${m.thread_id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}', '${role}')">
+                    <i class="ti ti-message"></i>
+                  </button>`
+                    : ""
+                }
+              </div>
+            </div>`;
+          })
+          .join("")}
+      </div>
+    </div>`;
+  };
+
   const archiveMessage = async (messageId, el, role) => {
     await HF_DB.archiveMessage(messageId);
-    if (el) el.closest(".msg-item")?.remove();
     HF_UTILS.toast("Message archived.", "success");
+
+    // full re-render to show archived section
+    const session = HF_DB.getSession();
+    const handler = _getHandler(role);
+    handler?.messages?.(session);
+
+    // update badge
+    const { data: msgs } = await HF_DB.getMessages(session.userId);
+    const unreadCount = msgs?.filter((m) => !m.read).length || 0;
+    HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
   };
 
   const unarchiveMessage = async (messageId, role) => {
     await HF_DB.unarchiveMessage(messageId);
     HF_UTILS.toast("Message unarchived.", "success");
+    window._archivedSectionOpen = true;
     const handler = _getHandler(role);
     handler?.messages?.(HF_DB.getSession());
   };
 
   const readMessage = async (messageId, el, role) => {
-    const badge = document.getElementById(`badge-${messageId}`);
-    if (badge) badge.remove();
     await HF_DB.markMessageRead(messageId);
     const session = HF_DB.getSession();
     const { data: msgs } = await HF_DB.getMessages(session.userId);
@@ -578,20 +662,20 @@ const HF_ROLE_UTILS = (() => {
       overlay.id = `msg-modal-${messageId}`;
       overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;padding:var(--sp-xl);`;
       overlay.innerHTML = `
-        <div style="background:var(--bg);border-top:3px solid var(--gold);padding:var(--sp-2xl);max-width:480px;width:100%;">
-          <div style="font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
-            HappyFeet ${msg.from_id === "system" ? "System" : "Admin"}
-          </div>
-          <div style="font-family:var(--font-head);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
-            ${msg.subject || "Message"}
-          </div>
-          <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:var(--sp-xl);">
-            ${msg.body}
-          </div>
-          <button class="btn btn-primary" onclick="document.getElementById('msg-modal-${messageId}').remove();HF_ROUTER.navTo('messages');">
-            <i class="ti ti-circle-check"></i> Got it
-          </button>
-        </div>`;
+      <div style="background:var(--bg);border-top:3px solid var(--gold);padding:var(--sp-2xl);max-width:480px;width:100%;">
+        <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
+          HappyFeet ${msg.from_id === "system" ? "System" : "Admin"}
+        </div>
+        <div style="font-family:var(--font);font-size:16px;font-weight:700;color:var(--text);margin-bottom:var(--sp-md);">
+          ${msg.subject || "Message"}
+        </div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:var(--sp-xl);">
+          ${msg.body}
+        </div>
+        <button class="btn btn-primary" onclick="document.getElementById('msg-modal-${messageId}').remove();HF_ROUTER.navTo('messages');">
+          <i class="ti ti-circle-check"></i> Got it
+        </button>
+      </div>`;
       document.body.appendChild(overlay);
     }
 
@@ -644,21 +728,11 @@ const HF_ROLE_UTILS = (() => {
       const lastMsg = t.messages?.[t.messages.length - 1];
 
       return `
-      <div style="background:var(--bg);border:0.5px solid ${isUnread ? "var(--gold)" : "var(--border)"};border-left:4px solid ${isUnread ? "var(--gold)" : statusColor};margin-bottom:var(--sp-sm);cursor:pointer;transition:background 0.15s ease;position:relative;"
+      <div style="background:var(--bg);border:0.5px solid var(--border);border-left:4px solid ${isUnread ? "var(--gold)" : statusColor};margin-bottom:var(--sp-sm);cursor:pointer;transition:background 0.15s ease;position:relative;"
         onmouseover="this.style.background='var(--bg2)'"
         onmouseout="this.style.background='var(--bg)'"
         onclick="HF_ROLE_UTILS.viewTicketThread('${t.id}','${t.subject.replace(/'/g, "\\'")}',${fromMessages},'${role}')">
-        ${
-          isUnread
-            ? `
-          <div style="position:absolute;top:0;right:0;background:var(--gold);padding:2px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#0f0f0d;">
-            New reply
-          </div>`
-            : ""
-        }
         <div style="padding:var(--sp-md) var(--sp-lg);">
-
-          <!-- subject + status + chevron -->
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
             <div style="flex:1;min-width:0;font-size:13px;font-weight:${isUnread ? "700" : "600"};color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
               ${t.subject}
@@ -672,9 +746,7 @@ const HF_ROLE_UTILS = (() => {
           <!-- metadata -->
           <div style="font-size:11px;color:var(--text3);">
             ${[
-              t.category
-                ? t.category.charAt(0).toUpperCase() + t.category.slice(1)
-                : "General",
+              s.name,
               HF_UTILS.timeAgo(t.created_at),
               `${msgCount} message${msgCount !== 1 ? "s" : ""}`,
             ].join(" · ")}
@@ -696,8 +768,8 @@ const HF_ROLE_UTILS = (() => {
             lastMsg
               ? `
             <div style="font-size:12px;color:var(--text2);margin-top:6px;padding:8px 12px;background:${isUnread ? "rgba(196,154,10,.06)" : "var(--bg2)"};border-left:${isUnread ? "2px solid var(--gold)" : "none"};">
-              <span style="font-weight:600;color:${lastMsg.is_admin ? "var(--gold)" : "var(--text)"};">
-                ${lastMsg.is_admin ? "Support" : "You"}:
+              <span style="font-weight:600;color:var(--text2);">
+                ${lastMsg.is_admin ? 'Support' : 'You'}:
               </span>
               ${lastMsg.body.slice(0, 100)}${lastMsg.body.length > 100 ? "..." : ""}
             </div>`
@@ -745,9 +817,6 @@ const HF_ROLE_UTILS = (() => {
         </button>
         <div style="font-size:14px;font-weight:700;color:var(--text);">My support tickets</div>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="HF_ROLE_UTILS.newTicket(HF_DB.getSession(), ${fromMessages}, '${role}')">
-        <i class="ti ti-plus"></i> New ticket
-      </button>
     </div>
 
     ${
@@ -861,6 +930,7 @@ const HF_ROLE_UTILS = (() => {
     fromMessages = false,
     role,
   ) => {
+    console.log("viewTicketThread", { ticketId, subject, fromMessages, role });
     const s = HF_DB.getSession();
     const setMain = _getSetMain(role);
     const { data: msgs } = await HF_DB.getTicketMessages(ticketId);
@@ -1061,7 +1131,7 @@ const HF_ROLE_UTILS = (() => {
     const list = document.getElementById("drills-list");
     if (!list) return;
     if (!window._sessionDrills?.length) {
-      list.innerHTML = `<div style="text-align:center;padding:24px;background:var(--bg2);border:0.5px dashed var(--border);color:var(--text3);font-size:13px;">No drills yet — add one below.</div>`;
+      list.innerHTML = `<div style="text-align:center;padding:24px;background:var(--bg2);border:0.5px dashed var(--border);color:var(--text3);font-size:13px;">No drills yet! Add one below.</div>`;
       return;
     }
     list.innerHTML = window._sessionDrills
@@ -1205,6 +1275,7 @@ const HF_ROLE_UTILS = (() => {
     searchRecipients,
     selectRecipient,
     removeRecipient,
+    archivedMessagesHTML,
     sendComposedMessage,
     viewThread,
     sendReply,
