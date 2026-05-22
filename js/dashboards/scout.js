@@ -14,7 +14,6 @@ const HF_SCOUT = (() => {
       profile,
       discover,
       prospects,
-      pipeline,
       reports,
       placements,
       messages,
@@ -180,11 +179,6 @@ const HF_SCOUT = (() => {
         <div class="quick-action-icon"><i class="ti ti-star"></i></div>
         <div class="quick-action-label">Saved prospects</div>
         <div class="quick-action-sub">${isVerified ? trackedCount + " being tracked" : "Agency not verified"}</div>
-      </button>
-      <button class="quick-action" onclick="${isVerified ? "HF_ROUTER.navTo('pipeline')" : "HF_UTILS.toast('Verify your agency first.','error')"}">
-        <div class="quick-action-icon"><i class="ti ti-trending-up"></i></div>
-        <div class="quick-action-label">Pipeline</div>
-        <div class="quick-action-sub">${isVerified ? "Track progress" : "Agency not verified"}</div>
       </button>
     </div>
 
@@ -553,26 +547,136 @@ const HF_SCOUT = (() => {
   const prospects = async (s) => {
     const { data: saved } = await HF_DB.getScoutProspects(s.userId);
 
+    const stages = [
+      {
+        key: "watching",
+        label: "Watching",
+        color: "var(--blue)",
+        icon: "ti-eye",
+      },
+      {
+        key: "flagged",
+        label: "Flagged",
+        color: "var(--gold)",
+        icon: "ti-flag",
+      },
+      {
+        key: "report_shared",
+        label: "Report shared",
+        color: "var(--faith)",
+        icon: "ti-file-text",
+      },
+      {
+        key: "trial",
+        label: "Trial",
+        color: "var(--red)",
+        icon: "ti-calendar",
+      },
+      {
+        key: "placed",
+        label: "Placed",
+        color: "var(--green)",
+        icon: "ti-circle-check",
+      },
+    ];
+
+    const getStage = (sp) => {
+      if (sp.placed) return "placed";
+      if (sp.trial_arranged) return "trial";
+      if (sp.report_shared) return "report_shared";
+      if (sp.flagged) return "flagged";
+      return "watching";
+    };
+
+    const grouped = {};
+    stages.forEach((st) => (grouped[st.key] = []));
+    (saved || []).forEach((sp) => grouped[getStage(sp)].push(sp));
+    const total = saved?.length || 0;
+
     setMain(`
+    <div class="welcome-banner" style="margin-bottom:var(--sp-lg);">
+      <div>
+        <div class="welcome-title">Saved Prospects</div>
+        <div class="welcome-sub">Track your talent from discovery to placement</div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;">
+        <div style="font-size:32px;font-weight:700;color:var(--gold);">${total}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:0.08em;">Prospects</div>
+      </div>
+    </div>
+
+    ${
+      total === 0
+        ? `
       <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Saved prospects</div>
-        ${
-          !saved || saved.length === 0
-            ? `
-          <div style="text-align:center;padding:32px;color:var(--text2)">
-            <i class="ti ti-star" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No saved prospects yet</div>
-            <div style="font-size:13px">Discover and save players to build your prospect list.</div>
-            <button class="btn btn-primary btn-sm" style="margin-top:16px" onclick="HF_ROUTER.navTo('discover')">
-              <i class="ti ti-search"></i> Discover talent
-            </button>
-          </div>`
-            : saved.map((sp) => _savedProspectRow(sp, s.userId)).join("")
-        }
-      </div>`);
+        <div style="text-align:center;padding:48px 32px;">
+          <i class="ti ti-star" style="font-size:48px;margin-bottom:16px;display:block;color:var(--text3)"></i>
+          <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px">No prospects yet</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:24px">Save players from Discover talent to start building your pipeline.</div>
+          <button class="btn btn-primary btn-sm" onclick="HF_ROUTER.navTo('discover')">
+            <i class="ti ti-search"></i> Discover talent
+          </button>
+        </div>
+      </div>`
+        : `
+
+      <!-- pipeline timeline -->
+      <div class="card" style="margin-bottom:var(--sp-lg);">
+        <div class="card-title"><div class="card-dot"></div>Pipeline Overview</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:2px;padding:var(--sp-md) 0;">
+          ${stages
+            .map((st, i) => {
+              const count = grouped[st.key].length;
+              return `
+              <div style="display:flex;flex-direction:column;align-items:center;position:relative;">
+                ${
+                  i < 4
+                    ? `
+                  <div style="position:absolute;top:20px;left:50%;width:100%;height:2px;background:${count > 0 ? st.color : "var(--border)"};z-index:0;opacity:0.4;"></div>`
+                    : ""
+                }
+                <div style="width:40px;height:40px;border-radius:50%;background:${count > 0 ? st.color : 'var(--bg2)'};border:2px solid ${count > 0 ? st.color : 'var(--border)'};display:flex;align-items:center;justify-content:center;z-index:1;position:relative;cursor:${count > 0 ? 'pointer' : 'default'};"
+                  onclick="${count > 0 ? `document.getElementById('stage-${st.key}')?.scrollIntoView({behavior:'smooth'})` : ""}">
+                  <i class="ti ${st.icon}" style="color:${count > 0 ? '#fff' : 'var(--text3)'}"></i>
+                </div>
+                <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${count > 0 ? st.color : "var(--text3)"};margin-top:6px;text-align:center;">
+                  ${st.label}
+                </div>
+                <div style="font-size:20px;font-weight:700;color:${count > 0 ? st.color : "var(--text3)"};">${count}</div>
+              </div>`;
+            })
+            .join("")}
+        </div>
+      </div>
+
+      <!-- prospects grouped by stage -->
+      ${stages
+        .map((st) => {
+          const players = grouped[st.key];
+          if (players.length === 0) return "";
+          return `
+          <div id="stage-${st.key}" class="card" style="margin-bottom:var(--sp-md);">
+            <div class="card-title" style="cursor:pointer;justify-content:space-between;"
+              onclick="const c=this.nextElementSibling;c.style.display=c.style.display==='none'?'block':'none';this.querySelector('.toggle').className='ti toggle '+(c.style.display==='none'?'ti-chevron-down':'ti-chevron-up');">
+              <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+                <div class="card-dot" style="background:${st.color}"></div>
+                ${st.label}
+                <span style="font-size:11px;color:var(--text3)">${players.length}</span>
+              </div>
+              <i class="ti ti-chevron-up toggle" style="font-size:14px;color:var(--text3)"></i>
+            </div>
+            <div>
+              ${players.map((sp) => _savedProspectRow(sp, s.userId)).join("")}
+            </div>
+          </div>`;
+        })
+        .join("")}
+    `
+    }
+  `);
   };
 
-  // ── SAVED PROSPECTS HELPERS ───────────────────────────────────────
+  // ── SAVED PROSPECTS UI HELPERS ─────────────────────────────────────
   const _playerRow = (p, isSaved, scoutId) => {
     const prof = p.profile || {};
     const overall = prof.ratings
@@ -631,12 +735,17 @@ const HF_SCOUT = (() => {
         )
       : null;
 
-    const statusColor = sp.flagged
-      ? "var(--red)"
-      : sp.report_shared
-        ? "var(--gold)"
-        : "var(--blue)";
-    const statusLabel = sp.placed
+    const stageColor = sp.placed
+      ? "var(--green)"
+      : sp.trial_arranged
+        ? "var(--red)"
+        : sp.report_shared
+          ? "var(--faith)"
+          : sp.flagged
+            ? "var(--gold)"
+            : "var(--blue)";
+
+    const stageLabel = sp.placed
       ? "Placed"
       : sp.trial_arranged
         ? "On trial"
@@ -646,68 +755,112 @@ const HF_SCOUT = (() => {
             ? "Flagged"
             : "Watching";
 
+    const stageIcon = sp.placed
+      ? "ti-circle-check"
+      : sp.trial_arranged
+        ? "ti-calendar"
+        : sp.report_shared
+          ? "ti-file-text"
+          : sp.flagged
+            ? "ti-flag"
+            : "ti-eye";
+
     return `
-    <div class="prospect-row" onclick="HF_SCOUT.toggleSavedActions('${sp.id}')" style="cursor:pointer;">
-      <div class="avatar avatar-md" style="background:${statusColor}">${HF_UTILS.initials(name)}</div>
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${name}</div>
-        <div style="font-size:11px;color:var(--text2)">${p.pos || "-"} · ${p.tier || "-"} · ${p.hometown || "-"}</div>
-        <div style="font-size:11px;color:${statusColor};margin-top:2px">${statusLabel}</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;">
-        ${overall !== null ? `<div style="font-size:16px;font-weight:700;color:var(--gold)">${overall}%</div>` : '<div style="font-size:13px;color:var(--text3)">Unrated</div>'}
-      </div>
-    </div>
-    <div id="saved-actions-${sp.id}" style="display:none;padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-sm);">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_ROLE_UTILS.viewPlayerProfile('${sp.player_id}')">
-          <i class="ti ti-user"></i> View profile
-        </button>
-        ${
-          !sp.report
-            ? `
-              <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.generateReport('${scoutId}', '${sp.player_id}', '${safeName}')">
-                <i class="ti ti-sparkles"></i> Generate report
-              </button>`
-            : `
-              <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.viewReport('${scoutId}', '${sp.player_id}', '${safeName}')">
-                <i class="ti ti-file-text"></i> View report
-              </button>`
-        }
-        ${
-          sp.flagged
-            ? `
-              <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.unflagProspect('${scoutId}', '${sp.player_id}', '${safeName}')">
-                <i class="ti ti-flag-off"></i> Unflag
-              </button>`
-            : `
-              <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.flagProspect('${scoutId}', '${sp.player_id}', '${safeName}')">
-                <i class="ti ti-flag"></i> Flag
-              </button>`
-        }
-        ${
-          !sp.report_shared
-            ? sp.report
+    <div style="background:var(--bg);border:0.5px solid var(--border);border-left:4px solid ${stageColor};margin-bottom:var(--sp-sm);transition:background 0.15s ease;"
+      onmouseover="this.style.background='var(--bg2)'"
+      onmouseout="this.style.background='var(--bg)'">
+      
+      <!-- main row -->
+      <div style="padding:var(--sp-md) var(--sp-lg);display:flex;align-items:center;gap:var(--sp-md);cursor:pointer;"
+        onclick="HF_SCOUT.toggleSavedActions('${sp.id}')">
+        <div style="width:44px;height:44px;background:${stageColor};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;">
+          ${HF_UTILS.initials(name)}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;">${name}</div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            ${p.pos ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text2);">${p.pos}</span>` : ""}
+            ${p.tier ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text2);">${p.tier}</span>` : ""}
+            ${p.hometown ? `<span style="font-size:10px;color:var(--text3);">${p.hometown}</span>` : ""}
+            ${
+              p.club
+                ? `<span style="font-size:10px;font-weight:700;padding:1px 6px;background:rgba(26,122,46,.1);color:var(--green);">${p.club}</span>`
+                : `<span style="font-size:10px;font-weight:700;padding:1px 6px;background:var(--bg2);color:var(--text3);">Free agent</span>`
+            }
+          </div>
+          ${
+            overall !== null
               ? `
-                <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.shareReportViaMessage('${scoutId}', '${sp.player_id}', '${safeName}')">
-                  <i class="ti ti-file-text"></i> Share report
-                </button>`
+            <div style="display:flex;align-items:center;gap:6px;margin-top:6px;">
+              <div style="flex:1;height:3px;background:var(--border);">
+                <div style="height:100%;width:${overall}%;background:${stageColor};"></div>
+              </div>
+              <span style="font-size:11px;font-weight:700;color:${stageColor};">${overall}%</span>
+            </div>`
+              : ""
+          }
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+          ${
+            sp.report
+              ? `
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;padding:2px 8px;background:rgba(196,154,10,.1);color:var(--gold);">
+              Report ready
+            </span>`
+              : ""
+          }
+        </div>
+        <i class="ti ti-chevron-down" id="chevron-${sp.id}" style="color:var(--text3);font-size:14px;flex-shrink:0;transition:transform 0.2s;"></i>
+      </div>
+
+      <!-- actions panel -->
+      <div id="saved-actions-${sp.id}" style="display:none;padding:var(--sp-md) var(--sp-lg);border-top:0.5px solid var(--border);background:var(--bg2);">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_ROLE_UTILS.viewSenderProfile('${sp.player_id}', 'scout', 'prospects')">
+            <i class="ti ti-user"></i> Profile
+          </button>
+          ${
+            !sp.report
+              ? `
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.generateReport('${scoutId}', '${sp.player_id}', '${safeName}')">
+              <i class="ti ti-sparkles"></i> Generate report
+            </button>`
               : `
-                <button class="btn btn-outline btn-sm" style="opacity:0.4;cursor:not-allowed;" disabled title="Generate a report first">
-                  <i class="ti ti-file-text"></i> Share report
-                </button>`
-            : ""
-        }
-        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.messagePlayer('${sp.player_id}', '${safeName}')">
-          <i class="ti ti-message"></i> Message
-        </button>
-        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();HF_SCOUT.unsavePlayer('${scoutId}', '${sp.player_id}', '${safeName}')">
-          <i class="ti ti-trash"></i> Remove
-        </button>
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.viewReport('${scoutId}', '${sp.player_id}', '${safeName}')">
+              <i class="ti ti-file-text"></i> View report
+            </button>`
+          }
+          ${
+            sp.flagged
+              ? `
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.unflagProspect('${scoutId}', '${sp.player_id}', '${safeName}')">
+              <i class="ti ti-flag-off"></i> Unflag
+            </button>`
+              : `
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.flagProspect('${scoutId}', '${sp.player_id}', '${safeName}')">
+              <i class="ti ti-flag"></i> Flag
+            </button>`
+          }
+          ${
+            !sp.report_shared && sp.report
+              ? `
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_SCOUT.shareReportViaMessage('${scoutId}', '${sp.player_id}', '${safeName}')">
+              <i class="ti ti-send"></i> Share report
+            </button>`
+              : ""
+          }
+          <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();HF_ROLE_UTILS.messageUser('${sp.player_id}', '${safeName}', 'prospects', 'scout')">
+            <i class="ti ti-message"></i> Message
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();HF_SCOUT.unsavePlayer('${scoutId}', '${sp.player_id}', '${safeName}')">
+            <i class="ti ti-trash"></i> Remove
+          </button>
+        </div>
       </div>
     </div>`;
   };
 
+  // ── SAVED PROSPECTS ACTIONS HELPERS ────────────────────────────────
   const togglePlayerActions = (playerId) => {
     const actions = document.getElementById(`player-actions-${playerId}`);
     if (actions)
@@ -715,11 +868,14 @@ const HF_SCOUT = (() => {
         actions.style.display === "none" ? "block" : "none";
   };
 
-  const toggleSavedActions = (prospectId) => {
-    const actions = document.getElementById(`saved-actions-${prospectId}`);
-    if (actions)
-      actions.style.display =
-        actions.style.display === "none" ? "block" : "none";
+  const toggleSavedActions = (id) => {
+    const panel = document.getElementById(`saved-actions-${id}`);
+    const chevron = document.getElementById(`chevron-${id}`);
+    if (!panel) return;
+    const isOpen = panel.style.display !== "none";
+    panel.style.display = isOpen ? "none" : "block";
+    if (chevron)
+      chevron.style.transform = isOpen ? "rotate(0deg)" : "rotate(180deg)";
   };
 
   const unsavePlayer = async (scoutId, playerId, name) => {
@@ -794,131 +950,6 @@ const HF_SCOUT = (() => {
     prospects(HF_DB.getSession());
   };
 
-  // ── PIPELINE ───────────────────────────────────────────────
-  const pipeline = async (s) => {
-    const { data: saved } = await HF_DB.getScoutProspects(s.userId);
-
-    const stages = [
-      {
-        key: "watching",
-        label: "Watching",
-        color: "var(--blue)",
-        filter: (p) =>
-          !p.flagged && !p.report_shared && !p.trial_arranged && !p.placed,
-      },
-      {
-        key: "flagged",
-        label: "Flagged",
-        color: "var(--gold)",
-        filter: (p) => p.flagged && !p.report_shared,
-      },
-      {
-        key: "report_shared",
-        label: "Report shared",
-        color: "var(--faith)",
-        filter: (p) => p.report_shared && !p.trial_arranged,
-      },
-      {
-        key: "trial",
-        label: "Trial arranged",
-        color: "var(--red)",
-        filter: (p) => p.trial_arranged && !p.placed,
-      },
-      {
-        key: "placed",
-        label: "Placed",
-        color: "var(--green)",
-        filter: (p) => p.placed,
-      },
-    ];
-
-    setMain(`
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Active pipeline</div>
-        ${
-          !saved || saved.length === 0
-            ? `
-          <div style="text-align:center;padding:32px;color:var(--text2)">
-            <i class="ti ti-chart-line" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No prospects in pipeline</div>
-            <div style="font-size:13px">Save players as prospects to start building your pipeline.</div>
-          </div>`
-            : stages
-                .map((stage) => {
-                  const players = saved.filter(stage.filter);
-                  return `
-              <div style="margin-bottom:var(--sp-lg);">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                  <div style="width:12px;height:12px;background:${stage.color};flex-shrink:0;"></div>
-                  <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);">
-                    ${stage.label} (${players.length})
-                  </div>
-                </div>
-                ${
-                  players.length === 0
-                    ? `
-                  <div style="padding:8px 16px;font-size:12px;color:var(--text3);background:var(--bg2);">No players at this stage</div>`
-                    : players
-                        .map((sp) => {
-                          const p = sp.player?.profile || {};
-                          const name = sp.player?.name || "Unknown";
-                          return `
-                      <div style="display:flex;align-items:center;gap:var(--sp-md);padding:10px 12px;background:var(--bg2);border-left:3px solid ${stage.color};margin-bottom:4px;">
-                        <div class="avatar avatar-sm" style="background:${stage.color}">${HF_UTILS.initials(name)}</div>
-                        <div>
-                          <div style="font-size:13px;font-weight:600;color:var(--text)">${name}</div>
-                          <div style="font-size:11px;color:var(--text2)">${p.pos || "-"} · ${p.tier || "-"} · ${p.hometown || "-"}</div>
-                        </div>
-                        ${
-                          sp.report
-                            ? `
-                          <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="HF_SCOUT.shareReportViaMessage('${s.userId}', '${sp.player_id}', '${name.replace(/'/g, "\\'")}')">
-                            <i class="ti ti-file-text"></i> Share report
-                          </button>`
-                            : `
-                          <button class="btn btn-outline btn-sm" style="margin-left:auto;opacity:0.4;cursor:not-allowed;" disabled title="Generate a report first">
-                            <i class="ti ti-file-text"></i> No report yet
-                          </button>`
-                        }
-                        ${
-                          stage.key === "report_shared"
-                            ? `
-                          <button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="HF_SCOUT.arrangeTrial('${s.userId}', '${sp.player_id}', '${name}')">
-                            <i class="ti ti-calendar"></i> Arrange trial
-                          </button>`
-                            : ""
-                        }
-                        ${
-                          stage.key === "trial"
-                            ? `
-                          <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="HF_SCOUT.markPlaced('${s.userId}', '${sp.player_id}', '${name}')">
-                            <i class="ti ti-circle-check"></i> Mark placed
-                          </button>`
-                            : ""
-                        }
-                      </div>`;
-                        })
-                        .join("")
-                }
-              </div>`;
-                })
-                .join("")
-        }
-      </div>
-
-      <div class="card">
-        <div class="card-title"><div class="card-dot"></div>Pipeline stages</div>
-        <div style="font-size:12px;color:var(--text2);line-height:2.2">
-          1. <strong style="color:var(--text)">Watching</strong>: Added, data collecting.<br>
-          2. <strong style="color:var(--text)">Flagged</strong>: Meets threshold. Ready for report.<br>
-          3. <strong style="color:var(--text)">Report shared</strong>: Profile sent to partner clubs.<br>
-          4. <strong style="color:var(--text)">Trial arranged</strong>: Club interested. Date set.<br>
-          5. <strong style="color:var(--text)">Placed</strong>: Signed. Follow up at 3 months.
-        </div>
-      </div>`);
-  };
-
-  // ── PIPELINE HELPERS ───────────────────────────────────────
   const arrangeTrial = async (scoutId, playerId, name) => {
     const result = await HF_DB.updateProspectStatus(scoutId, playerId, {
       trial_arranged: true,
@@ -938,7 +969,7 @@ const HF_SCOUT = (() => {
     );
 
     toast(`Trial arranged for ${name}!`, "success");
-    pipeline(HF_DB.getSession());
+    prospects(HF_DB.getSession());
   };
 
   const markPlaced = async (scoutId, playerId, name) => {
@@ -960,7 +991,7 @@ const HF_SCOUT = (() => {
     );
 
     toast(`${name} marked as placed!`, "success");
-    pipeline(HF_DB.getSession());
+    prospects(HF_DB.getSession());
   };
 
   // ── REPORTS ────────────────────────────────────────────────
@@ -2061,7 +2092,6 @@ const HF_SCOUT = (() => {
     dashboard,
     messages,
     prospects,
-    pipeline,
     profile,
     discover,
     findmyteam,

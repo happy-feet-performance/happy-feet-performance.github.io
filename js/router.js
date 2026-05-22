@@ -96,7 +96,6 @@ const HF_ROUTER = (() => {
         nav.push(
           { view: "discover", icon: "ti-search", label: "Discover talent" },
           { view: "prospects", icon: "ti-star", label: "Saved prospects" },
-          { view: "pipeline", icon: "ti-chart-line", label: "Pipeline" },
           { section: "Reports" },
           { view: "reports", icon: "ti-file-text", label: "Scout reports" },
           { view: "placements", icon: "ti-circle-check", label: "Placements" },
