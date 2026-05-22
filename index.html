@@ -6,7 +6,6 @@
       name="viewport"
       content="width=device-width,initial-scale=1,viewport-fit=cover"
     />
-    <meta name="theme-color" content="#C49A0A" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="HappyFeet" />
@@ -21,9 +20,12 @@
     <link rel="stylesheet" href="css/base.css" />
     <link rel="stylesheet" href="css/auth.css" />
     <link rel="stylesheet" href="css/dashboard.css" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"
+      href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css"
     />
     <script src="js/theme.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -107,12 +109,16 @@
           </div>
           <div class="fg">
             <label>Password</label>
-            <input
-              type="password"
-              id="login-pass"
-              placeholder="Your password"
-              autocomplete="off"
-            />
+            <div class="password-wrap">
+              <input type="password" id="login-pass" placeholder="Password" />
+              <button
+                type="button"
+                class="password-toggle"
+                onclick="HF_AUTH.togglePassword('login-pass', this)"
+              >
+                <i class="ti ti-eye"></i>
+              </button>
+            </div>
           </div>
           <button
             class="btn btn-primary btn-full"
@@ -120,6 +126,19 @@
           >
             Sign in →
           </button>
+          <div style="text-align: center; margin-top: 8px">
+            <span
+              onclick="HF_AUTH.showScreen('screen-forgot')"
+              style="
+                font-size: 12px;
+                color: var(--text3);
+                cursor: pointer;
+                text-decoration: underline;
+              "
+            >
+              Forgot password?
+            </span>
+          </div>
           <div class="auth-link">
             New here?
             <a onclick="HF_AUTH.showScreen('screen-signup-role')"
@@ -141,6 +160,201 @@
               Admin access
             </a>
           </div>
+        </div>
+      </div>
+
+      <!-- Forgot password screen -->
+      <div class="auth-screen" id="screen-forgot">
+        <div class="auth-card">
+          <div class="auth-logo">
+            <div class="auth-logo-hex">HF</div>
+            <div class="auth-logo-mark">HappyFeet</div>
+          </div>
+          <div class="auth-title">Reset password</div>
+          <div class="auth-sub">
+            Answer your security question to reset your password.
+          </div>
+
+          <div id="forgot-step-1">
+            <div class="fg">
+              <label class="required">Email or phone</label>
+              <input
+                type="text"
+                id="forgot-contact"
+                placeholder="Enter your email or phone"
+                onkeydown="if (event.key === 'Enter') HF_AUTH.forgotStep1();"
+                style="
+                  padding: 10px 14px;
+                  background: var(--bg2);
+                  border: 0.5px solid var(--border);
+                  color: var(--text);
+                  font-size: 14px;
+                  width: 100%;
+                  outline: none;
+                  font-family: var(--font);
+                "
+              />
+            </div>
+            <div class="auth-error" id="forgot-err"></div>
+            <button
+              class="btn btn-primary"
+              style="width: 100%; margin-top: 8px"
+              onclick="HF_AUTH.forgotStep1()"
+            >
+              <i class="ti ti-arrow-right"></i> Continue
+            </button>
+          </div>
+
+          <div id="forgot-step-2" style="display: none">
+            <div
+              style="
+                padding: 12px;
+                background: var(--bg2);
+                border-left: 2px solid var(--gold);
+                font-size: 13px;
+                color: var(--text2);
+                margin-bottom: var(--sp-md);
+              "
+            >
+              <i
+                class="ti ti-shield-question"
+                style="margin-right: 6px; color: var(--gold)"
+              ></i>
+              <span id="forgot-question"></span>
+            </div>
+            <div class="fg">
+              <label class="required">Your answer</label>
+              <input
+                type="text"
+                id="forgot-answer"
+                placeholder="Enter your answer"
+                onkeydown="if (event.key === 'Enter') HF_AUTH.forgotStep2();"
+                style="
+                  padding: 10px 14px;
+                  background: var(--bg2);
+                  border: 0.5px solid var(--border);
+                  color: var(--text);
+                  font-size: 14px;
+                  width: 100%;
+                  outline: none;
+                  font-family: var(--font);
+                "
+              />
+            </div>
+            <div class="auth-error" id="forgot-err-2"></div>
+            <button
+              class="btn btn-primary"
+              style="width: 100%; margin-top: 8px"
+              onclick="HF_AUTH.forgotStep2()"
+            >
+              <i class="ti ti-arrow-right"></i> Verify answer
+            </button>
+          </div>
+
+          <div id="forgot-step-3" style="display: none">
+            <div class="fg">
+              <label class="required">New password</label>
+              <div class="password-wrap">
+                <input
+                  type="password"
+                  id="forgot-new-pass"
+                  placeholder="Enter new password"
+                  oninput="HF_AUTH.checkPassword(this.value)"
+                  style="
+                    padding: 10px 14px;
+                    background: var(--bg2);
+                    border: 0.5px solid var(--border);
+                    color: var(--text);
+                    font-size: 14px;
+                    width: 100%;
+                    outline: none;
+                    font-family: var(--font);
+                  "
+                  onkeydown="if (event.key === 'Enter') HF_AUTH.forgotStep3();"
+                />
+                <button
+                  type="button"
+                  class="password-toggle"
+                  onclick="HF_AUTH.togglePassword('forgot-new-pass', this)"
+                >
+                  <i class="ti ti-eye"></i>
+                </button>
+              </div>
+              <div
+                id="password-strength-bar"
+                style="
+                  height: 3px;
+                  background: var(--border);
+                  margin-top: 6px;
+                  transition: all 0.3s;
+                "
+              >
+                <div
+                  id="password-strength-fill"
+                  style="height: 100%; width: 0%; transition: all 0.3s"
+                ></div>
+              </div>
+              <div
+                id="password-strength-label"
+                style="
+                  font-size: 10px;
+                  font-family: var(--font);
+                  letter-spacing: 0.08em;
+                  text-transform: uppercase;
+                  margin-top: 4px;
+                  color: var(--text3);
+                "
+              ></div>
+            </div>
+            <div class="fg">
+              <label class="required">Confirm password</label>
+              <div class="password-wrap">
+                <input
+                  type="password"
+                  id="forgot-confirm-pass"
+                  onkeydown="if (event.key === 'Enter') HF_AUTH.forgotStep3();"
+                  style="
+                    padding: 10px 14px;
+                    background: var(--bg2);
+                    border: 0.5px solid var(--border);
+                    color: var(--text);
+                    font-size: 14px;
+                    width: 100%;
+                    outline: none;
+                    font-family: var(--font);
+                  "
+                  onkeydown="if (event.key === 'Enter') HF_AUTH.forgotStep3();"
+                />
+                <button
+                  type="button"
+                  class="password-toggle"
+                  onclick="HF_AUTH.togglePassword('forgot-confirm-pass', this)"
+                >
+                  <i class="ti ti-eye"></i>
+                </button>
+              </div>
+            </div>
+            <div class="auth-error" id="forgot-err-3"></div>
+            <button
+              class="btn btn-primary"
+              style="width: 100%; margin-top: 8px"
+              onclick="HF_AUTH.forgotStep3()"
+            >
+              <i class="ti ti-circle-check"></i> Reset password
+            </button>
+          </div>
+
+          <button
+            class="btn btn-outline"
+            style="width: 100%; margin-top: 8px"
+            onclick="
+              HF_AUTH.showScreen(
+                window._forgotFromAdmin ? 'screen-admin-login' : 'screen-login',
+              )
+            "
+          >
+            Back to login
+          </button>
         </div>
       </div>
 
@@ -279,13 +493,21 @@
           </div>
           <div class="fg">
             <label>Password</label>
-            <input
-              type="password"
-              id="su-pass"
-              placeholder="Min 6 characters"
-              autocomplete="new-password"
-              oninput="HF_AUTH.checkPassword(this.value)"
-            />
+            <div class="password-wrap">
+              <input
+                type="password"
+                id="su-pass"
+                placeholder="Create a password"
+                oninput="HF_AUTH.checkPassword(this.value)"
+              />
+              <button
+                type="button"
+                class="password-toggle"
+                onclick="HF_AUTH.togglePassword('su-pass', this)"
+              >
+                <i class="ti ti-eye"></i>
+              </button>
+            </div>
             <div
               id="password-strength-bar"
               style="
@@ -319,6 +541,78 @@
           <div class="auth-link">
             <a onclick="HF_AUTH.showScreen('screen-signup-role')">← Back</a>
           </div>
+        </div>
+      </div>
+
+      <!-- Security question step -->
+      <div class="auth-screen" id="screen-signup-security">
+        <div class="auth-card">
+          <div class="auth-logo">
+            <div class="auth-logo-hex">HF</div>
+            <div class="auth-logo-name">HappyFeet</div>
+          </div>
+          <div class="auth-title">Security question</div>
+          <div class="auth-sub">
+            This will help you recover your account if you forget your password.
+          </div>
+          <div class="fg">
+            <label class="required">Security question</label>
+            <select
+              id="su-security-q"
+              style="
+                padding: 10px 14px;
+                background: var(--bg2);
+                border: 0.5px solid var(--border);
+                color: var(--text);
+                font-size: 14px;
+                width: 100%;
+                outline: none;
+                font-family: var(--font);
+              "
+            >
+              <option value="">Select a question</option>
+              <option>What was the name of your first football club?</option>
+              <option>What is your mother's maiden name?</option>
+              <option>What was the name of your primary school?</option>
+              <option>What is the name of your hometown?</option>
+              <option>What was your childhood nickname?</option>
+              <option>Who was your first football hero?</option>
+              <option>What was the name of your first coach?</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label class="required">Your answer</label>
+            <input
+              type="text"
+              id="su-security-a"
+              placeholder="Enter your answer"
+              style="
+                padding: 10px 14px;
+                background: var(--bg2);
+                border: 0.5px solid var(--border);
+                color: var(--text);
+                font-size: 14px;
+                width: 100%;
+                outline: none;
+                font-family: var(--font);
+              "
+            />
+          </div>
+          <div class="auth-error" id="security-err"></div>
+          <button
+            class="btn btn-primary"
+            style="width: 100%; margin-top: 12px"
+            onclick="HF_AUTH.goToConfirm()"
+          >
+            <i class="ti ti-arrow-right"></i> Continue
+          </button>
+          <button
+            class="btn btn-outline"
+            style="width: 100%; margin-top: 12px"
+            onclick="HF_AUTH.showScreen('screen-signup-3')"
+          >
+            Back
+          </button>
         </div>
       </div>
 
@@ -1275,19 +1569,40 @@
           </div>
           <div class="fg">
             <label class="required">Password</label>
-            <input
-              type="password"
-              id="admin-pass"
-              placeholder="Your admin password"
-              autocomplete="off"
-            />
+            <div class="password-wrap">
+              <input type="password" id="admin-pass" placeholder="Password" />
+              <button
+                type="button"
+                class="password-toggle"
+                onclick="HF_AUTH.togglePassword('admin-pass', this)"
+              >
+                <i class="ti ti-eye"></i>
+              </button>
+            </div>
           </div>
           <button
             class="btn btn-primary btn-full"
             onclick="HF_AUTH.handleAdminLogin()"
+            onkeydown="if (event.key === 'Enter') HF_AUTH.handleAdminLogin();"
           >
             Sign in →
           </button>
+          <div style="text-align: center; margin-top: 8px">
+            <span
+              onclick="
+                window._forgotFromAdmin = true;
+                HF_AUTH.showScreen('screen-forgot');
+              "
+              style="
+                font-size: 12px;
+                color: var(--text3);
+                cursor: pointer;
+                text-decoration: underline;
+              "
+            >
+              Forgot password?
+            </span>
+          </div>
           <div class="auth-link">
             <a onclick="HF_AUTH.showScreen('screen-login')">← Back to login</a>
           </div>
@@ -1369,6 +1684,7 @@
 
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/roleutils.js"></script>
     <script src="js/scripture.js"></script>
     <script src="js/db.js"></script>
     <script src="js/auth.js"></script>

@@ -6,6 +6,5 @@ module.exports = {
   SUPABASE_ANON_KEY: '${process.env.SUPABASE_ANON_KEY}',
 };`;
     fs.writeFileSync('js/config.js', config);
-    console.log('config.js generated from environment variables');
   }
 };

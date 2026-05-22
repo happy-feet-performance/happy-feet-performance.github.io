@@ -1,9 +1,5 @@
 /**
  * HappyFeet Performance Hub: auth.js
- * ─────────────────────────────────────
- * Handles: login (email OR phone), 3-step signup,
- * role selection, session management.
- * Depends on: db.js, utils.js, router.js
  */
 
 const HF_AUTH = (() => {
@@ -20,20 +16,26 @@ const HF_AUTH = (() => {
 
   // ─── Screens ───────────────────────────────────────────────
   const showScreen = (id) => {
-    document.getElementById("nav-overlay")?.classList.remove("open");
-    document.getElementById("sidenav")?.classList.remove("open");
-
-    // reset subscriptions if going back to auth
-    if (id === "screen-login" || id === "screen-signup-role") {
-      if (window.HF_ROUTER) HF_ROUTER.resetSubscriptions();
-    }
-
     document
       .querySelectorAll(".auth-screen")
       .forEach((s) => s.classList.remove("active"));
     document.getElementById(id)?.classList.add("active");
-    const scr = el(id);
-    if (scr) scr.classList.add("active");
+
+    // reset forgot password flow when navigating to it
+    if (id === "screen-forgot") {
+      document.getElementById("forgot-step-1").style.display = "block";
+      document.getElementById("forgot-step-2").style.display = "none";
+      document.getElementById("forgot-step-3").style.display = "none";
+      document.getElementById("forgot-contact").value = "";
+      document.getElementById("forgot-answer").value = "";
+      document.getElementById("forgot-new-pass").value = "";
+      document.getElementById("forgot-confirm-pass").value = "";
+      hideError("forgot-err");
+      hideError("forgot-err-2");
+      hideError("forgot-err-3");
+      window._forgotContact = null;
+      window._forgotUserId = null;
+    }
   };
 
   // ─── Tab toggle helper ─────────────────────────────────────
@@ -203,6 +205,14 @@ const HF_AUTH = (() => {
     document.getElementById("sidenav")?.classList.remove("open");
     const name = el("su-name")?.value.trim();
     const pass = el("su-pass")?.value;
+    if (!pass) {
+      showError("signup-err", "Please enter a password.");
+      return;
+    }
+    if (pass.length < 6) {
+      showError("signup-err", "Password must be at least 6 characters.");
+      return;
+    }
     hideError("signup-err");
 
     if (!name) {
@@ -390,7 +400,7 @@ const HF_AUTH = (() => {
       scout: "Your scout account is ready.",
     }[state.role];
     el("confirm-summary").innerHTML = summaryRows[state.role];
-    showScreen("screen-signup-confirm");
+    showScreen("screen-signup-security");
   };
 
   // ─── Complete signup ────────────────────────────────────────
@@ -399,9 +409,18 @@ const HF_AUTH = (() => {
 
     const result = await HF_DB.createUser(state.signup);
     if (result.error) {
-      toast(result.error, "error");
+      HF_UTILS.toast(result.error, "error");
       showScreen("screen-signup-info");
       return;
+    }
+
+    // save security question using stored values from goToConfirm
+    if (result.user && state.securityQuestion && state.securityAnswer) {
+      await HF_DB.setSecurityQuestion(
+        result.user.id,
+        state.securityQuestion,
+        state.securityAnswer,
+      );
     }
 
     const session = _makeSession(result.user);
@@ -413,7 +432,6 @@ const HF_AUTH = (() => {
 
     if (state.signup.role === "coach") {
       const clubInput = el("sq-team");
-      const regionInput = el("sq-region");
       if (clubInput) {
         clubInput.value = state.signup.profile.club || "";
         clubInput.style.opacity = "0.6";
@@ -422,9 +440,7 @@ const HF_AUTH = (() => {
       showScreen("screen-squad-verify");
     } else if (state.signup.role === "scout") {
       const agencyInput = el("ag-name");
-      if (agencyInput) {
-        agencyInput.value = state.signup.profile.org || "";
-      }
+      if (agencyInput) agencyInput.value = state.signup.profile.org || "";
       showScreen("screen-agency-verify");
     } else {
       HF_ROUTER.launch(session);
@@ -458,9 +474,9 @@ const HF_AUTH = (() => {
       return;
     }
 
-    const hashedPassword = await HF_UTILS.hashPassword(pass);
-    const user = await HF_DB.findUser(contact, hashedPassword);
-    if (!user) {
+    // fetch user first to check lockout before hashing password
+    const userCheck = await HF_DB.findUserByContact(contact);
+    if (!userCheck) {
       showError(
         "login-err",
         state.loginTab === "phone"
@@ -470,26 +486,69 @@ const HF_AUTH = (() => {
       return;
     }
 
-    if (user.banned) {
+    // check lockout
+    if (
+      userCheck.locked_until &&
+      new Date(userCheck.locked_until) > new Date()
+    ) {
+      const mins = Math.ceil(
+        (new Date(userCheck.locked_until) - new Date()) / 60000,
+      );
       showError(
         "login-err",
-        `Your account has been banned. ${user.banReason ? "Reason: " + user.banReason : "Please contact support."}`,
+        `Account locked. Try again in ${mins} minute${mins !== 1 ? "s" : ""}.`,
       );
       return;
     }
 
+    // check banned
+    if (userCheck.banned) {
+      showError(
+        "login-err",
+        `Your account has been banned. ${userCheck.banReason ? "Reason: " + userCheck.banReason : "Please contact support."}`,
+      );
+      return;
+    }
+
+    // check kicked
     if (
-      user.kicked &&
-      user.kickedUntil &&
-      new Date(user.kickedUntil) > new Date()
+      userCheck.kicked &&
+      userCheck.kickedUntil &&
+      new Date(userCheck.kickedUntil) > new Date()
     ) {
-      const until = new Date(user.kickedUntil).toLocaleTimeString();
+      const until = new Date(userCheck.kickedUntil).toLocaleTimeString();
       showError(
         "login-err",
         `You have been kicked and cannot sign in until ${until}.`,
       );
       return;
     }
+
+    // now hash and verify password
+    const hashedPassword = await HF_UTILS.hashPassword(pass);
+    const user = await HF_DB.findUser(contact, hashedPassword);
+
+    if (!user) {
+      // increment attempts for wrong password
+      const { attempts, lockedUntil } = await HF_DB.incrementLoginAttempts(
+        userCheck.id,
+      );
+      const remaining = 5 - attempts;
+      if (lockedUntil) {
+        showError(
+          "login-err",
+          "Too many failed attempts. Account locked for 15 minutes.",
+        );
+      } else {
+        showError(
+          "login-err",
+          `${state.loginTab === "phone" ? "Phone number or password incorrect." : "Email or password incorrect."}${remaining === 1 ? " 1 attempt remaining before lockout." : ""}`,
+        );
+      }
+      return;
+    }
+
+    await HF_DB.resetLoginAttempts(user.id);
 
     hideError("login-err");
     const session = _makeSession(user);
@@ -503,15 +562,17 @@ const HF_AUTH = (() => {
   // ─── Session helper ────────────────────────────────────────
   const _makeSession = (user) => ({
     userId: user.id,
-    role: user.role,
     name: user.name,
+    role: user.role,
     contact: user.contact,
     contactType: user.contactType,
-    displayContact: user.displayContact || user.contact,
-    profile: user.profile,
-    squadStatus: user.squadStatus || "unregistered",
-    agencyStatus: user.agencyStatus || "unregistered",
-    created: user.created,
+    displayContact: user.displayContact,
+    localPhone: user.localPhone,
+    profile: user.profile || {},
+    squadStatus: user.squadStatus,
+    agencyStatus: user.agencyStatus,
+    passwordVersion: user.passwordVersion || 1,
+    createdAt: user.createdAt,
   });
 
   const logout = () => {
@@ -541,31 +602,36 @@ const HF_AUTH = (() => {
     showScreen("screen-login");
   };
 
-  const checkPassword = (val) => {
-    const fill = document.getElementById("password-strength-fill");
-    const label = document.getElementById("password-strength-label");
+  const checkPassword = (password) => {
+    // find the bar in the currently active screen
+    const activeScreen = document.querySelector(".auth-screen.active");
+    const fill =
+      activeScreen?.querySelector("#password-strength-fill") ||
+      document.getElementById("password-strength-fill");
+    const label =
+      activeScreen?.querySelector("#password-strength-label") ||
+      document.getElementById("password-strength-label");
     if (!fill || !label) return;
 
     let strength = 0;
-    if (val.length >= 6) strength++;
-    if (val.length >= 10) strength++;
-    if (/[A-Z]/.test(val)) strength++;
-    if (/[0-9]/.test(val)) strength++;
-    if (/[^A-Za-z0-9]/.test(val)) strength++;
+    if (password.length >= 6) strength++;
+    if (password.length >= 10) strength++;
+    if (/[A-Z]/.test(password)) strength++;
+    if (/[0-9]/.test(password)) strength++;
+    if (/[^A-Za-z0-9]/.test(password)) strength++;
 
     const levels = [
-      { width: "0%", color: "transparent", text: "" },
-      { width: "25%", color: "var(--red)", text: "Weak" },
-      { width: "50%", color: "var(--red)", text: "Fair" },
-      { width: "75%", color: "var(--gold)", text: "Good" },
-      { width: "90%", color: "var(--green)", text: "Strong" },
-      { width: "100%", color: "var(--green)", text: "Very strong" },
+      { width: "0%", color: "transparent", label: "" },
+      { width: "25%", color: "var(--red)", label: "Weak" },
+      { width: "50%", color: "var(--gold)", label: "Fair" },
+      { width: "75%", color: "var(--blue)", label: "Good" },
+      { width: "100%", color: "var(--green)", label: "Strong" },
     ];
 
-    const level = levels[strength];
-    fill.style.width = level.width;
+    const level = levels[Math.min(strength, 4)];
+    fill.style.width = password.length === 0 ? "0%" : level.width;
     fill.style.background = level.color;
-    label.textContent = level.text;
+    label.textContent = password.length === 0 ? "" : level.label;
     label.style.color = level.color;
   };
 
@@ -628,7 +694,7 @@ const HF_AUTH = (() => {
       return;
     }
 
-    await HF_DB.updateSquadStatus(session.userId, "pending");
+    await HF_DB.updateVerificationStatus(session.userId, "squad", "pending");
     session.squadStatus = "pending";
     HF_DB.saveSession(session);
 
@@ -654,13 +720,52 @@ const HF_AUTH = (() => {
       return;
     }
 
+    // fetch user first to check lockout
+    const userCheck = await HF_DB.findUserByContact(email);
+    if (!userCheck || userCheck.role !== "admin") {
+      showError("admin-err", "Invalid email or password.");
+      return;
+    }
+
+    // check lockout
+    if (
+      userCheck.locked_until &&
+      new Date(userCheck.locked_until) > new Date()
+    ) {
+      const mins = Math.ceil(
+        (new Date(userCheck.locked_until) - new Date()) / 60000,
+      );
+      showError(
+        "admin-err",
+        `Account locked. Try again in ${mins} minute${mins !== 1 ? "s" : ""}.`,
+      );
+      return;
+    }
+
+    // hash and verify
     const hashedPassword = await HF_UTILS.hashPassword(pass);
     const user = await HF_DB.findUser(email, hashedPassword);
 
     if (!user || user.role !== "admin") {
-      showError("admin-err", "Invalid email or password.");
+      const { attempts, lockedUntil } = await HF_DB.incrementLoginAttempts(
+        userCheck.id,
+      );
+      const remaining = 5 - attempts;
+      if (lockedUntil) {
+        showError(
+          "admin-err",
+          "Too many failed attempts. Account locked for 15 minutes.",
+        );
+      } else {
+        showError(
+          "admin-err",
+          `Invalid email or password.${remaining === 1 ? " 1 attempt remaining before lockout." : ""}`,
+        );
+      }
       return;
     }
+
+    await HF_DB.resetLoginAttempts(user.id);
 
     const session = _makeSession(user);
     HF_DB.saveSession(session);
@@ -766,7 +871,7 @@ const HF_AUTH = (() => {
       return;
     }
 
-    await HF_DB.updateAgencyStatus(session.userId, "pending");
+    await HF_DB.updateVerificationStatus(session.userId, "agency", "pending");
     session.agencyStatus = "pending";
     HF_DB.saveSession(session);
 
@@ -783,6 +888,115 @@ const HF_AUTH = (() => {
     HF_ROUTER.launch(session);
   };
 
+  const togglePassword = (inputId, btn) => {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const isPassword = input.type === "password";
+    input.type = isPassword ? "text" : "password";
+    btn.innerHTML = isPassword
+      ? '<i class="ti ti-eye-off"></i>'
+      : '<i class="ti ti-eye"></i>';
+  };
+
+  const forgotStep1 = async () => {
+    const contact = el("forgot-contact")?.value.trim().toLowerCase();
+
+    if (!contact) {
+      showError("forgot-err", "Please enter your email or phone.");
+      return;
+    }
+
+    const { data } = await HF_DB.getUserSecurityQuestion(contact);
+
+    if (!data) {
+      showError("forgot-err", "No account found with that contact.");
+      return;
+    }
+
+    if (!data.security_question) {
+      showError("forgot-err", "No security question set for this account.");
+      return;
+    }
+
+    window._forgotContact = contact;
+    document.getElementById("forgot-question").textContent =
+      data.security_question;
+    document.getElementById("forgot-step-1").style.display = "none";
+    document.getElementById("forgot-step-2").style.display = "block";
+  };
+
+  const forgotStep2 = async () => {
+    const answer = el("forgot-answer")?.value.trim();
+
+    if (!answer) {
+      showError("forgot-err-2", "Please enter your answer.");
+      return;
+    }
+
+    const result = await HF_DB.verifySecurityAnswer(
+      window._forgotContact,
+      answer,
+    );
+
+    if (result.error) {
+      showError("forgot-err-2", result.error);
+      return;
+    }
+
+    window._forgotUserId = result.userId;
+    document.getElementById("forgot-step-2").style.display = "none";
+    document.getElementById("forgot-step-3").style.display = "block";
+  };
+
+  const forgotStep3 = async () => {
+    const newPass = el("forgot-new-pass")?.value;
+    const confirmPass = el("forgot-confirm-pass")?.value;
+
+    if (!newPass || newPass.length < 6) {
+      showError("forgot-err-3", "Password must be at least 6 characters.");
+      return;
+    }
+
+    if (newPass !== confirmPass) {
+      showError("forgot-err-3", "Passwords do not match.");
+      return;
+    }
+
+    const hashed = await HF_UTILS.hashPassword(newPass);
+    const result = await HF_DB.resetPassword(window._forgotUserId, hashed);
+
+    if (result.error) {
+      showError("forgot-err-3", result.error);
+      return;
+    }
+
+    window._forgotContact = null;
+    window._forgotUserId = null;
+
+    HF_UTILS.toast("Password reset successfully! Please log in.", "success");
+    showScreen("screen-login");
+  };
+
+  const goToConfirm = () => {
+    const question = el("su-security-q")?.value;
+    const answer = el("su-security-a")?.value.trim();
+
+    if (!question) {
+      showError("security-err", "Please select a security question.");
+      return;
+    }
+
+    if (!answer) {
+      showError("security-err", "Please enter your answer.");
+      return;
+    }
+
+    // store for completeSignup
+    state.securityQuestion = question;
+    state.securityAnswer = answer;
+    showScreen("screen-signup-confirm");
+  };
+
   // ─── Expose to window (called from onclick) ─────────────────
   return {
     showScreen,
@@ -791,6 +1005,7 @@ const HF_AUTH = (() => {
     selectRole,
     goStep2,
     goStep3,
+    goToConfirm,
     completeSignup,
     handleLogin,
     handleAdminLogin,
@@ -803,6 +1018,10 @@ const HF_AUTH = (() => {
     toggleTag,
     getSelectedTags,
     skipVerification,
+    togglePassword,
+    forgotStep1,
+    forgotStep2,
+    forgotStep3,
   };
 })();
 
@@ -827,6 +1046,9 @@ document.addEventListener("keydown", (e) => {
       break;
     case "screen-signup-info":
       HF_AUTH.goStep3();
+      break;
+    case "screen-signup-security":
+      HF_AUTH.goToConfirm();
       break;
     case "screen-signup-confirm":
       HF_AUTH.completeSignup();

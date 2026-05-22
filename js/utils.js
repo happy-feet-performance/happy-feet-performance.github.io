@@ -13,17 +13,6 @@ const HF_UTILS = (() => {
       .toUpperCase()
       .slice(0, 2) || "??";
 
-  const age = (dob) => {
-    if (!dob) return "-";
-    const b = new Date(dob),
-      n = new Date();
-    let a = n.getFullYear() - b.getFullYear();
-    if (n < new Date(n.getFullYear(), b.getMonth(), b.getDate())) a--;
-    return a;
-  };
-
-  const today = () => HF_DB.localDate();
-
   const timeAgo = (isoStr) => {
     const diff = Date.now() - new Date(isoStr).getTime();
     const m = Math.floor(diff / 60000);
@@ -68,12 +57,19 @@ const HF_UTILS = (() => {
     if (e) e.style.display = "none";
   };
 
-  const showError = (id, msg) => {
-    const e = el(id);
-    if (!e) return;
-    e.textContent = msg;
-    e.classList.add("show");
+  const showError = (id, msg, timeout = 2000) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.style.display = "block";
+    if (timeout > 0) {
+      setTimeout(() => {
+        el.style.display = "none";
+        el.textContent = "";
+      }, timeout);
+    }
   };
+
   const hideError = (id) => {
     const e = el(id);
     if (e) e.classList.remove("show");
@@ -89,9 +85,24 @@ const HF_UTILS = (() => {
   };
 
   // ─── Avatar HTML ───────────────────────────────────────────
-  const avatarHTML = (name, size = "md", color = null) => {
-    const bg = color || avatarColor(name);
-    return `<div class="avatar avatar-${size}" style="background:${bg}">${initials(name)}</div>`;
+  const avatarHTML = (name, avatarUrl, size = "md", color = "var(--gold)") => {
+    const sizes = { sm: "32px", md: "40px", lg: "56px", xl: "72px" };
+    const px = sizes[size] || sizes.md;
+    const font = { sm: "12px", md: "14px", lg: "20px", xl: "26px" };
+    const fs = font[size] || font.md;
+    const url = avatarUrl ? `${avatarUrl}?cb=${Date.now()}` : null;
+
+    if (url) {
+      return `<div style="width:${px};height:${px};flex-shrink:0;overflow:hidden;">
+      <img src="${url}" alt="${name}" 
+        style="width:100%;height:100%;object-fit:cover;"
+        onerror="this.parentElement.innerHTML='${HF_UTILS.initials(name)}'">
+    </div>`;
+    }
+
+    return `<div style="width:${px};height:${px};background:${color};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:${fs};color:#fff;flex-shrink:0;">
+    ${initials(name)}
+  </div>`;
   };
 
   // ─── Bar HTML ──────────────────────────────────────────────
@@ -134,20 +145,23 @@ const HF_UTILS = (() => {
 
   // ─── Toast notification ────────────────────────────────────
   const toast = (msg, type = "success") => {
-    const existing = document.querySelector(".hf-toast");
-    if (existing) existing.remove();
+    // clear any existing toast first
+    const existing = document.getElementById("hf-toast");
+    if (existing) {
+      existing.remove();
+    }
+
     const t = document.createElement("div");
-    t.className = "hf-toast";
-    t.style.cssText = `
-      position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
-      padding:10px 20px;border-radius:0;font-size:13px;font-weight:600;
-      z-index:9999;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.2);
-      background:${type === "success" ? "var(--green)" : type === "error" ? "var(--red)" : "var(--gold)"};
-      animation:toastIn .2s ease;
-    `;
+    t.id = "hf-toast";
+    t.className = `toast toast-${type}`;
     t.textContent = msg;
     document.body.appendChild(t);
-    setTimeout(() => t.remove(), 3000);
+
+    setTimeout(() => t.classList.add("toast-show"), 10);
+    setTimeout(() => {
+      t.classList.remove("toast-show");
+      setTimeout(() => t.remove(), 300);
+    }, 3000);
   };
 
   // ─── Country code options ──────────────────────────────────
@@ -204,58 +218,65 @@ const HF_UTILS = (() => {
     };
 
     const msgRow = (m) => `
-      <div class="msg-item" id="msg-${m.id}" onclick="${
-        m.from_id === "admin" || m.from_id === "system"
-          ? `HF_${role.toUpperCase()}.readMessage('${m.id}', document.getElementById('msg-${m.id}'))`
-          : `HF_${role.toUpperCase()}.viewThread('${m.thread_id || m.id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')`
-      }">
-        <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
-          <i class="ti ti-shield" style="font-size:16px;color:${!m.read ? "var(--gold)" : "var(--text2)"}"></i>
-        </div>
-        <div style="flex:1">
-          <div style="font-size:11px;font-family:var(--font);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
-            From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : m.from_id === "admin" ? "HappyFeet Admin" : "HappyFeet")}
+        <div class="msg-item" id="msg-${m.id}" onclick="${
+          m.from_id === "admin" || m.from_id === "system"
+            ? `HF_ROLE_UTILS.readMessage('${m.id}', document.getElementById('msg-${m.id}'), '${role}')`
+            : `HF_ROLE_UTILS.viewThread('${m.thread_id || m.id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}', '${role}')`
+        }">
+          <div class="avatar avatar-md" style="background:var(--bg2);display:flex;align-items:center;justify-content:center;">
+            <i class="ti ti-shield" style="font-size:16px;color:${!m.read ? "var(--gold)" : "var(--text2)"}"></i>
           </div>
-          <div class="msg-name">${m.subject || "Message"}</div>
-          <div class="msg-preview">${m.body}</div>
-          <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
+          <div style="flex:1">
+            <div style="font-size:11px;font-family:var(--font);font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text3);margin-bottom:2px;">
+              From: ${m.senderName || (m.from_id === "system" ? "HappyFeet System" : m.from_id === "admin" ? "HappyFeet Admin" : "HappyFeet")}
+            </div>
+            <div class="msg-name">${m.subject || "Message"}</div>
+            <div class="msg-preview">${m.body}</div>
+            <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+            ${!m.read ? `<div class="msg-unread" id="badge-${m.id}">1</div>` : ""}
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <button class="btn btn-outline btn-sm"
+                title="Archive message"
+                onclick="event.stopPropagation();HF_ROLE_UTILS.archiveMessage('${m.id}', this, '${role}')">
+                <i class="ti ti-archive"></i>
+              </button>
+              ${
+                m.from_id !== "system" && m.from_id !== "admin"
+                  ? `
+                <button class="btn btn-outline btn-sm"
+                  title="More options"
+                  onclick="event.stopPropagation();HF_ROLE_UTILS.toggleMsgActions('${m.id}')">
+                  <i class="ti ti-dots-vertical"></i>
+                </button>`
+                  : ""
+              }
+            </div>
+          </div>
         </div>
-        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
-          ${!m.read ? `<div class="msg-unread" id="badge-${m.id}">1</div>` : ""}
-          <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
-            title="Archive message"
-            onclick="event.stopPropagation();HF_${role.toUpperCase()}.archiveMessage('${m.id}', this)">
-            <i class="ti ti-archive"></i>
-          </button>
-          <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
-            title="More options"
-            onclick="event.stopPropagation();HF_${role.toUpperCase()}.toggleMsgActions('${m.id}', '${m.from_id}', '${(m.senderName || "HappyFeet").replace(/'/g, "\\'")}')">
-            <i class="ti ti-dots-vertical"></i>
-          </button>
-        </div>
-      </div>
-      <div id="msg-actions-${m.id}" style="display:none;padding:var(--sp-sm);background:var(--bg2);border-left:2px solid var(--border);margin-bottom:4px;">
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          ${
-            m.from_id && m.from_id !== "admin" && m.from_id !== "system"
-              ? `
-            <button class="btn btn-outline btn-sm" onclick="HF_${role.toUpperCase()}.viewThread('${m.thread_id || m.id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}')">
-              <i class="ti ti-arrow-back-up"></i> Reply
-            </button>
-            <button class="btn btn-outline btn-sm" onclick="HF_${role.toUpperCase()}.viewSenderProfile('${m.from_id}')">
-              <i class="ti ti-user"></i> View profile
-            </button>
-            <button class="btn btn-danger btn-sm" onclick="HF_${role.toUpperCase()}.reportToAdmin('${m.from_id}', '${(m.senderName || "").replace(/'/g, "\\'")}')">
-              <i class="ti ti-flag"></i> Report
-            </button>`
-              : `
-            <div style="font-size:12px;color:var(--text2);padding:4px">
-              <i class="ti ti-info-circle" style="margin-right:4px"></i>
-              System message: no actions available.
-            </div>`
-          }
-        </div>
-      </div>`;
+        <div id="msg-actions-${m.id}" style="display:none;padding:var(--sp-sm);background:var(--bg2);border-left:2px solid var(--border);margin-bottom:4px;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            ${
+              m.from_id && m.from_id !== "admin" && m.from_id !== "system"
+                ? `
+              <button class="btn btn-outline btn-sm" onclick="HF_ROLE_UTILS.viewThread('${m.thread_id || m.id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}', '${role}')">
+                <i class="ti ti-arrow-back-up"></i> Reply
+              </button>
+              <button class="btn btn-outline btn-sm" onclick="HF_ROLE_UTILS.viewSenderProfile('${m.from_id}', '${role}', 'messages')">
+                <i class="ti ti-user"></i> View profile
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="HF_ROLE_UTILS.reportToAdmin('${m.from_id}', '${(m.senderName || "").replace(/'/g, "\\'")}', '${role}')">
+                <i class="ti ti-flag"></i> Report
+              </button>`
+                : `
+              <div style="font-size:12px;color:var(--text2);padding:4px">
+                <i class="ti ti-info-circle" style="margin-right:4px"></i>
+                System message: no actions available.
+              </div>`
+            }
+          </div>
+        </div>`;
 
     return `
     ${
@@ -281,10 +302,11 @@ const HF_UTILS = (() => {
   };
 
   const isNewUser = (session) => {
-    if (!session?.created) return false;
-    const created = new Date(session.created);
-    const now = new Date();
-    return now - created < 5 * 60 * 1000;
+    // check if account was created less than 1 hour ago
+    const createdAt = session.createdAt || session.profile?.createdAt;
+    if (!createdAt) return false;
+    const hourAgo = Date.now() - 60 * 60 * 1000;
+    return new Date(createdAt).getTime() > hourAgo;
   };
 
   const replyToMessage = (messageId, fromId, senderName, subject, threadId) => {
@@ -399,8 +421,8 @@ const HF_UTILS = (() => {
         flex-direction:column;gap:2px;
         font-size:12px;
         font-weight:${isToday ? "700" : "400"};
-        color:${isFuture ? "var(--text3)" : hasLog ? "#fff" : isThisWeek ? "var(--text)" : "var(--text2)"};
-        background:${hasLog ? color : isThisWeek && !isFuture ? "var(--bg2)" : "transparent"};
+        color:${isFuture ? "var(--text3)" : hasLog ? "#fff" : "var(--text2)"};
+        background:${hasLog ? color : "transparent"};
         opacity:${isFuture ? 0.35 : 1};
         position:relative;
       ">
@@ -428,112 +450,73 @@ const HF_UTILS = (() => {
     </div>`;
   };
 
-  const viewProfile = async (userId, backFn) => {
-    const { data: user } = await HF_DB.getUserById(userId);
-    if (!user) {
-      toast("User not found.", "error");
-      return;
-    }
+  const calcRating = (r) => {
+    if (!r || (!r.speed && !r.tech && !r.tact && !r.phys)) return null;
+    return Math.round((r.speed + r.tech + r.tact + r.phys) / 4);
+  };
 
-    const p = user.profile || {};
-    const role = user.role;
-    const overall = p.ratings
-      ? Math.round(
-          (p.ratings.speed + p.ratings.tech + p.ratings.tact + p.ratings.phys) /
-            4,
-        )
-      : null;
+  const getDateForDay = (dayIndex) => {
+    const now = new Date();
+    const today = now.getDay();
+    const diff = dayIndex - today;
+    const date = new Date(now);
+    date.setDate(now.getDate() + diff);
+    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  };
 
-    const sections = {
-      player: `
-      <div class="info-grid">
-        ${p.pos ? `<div class="info-cell"><div class="info-label">Position</div><div class="info-val">${p.pos}</div></div>` : ""}
-        ${p.tier ? `<div class="info-cell"><div class="info-label">Tier</div><div class="info-val">${p.tier}</div></div>` : ""}
-        ${p.hometown ? `<div class="info-cell"><div class="info-label">Hometown</div><div class="info-val">${p.hometown}</div></div>` : ""}
-        ${p.club ? `<div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club}</div></div>` : ""}
-      </div>
-      ${
-        overall !== null
-          ? `
-        <div class="card" style="margin-top:var(--sp-md);">
-          <div class="card-title"><div class="card-dot"></div>Performance ratings</div>
-          <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr)">
-            ${["speed", "tech", "tact", "phys"]
-              .map(
-                (k) => `
-              <div class="metric-card">
-                <div class="metric-val" style="color:var(--gold)">${p.ratings[k]}</div>
-                <div class="metric-label">${{ speed: "Speed", tech: "Technical", tact: "Tactical", phys: "Physical" }[k]}</div>
-              </div>`,
-              )
-              .join("")}
-          </div>
-        </div>`
-          : ""
-      }
-      <div class="card" style="margin-top:var(--sp-md);">
-        <div class="card-title" style="justify-content:space-between;">
-          <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-            <div class="card-dot"></div>Highlight reel
-          </div>
-          <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:rgba(196,154,10,.15);color:var(--gold);">Coming soon</span>
-        </div>
-        <div style="text-align:center;padding:32px;background:var(--bg2);border:0.5px dashed var(--border);">
-          <i class="ti ti-video" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
-          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No highlights yet</div>
-          <div style="font-size:13px;color:var(--text2)">This player hasn't uploaded any highlights yet.</div>
-        </div>
-      </div>`,
-      coach: `
-      <div class="info-grid">
-        ${p.spec ? `<div class="info-cell"><div class="info-label">Specialisation</div><div class="info-val">${p.spec}</div></div>` : ""}
-        ${p.licence ? `<div class="info-cell"><div class="info-label">Licence</div><div class="info-val">${p.licence}</div></div>` : ""}
-        ${p.club ? `<div class="info-cell"><div class="info-label">Club</div><div class="info-val">${p.club}</div></div>` : ""}
-        ${p.exp ? `<div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp} years</div></div>` : ""}
-      </div>`,
-      scout: `
-      <div class="info-grid">
-        ${p.org ? `<div class="info-cell"><div class="info-label">Agency</div><div class="info-val">${p.org}</div></div>` : ""}
-        ${p.region ? `<div class="info-cell"><div class="info-label">Home region</div><div class="info-val">${p.region}</div></div>` : ""}
-        ${p.regionsCovered ? `<div class="info-cell"><div class="info-label">Regions covered</div><div class="info-val">${Array.isArray(p.regionsCovered) ? p.regionsCovered.join(", ") : p.regionsCovered}</div></div>` : ""}
-        ${p.targetLeagues ? `<div class="info-cell"><div class="info-label">Target leagues</div><div class="info-val">${Array.isArray(p.targetLeagues) ? p.targetLeagues.join(", ") : p.targetLeagues}</div></div>` : ""}
-        ${p.exp ? `<div class="info-cell"><div class="info-label">Experience</div><div class="info-val">${p.exp} years</div></div>` : ""}
-      </div>`,
-    };
+  const getDateForDayISO = (dayIndex) => {
+    const now = new Date();
+    const today = now.getDay();
+    const diff = dayIndex - today;
+    const date = new Date(now);
+    date.setDate(now.getDate() + diff);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  };
 
-    return `
-    <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
-      <div style="display:flex;align-items:center;gap:var(--sp-lg);">
-        <div style="width:72px;height:72px;background:${role === "player" ? "var(--green)" : role === "coach" ? "var(--gold)" : role === "admin" ? "var(--red)" : "var(--blue)"};display:flex;align-items:center;justify-content:center;font-family:var(--font);font-size:26px;font-weight:700;color:#fff;">
-          ${HF_UTILS.initials(user.name)}
-        </div>
-        <div>
-          <div style="font-family:var(--font);font-size:22px;font-weight:700;color:#fff;">${user.name}</div>
-          <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:2px;">${p.pos || p.spec || p.org || "-"}</div>
-          <div style="margin-top:8px;">${badgeHTML(role, role === "player" ? "green" : role === "coach" ? "gold" : "blue")}</div>
-        </div>
-      </div>
-      ${
-        overall !== null
-          ? `
-        <div style="text-align:right;">
-          <div style="font-family:var(--font);font-size:42px;font-weight:700;color:var(--gold)">${overall}%</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.4);font-family:var(--font);text-transform:uppercase;letter-spacing:0.1em">Overall</div>
-        </div>`
-          : ""
-      }
-    </div>
-    <div class="card">
-      <div class="card-title"><div class="card-dot"></div>Profile details</div>
-      ${sections[role] || ""}
-    </div>
-    ${backFn ? `<button class="btn btn-outline" onclick="${backFn}" style="margin-top:8px"><i class="ti ti-arrow-left"></i> Back</button>` : ""}`;
+  const showDayPicker = (dayIndex, specificDate = null) => {
+    const picker = document.getElementById("day-picker");
+    const label = document.getElementById("day-picker-label");
+    const options = document.getElementById("day-picker-options");
+    if (!picker || !options) return;
+
+    const days = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const types = [
+      "Rest",
+      "Technical",
+      "Tactical",
+      "Physical",
+      "Recovery",
+      "Match",
+    ];
+
+    if (label)
+      label.textContent = specificDate
+        ? `Select session type for ${new Date(specificDate + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" })}`
+        : `Select session type for ${days[dayIndex]}`;
+
+    picker.style.display = "block";
+
+    options.innerHTML = types
+      .map(
+        (t) => `
+    <button class="btn btn-outline btn-sm"
+      onclick="window['HF_' + HF_DB.getSession().role.toUpperCase()]?.updateTrainingDay(${dayIndex}, '${t}', ${specificDate ? `'${specificDate}'` : "null"});document.getElementById('day-picker').style.display='none'">
+      ${t}
+    </button>`,
+      )
+      .join("");
   };
 
   return {
     initials,
-    age,
-    today,
     timeAgo,
     avatarColor,
     ratingColor,
@@ -552,6 +535,7 @@ const HF_UTILS = (() => {
     miniCalendarHTML,
     badgeHTML,
     activityHTML,
+    isNewUser,
     toast,
     COUNTRY_CODES,
     countryCodeSelect,
@@ -560,7 +544,10 @@ const HF_UTILS = (() => {
     isNewUser,
     launchConfetti,
     launchEmojiConfetti,
-    viewProfile,
+    calcRating,
+    getDateForDay,
+    getDateForDayISO,
+    showDayPicker,
   };
 })();
 
