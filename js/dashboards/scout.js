@@ -16,7 +16,6 @@ const HF_SCOUT = (() => {
       prospects,
       pipeline,
       reports,
-      clubs,
       placements,
       messages,
       findmyteam,
@@ -528,7 +527,7 @@ const HF_SCOUT = (() => {
             style="flex:1;min-width:120px;padding:7px 10px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);outline:none;">
         </div>
 
-        <div id="players-list">
+        <div id="discover-players-list">
           ${
             !players || players.length === 0
               ? `
@@ -1899,13 +1898,13 @@ const HF_SCOUT = (() => {
 
   const filterPlayers = () =>
     HF_ROLE_UTILS.filterPlayers(
-      "_discoverAllPlayers",
-      (p) => _discoverPlayerCard(p, window._scoutUserId),
+      "_scoutAllPlayers",
+      (p) => _playerRow(p, window._scoutUserId),
       "discover-players-list",
       {
-        pos: document.getElementById("disc-pos")?.value,
-        tier: document.getElementById("disc-tier")?.value,
-        search: document.getElementById("disc-search")?.value,
+        pos: document.getElementById("filter-pos")?.value,
+        tier: document.getElementById("filter-tier")?.value,
+        search: document.getElementById("filter-search")?.value,
       },
     );
 

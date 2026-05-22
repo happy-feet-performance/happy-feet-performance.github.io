@@ -225,11 +225,9 @@ const HF_ROLE_UTILS = (() => {
   // ── THREAD VIEW ─────────────────────────────────────────────
 
   const viewThread = async (threadId, otherUserId, subject, role) => {
-    console.log("viewThread", { threadId, otherUserId, subject, role });
     const session = HF_DB.getSession();
     const setMain = _getSetMain(role);
 
-    // fetch thread messages
     const { data: threadMsgs } = await HF_DB.getThread(
       threadId,
       session.userId,
@@ -603,7 +601,7 @@ const HF_ROLE_UTILS = (() => {
                 <div class="msg-time">${HF_UTILS.timeAgo(m.created_at)}</div>
               </div>
               <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
-                <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
+                <button class="btn btn-outline btn-sm"
                   title="Move back to inbox"
                   onclick="event.stopPropagation();HF_ROLE_UTILS.unarchiveMessage('${m.id}', '${role}')">
                   <i class="ti ti-inbox"></i>
@@ -611,7 +609,7 @@ const HF_ROLE_UTILS = (() => {
                 ${
                   !isSystem
                     ? `
-                  <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
+                  <button class="btn btn-outline btn-sm"
                     title="View thread"
                     onclick="event.stopPropagation();HF_ROLE_UTILS.viewThread('${m.thread_id}', '${m.from_id}', '${(m.subject || "").replace(/'/g, "\\'")}', '${role}')">
                     <i class="ti ti-message"></i>
@@ -769,7 +767,7 @@ const HF_ROLE_UTILS = (() => {
               ? `
             <div style="font-size:12px;color:var(--text2);margin-top:6px;padding:8px 12px;background:${isUnread ? "rgba(196,154,10,.06)" : "var(--bg2)"};border-left:${isUnread ? "2px solid var(--gold)" : "none"};">
               <span style="font-weight:600;color:var(--text2);">
-                ${lastMsg.is_admin ? 'Support' : 'You'}:
+                ${lastMsg.is_admin ? "Support" : "You"}:
               </span>
               ${lastMsg.body.slice(0, 100)}${lastMsg.body.length > 100 ? "..." : ""}
             </div>`
@@ -930,7 +928,6 @@ const HF_ROLE_UTILS = (() => {
     fromMessages = false,
     role,
   ) => {
-    console.log("viewTicketThread", { ticketId, subject, fromMessages, role });
     const s = HF_DB.getSession();
     const setMain = _getSetMain(role);
     const { data: msgs } = await HF_DB.getTicketMessages(ticketId);

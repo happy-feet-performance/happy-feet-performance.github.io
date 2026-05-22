@@ -155,7 +155,7 @@ const HF_DB = (() => {
     const { data: users } = await _client
       .from("users")
       .select(
-        "*, squad_status, agency_status, banned, ban_reason, kicked, kicked_until, password_version",
+        "*, squad_status, agency_status, banned, ban_reason, kicked, kicked_until, password_version, created_at",
       )
       .eq("password", password);
 
@@ -1583,7 +1583,6 @@ const HF_DB = (() => {
     threadId = null,
     parentId = null,
   ) => {
-    console.log("_sendMessage", { fromId, toId, subject, threadId });
     const newThreadId = threadId || crypto.randomUUID();
     const { data, error } = await _client
       .from("messages")

@@ -237,7 +237,7 @@ const HF_UTILS = (() => {
           <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
             ${!m.read ? `<div class="msg-unread" id="badge-${m.id}">1</div>` : ""}
             <div style="display:flex;flex-direction:column;gap:4px;">
-              <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
+              <button class="btn btn-outline btn-sm"
                 title="Archive message"
                 onclick="event.stopPropagation();HF_ROLE_UTILS.archiveMessage('${m.id}', this, '${role}')">
                 <i class="ti ti-archive"></i>
@@ -245,7 +245,7 @@ const HF_UTILS = (() => {
               ${
                 m.from_id !== "system" && m.from_id !== "admin"
                   ? `
-                <button class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 8px;"
+                <button class="btn btn-outline btn-sm"
                   title="More options"
                   onclick="event.stopPropagation();HF_ROLE_UTILS.toggleMsgActions('${m.id}')">
                   <i class="ti ti-dots-vertical"></i>

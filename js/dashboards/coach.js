@@ -114,7 +114,7 @@ const HF_COACH = (() => {
         ${
           isUnregistered || isRejected
             ? `
-          <button class="btn btn-primary btn-sm" style="padding:6px 12px;" onclick="HF_COACH.resubmitSquad()">
+          <button class="btn btn-primary btn-sm" onclick="HF_COACH.resubmitSquad()">
             <i class="ti ti-clipboard-check"></i>${isRejected ? " Resubmit squad" : " Register your squad"}
           </button>`
             : ""
@@ -130,7 +130,7 @@ const HF_COACH = (() => {
         ${
           isRejected || isAwaitingCoach
             ? `
-          <button class="btn btn-outline btn-sm" style="padding:6px 12px;" onclick="HF_ROUTER.navTo('messages')">
+          <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('messages')">
             <i class="ti ti-message"></i> View messages
           </button>`
             : ""
@@ -854,10 +854,10 @@ const HF_COACH = (() => {
         </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:var(--sp-md);align-items:center;">
-        <button class="btn btn-primary btn-sm" style="padding:8px 14px;" onclick="HF_COACH.submitResubmission()">
+        <button class="btn btn-primary btn-sm" onclick="HF_COACH.submitResubmission()">
           <i class="ti ti-send"></i> ${isFirstTime ? "Submit for verification" : "Resubmit for verification"}
         </button>
-        <button class="btn btn-outline btn-sm" style="padding:8px 14px;" onclick="HF_ROUTER.navTo('dashboard')">
+        <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('dashboard')">
           Cancel
         </button>
       </div>
@@ -2293,12 +2293,6 @@ const HF_COACH = (() => {
     const p = s.profile || {};
     const isVerified = s.squadStatus === "verified";
     const isOpenForRecruitment = s.profile?.openForRecruitment || false;
-
-    console.log("sentInvites:", sentInvites);
-    console.log("declinedMap:", [...declinedMap.entries()]);
-    console.log("player id:", p.id);
-    console.log("declinedMap has player:", declinedMap.has(p.id));
-    console.log("declinedMap keys:", [...declinedMap.keys()]);
 
     // analyze current squad positions
     const { data: squadPlayers } = await HF_DB.getSquadPlayers(s.userId);

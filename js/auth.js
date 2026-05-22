@@ -571,7 +571,8 @@ const HF_AUTH = (() => {
     profile: user.profile || {},
     squadStatus: user.squadStatus,
     agencyStatus: user.agencyStatus,
-    passwordVersion: user.passwordVersion || 1, // add this
+    passwordVersion: user.passwordVersion || 1,
+    createdAt: user.createdAt,
   });
 
   const logout = () => {
