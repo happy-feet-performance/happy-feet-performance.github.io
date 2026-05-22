@@ -165,6 +165,7 @@ const HF_DB = (() => {
       const local = (u.local_phone || "").replace(/\s/g, "");
       return stored === contact || local === contact;
     });
+
     return user ? _normaliseUser(user) : null;
   };
 
@@ -199,10 +200,13 @@ const HF_DB = (() => {
     return { success: true };
   };
 
-  const updateUserProfile = async (userId, profile) => {
+  const updateUserProfile = async (userId, profile, name = null) => {
+    const update = { profile };
+    if (name) update.name = name;
+
     const { data: user, error } = await _client
       .from("users")
-      .update({ profile })
+      .update(update)
       .eq("id", userId)
       .select()
       .single();

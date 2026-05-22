@@ -16,20 +16,26 @@ const HF_AUTH = (() => {
 
   // ─── Screens ───────────────────────────────────────────────
   const showScreen = (id) => {
-    document.getElementById("nav-overlay")?.classList.remove("open");
-    document.getElementById("sidenav")?.classList.remove("open");
-
-    // reset subscriptions if going back to auth
-    if (id === "screen-login" || id === "screen-signup-role") {
-      if (window.HF_ROUTER) HF_ROUTER.resetSubscriptions();
-    }
-
     document
       .querySelectorAll(".auth-screen")
       .forEach((s) => s.classList.remove("active"));
     document.getElementById(id)?.classList.add("active");
-    const scr = el(id);
-    if (scr) scr.classList.add("active");
+
+    // reset forgot password flow when navigating to it
+    if (id === "screen-forgot") {
+      document.getElementById("forgot-step-1").style.display = "block";
+      document.getElementById("forgot-step-2").style.display = "none";
+      document.getElementById("forgot-step-3").style.display = "none";
+      document.getElementById("forgot-contact").value = "";
+      document.getElementById("forgot-answer").value = "";
+      document.getElementById("forgot-new-pass").value = "";
+      document.getElementById("forgot-confirm-pass").value = "";
+      hideError("forgot-err");
+      hideError("forgot-err-2");
+      hideError("forgot-err-3");
+      window._forgotContact = null;
+      window._forgotUserId = null;
+    }
   };
 
   // ─── Tab toggle helper ─────────────────────────────────────
@@ -893,16 +899,19 @@ const HF_AUTH = (() => {
 
   const forgotStep1 = async () => {
     const contact = el("forgot-contact")?.value.trim().toLowerCase();
+
     if (!contact) {
       showError("forgot-err", "Please enter your email or phone.");
       return;
     }
 
     const { data } = await HF_DB.getUserSecurityQuestion(contact);
+
     if (!data) {
       showError("forgot-err", "No account found with that contact.");
       return;
     }
+
     if (!data.security_question) {
       showError("forgot-err", "No security question set for this account.");
       return;
@@ -917,6 +926,7 @@ const HF_AUTH = (() => {
 
   const forgotStep2 = async () => {
     const answer = el("forgot-answer")?.value.trim();
+
     if (!answer) {
       showError("forgot-err-2", "Please enter your answer.");
       return;
@@ -926,6 +936,7 @@ const HF_AUTH = (() => {
       window._forgotContact,
       answer,
     );
+
     if (result.error) {
       showError("forgot-err-2", result.error);
       return;
@@ -944,6 +955,7 @@ const HF_AUTH = (() => {
       showError("forgot-err-3", "Password must be at least 6 characters.");
       return;
     }
+
     if (newPass !== confirmPass) {
       showError("forgot-err-3", "Passwords do not match.");
       return;
@@ -951,6 +963,7 @@ const HF_AUTH = (() => {
 
     const hashed = await HF_UTILS.hashPassword(newPass);
     const result = await HF_DB.resetPassword(window._forgotUserId, hashed);
+
     if (result.error) {
       showError("forgot-err-3", result.error);
       return;
@@ -966,14 +979,17 @@ const HF_AUTH = (() => {
   const goToConfirm = () => {
     const question = el("su-security-q")?.value;
     const answer = el("su-security-a")?.value.trim();
+
     if (!question) {
       showError("security-err", "Please select a security question.");
       return;
     }
+
     if (!answer) {
       showError("security-err", "Please enter your answer.");
       return;
     }
+
     // store for completeSignup
     state.securityQuestion = question;
     state.securityAnswer = answer;
@@ -1029,6 +1045,9 @@ document.addEventListener("keydown", (e) => {
       break;
     case "screen-signup-info":
       HF_AUTH.goStep3();
+      break;
+    case "screen-signup-security":
+      HF_AUTH.goToConfirm();
       break;
     case "screen-signup-confirm":
       HF_AUTH.completeSignup();

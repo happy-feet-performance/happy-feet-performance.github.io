@@ -154,7 +154,7 @@ const HF_ROUTER = (() => {
         "Your password was changed. Please log in again.",
         "error",
       );
-    }, 500);
+    }, 5000);
   };
 
   // ─── Launch app after login/signup ─────────────────────────

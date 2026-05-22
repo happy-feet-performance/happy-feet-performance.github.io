@@ -57,12 +57,19 @@ const HF_UTILS = (() => {
     if (e) e.style.display = "none";
   };
 
-  const showError = (id, msg) => {
-    const e = el(id);
-    if (!e) return;
-    e.textContent = msg;
-    e.classList.add("show");
+  const showError = (id, msg, timeout = 2000) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = msg;
+    el.style.display = "block";
+    if (timeout > 0) {
+      setTimeout(() => {
+        el.style.display = "none";
+        el.textContent = "";
+      }, timeout);
+    }
   };
+
   const hideError = (id) => {
     const e = el(id);
     if (e) e.classList.remove("show");
@@ -285,10 +292,11 @@ const HF_UTILS = (() => {
   };
 
   const isNewUser = (session) => {
-    if (!session?.created) return false;
-    const created = new Date(session.created);
-    const now = new Date();
-    return now - created < 5 * 60 * 1000;
+    // new user if no login streak or streak is 1 and last login is today
+    return (
+      !session.profile?.lastLoginDate ||
+      session.profile?.loginStreak === undefined
+    );
   };
 
   const replyToMessage = (messageId, fromId, senderName, subject, threadId) => {
@@ -517,6 +525,7 @@ const HF_UTILS = (() => {
     miniCalendarHTML,
     badgeHTML,
     activityHTML,
+    isNewUser,
     toast,
     COUNTRY_CODES,
     countryCodeSelect,

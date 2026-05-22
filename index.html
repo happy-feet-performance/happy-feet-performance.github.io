@@ -270,6 +270,7 @@
                     outline: none;
                     font-family: var(--font);
                   "
+                  onkeydown="if (event.key === 'Enter') HF_AUTH.forgotStep3();"
                 />
                 <button
                   type="button"
@@ -322,6 +323,7 @@
                     outline: none;
                     font-family: var(--font);
                   "
+                  onkeydown="if (event.key === 'Enter') HF_AUTH.forgotStep3();"
                 />
                 <button
                   type="button"
@@ -541,6 +543,7 @@
           </div>
         </div>
       </div>
+
       <!-- Security question step -->
       <div class="auth-screen" id="screen-signup-security">
         <div class="auth-card">
@@ -556,7 +559,6 @@
             <label class="required">Security question</label>
             <select
               id="su-security-q"
-              onkeydown="if (event.key === 'Enter') HF_AUTH.goToConfirm();"
               style="
                 padding: 10px 14px;
                 background: var(--bg2);
@@ -584,7 +586,6 @@
               type="text"
               id="su-security-a"
               placeholder="Enter your answer"
-              onkeydown="if (event.key === 'Enter') HF_AUTH.goToConfirm();"
               style="
                 padding: 10px 14px;
                 background: var(--bg2);
