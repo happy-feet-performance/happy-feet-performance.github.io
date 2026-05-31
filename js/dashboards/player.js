@@ -164,8 +164,10 @@ const HF_PLAYER = (() => {
       s.profile = freshUser.profile;
       HF_DB.saveSession(s);
     }
-    const ms = freshUser?.match_stats || {};
     const p = s.profile || {};
+    const { data: invite } = await HF_DB.getPlayerCurrentCoach(s.userId);
+    const jerseyNumber = invite?.jersey_number || null;
+    const ms = freshUser?.match_stats || {};
     const r = p.ratings || {};
     const overall = HF_UTILS.calcRating(r);
     const unrated = overall === null;
@@ -241,6 +243,7 @@ const HF_PLAYER = (() => {
         <div class="info-cell"><div class="info-label">Hometown</div><div class="info-val">${p.hometown || "-"}</div></div>
         <div class="info-cell"><div class="info-label">${s.contactType === "phone" ? "Phone" : "Email"}</div><div class="info-val">${s.displayContact || s.contact}</div></div>
         <div class="info-cell"><div class="info-label">Faith streak</div><div class="info-val" style="color:var(--faith)">${p.faithStreak || 0} days <i class="ti ti-cross"></i></div></div>
+        <div class="info-cell"><div class="info-label">Jersey #</div><div class="info-val" style="color:var(--gold);font-size:18px;font-weight:700;">${jerseyNumber || "-"}</div></div>
       </div>
     </div>
 

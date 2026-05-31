@@ -657,6 +657,7 @@ const HF_COACH = (() => {
           <table class="table">
             <thead>
               <tr>
+                <th style="width:44px;">#</th>
                 <th>Player</th>
                 <th>Position</th>
                 <th>Tier</th>
@@ -682,6 +683,14 @@ const HF_COACH = (() => {
                     : null;
                   return `
                   <tr style="cursor:pointer;" onclick="HF_COACH.trackPlayer('${sp.player_id}', '${safeName}')">
+                    <td onclick="event.stopPropagation()" style="width:44px;">
+                      <input type="number" min="1" max="99"
+                        value="${sp.jersey_number || ""}"
+                        placeholder="-"
+                        title="Jersey number"
+                        onchange="HF_COACH.saveJerseyNumber('${sp.player_id}', this.value)"
+                        style="width:40px;padding:4px 6px;background:var(--bg2);border:0.5px solid var(--border);color:var(--gold);font-size:13px;font-weight:700;font-family:var(--font);text-align:center;outline:none;box-sizing:border-box;">
+                    </td>
                     <td style="font-weight:600">${name}</td>
                     <td>${rp.pos || "-"}</td>
                     <td>${rp.tier || "-"}</td>
@@ -985,6 +994,28 @@ const HF_COACH = (() => {
   };
 
   // ── SQUAD TRIAL HELPERS ───────────────────────────────────────
+  const saveJerseyNumber = async (playerId, value) => {
+    const session = HF_DB.getSession();
+    const number = value ? parseInt(value) : null;
+    if (number !== null && (number < 1 || number > 99)) {
+      HF_UTILS.toast("Jersey number must be between 1 and 99.", "error");
+      return;
+    }
+    const result = await HF_DB.setJerseyNumber(
+      session.userId,
+      playerId,
+      number,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+    HF_UTILS.toast(
+      number ? `Jersey #${number} assigned!` : "Jersey number cleared.",
+      "success",
+    );
+  };
+
   const respondTrialRequest = async (
     requestId,
     playerId,
@@ -1267,7 +1298,7 @@ const HF_COACH = (() => {
             return `
           <div style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;"
             onclick="window._coachTrainingSelectedDay=${i};window._coachTrainingSelectedDate='${HF_UTILS.getDateForDayISO(i)}';window._matchSaved=false;window._editingMatchDetails=false;window._matchTab=null;HF_COACH.training(HF_DB.getSession())"
-            title="${incomingLockedDates.has(HF_UTILS.getDateForDayISO(i)) ? "Incoming match request — approve or decline first" : ""}">
+            title="${incomingLockedDates.has(HF_UTILS.getDateForDayISO(i)) ? "Incoming match request: approve or decline first" : ""}">
             <div style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
               color:${isSelected ? "var(--text)" : "var(--text3)"};">${day}</div>
             <div style="width:100%;min-height:56px;padding:6px 4px;
@@ -1407,7 +1438,7 @@ const HF_COACH = (() => {
         ${
           lockedByIncoming
             ? `${incomingClub} has sent you a match request for this day. ${incomingStatus === "confirmed" ? "The match is confirmed." : "Approve or decline the request below before changing this day's session type."}`
-            : `This day has a ${existingSession.matchStatus === "confirmed" ? "confirmed" : "pending"} match${existingSession.opponent ? ` vs ${existingSession.opponent}` : ""}. ${existingSession.matchStatus === "pending" ? "Both coaches must approve or decline before the session type can be changed." : "The match is confirmed — session type cannot be changed."}`
+            : `This day has a ${existingSession.matchStatus === "confirmed" ? "confirmed" : "pending"} match${existingSession.opponent ? ` vs ${existingSession.opponent}` : ""}. ${existingSession.matchStatus === "pending" ? "Both coaches must approve or decline before the session type can be changed." : "The match is confirmed: session type cannot be changed."}`
         }
       </div>
     </div>`
@@ -1528,7 +1559,7 @@ const HF_COACH = (() => {
                 ${clubName}
             </div>
             <div style="font-size:10px;color:var(--text3);font-family:var(--font);letter-spacing:0.06em;text-transform:uppercase;">
-              ${existingSession?.venueType === "home" ? "Home" : existingSession?.venueType === "away" ? "Away" : "—"}
+              ${existingSession?.venueType === "home" ? "Home" : existingSession?.venueType === "away" ? "Away" : "-"}
             </div>
           </div>
 
@@ -1553,7 +1584,7 @@ const HF_COACH = (() => {
               ${existingSession?.opponent || "TBD"}
             </div>
             <div style="font-size:10px;color:var(--text3);font-family:var(--font);letter-spacing:0.06em;text-transform:uppercase;">
-              ${existingSession?.venueType === "away" ? "Home" : existingSession?.venueType === "home" ? "Away" : "—"}
+              ${existingSession?.venueType === "away" ? "Home" : existingSession?.venueType === "home" ? "Away" : "-"}
             </div>
           </div>
         </div>
@@ -4401,6 +4432,7 @@ const HF_COACH = (() => {
     saveSession,
     messageScout,
     sendScoutMessage,
+    saveJerseyNumber,
     respondTrialRequest,
     acceptTrialRequest,
     declineTrialRequest,

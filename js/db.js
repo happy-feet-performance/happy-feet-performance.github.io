@@ -1046,13 +1046,25 @@ const HF_DB = (() => {
     return { success: true };
   };
 
+  const setJerseyNumber = async (coachId, playerId, number) => {
+    const { error } = await _client
+      .from("squad_invites")
+      .update({ jersey_number: number })
+      .eq("coach_id", coachId)
+      .eq("player_id", playerId)
+      .eq("status", "accepted");
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
   // ── SQUAD ───────────────────────────────────────────────────
   const getSquadPlayers = async (coachId) => {
     const { data, error } = await _client
       .from("squad_invites")
       .select("*, player:users!squad_invites_player_id_fkey(id, name, profile)")
       .eq("coach_id", coachId)
-      .eq("status", "accepted");
+      .eq("status", "accepted")
+      .order("jersey_number", { ascending: true, nullsFirst: false });
     if (error) return { data: [] };
     return { data };
   };
@@ -1368,7 +1380,7 @@ const HF_DB = (() => {
   const getPlayerCurrentCoach = async (playerId) => {
     const { data, error } = await _client
       .from("squad_invites")
-      .select("coach_id")
+      .select("coach_id, jersey_number")
       .eq("player_id", playerId)
       .eq("status", "accepted")
       .maybeSingle();
@@ -3370,6 +3382,7 @@ const HF_DB = (() => {
     banUser,
     unbanUser,
     removeUser,
+    setJerseyNumber,
 
     // ── VERIFICATIONS ───────────────────────────────────────────
     submitSquadVerification,
