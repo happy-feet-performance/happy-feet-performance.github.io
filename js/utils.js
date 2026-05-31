@@ -450,9 +450,48 @@ const HF_UTILS = (() => {
     </div>`;
   };
 
-  const calcRating = (r) => {
+  const calcRating = (r, matchStats) => {
     if (!r || (!r.speed && !r.tech && !r.tact && !r.phys)) return null;
-    return Math.round((r.speed + r.tech + r.tact + r.phys) / 4);
+    const base = (r.speed + r.tech + r.tact + r.phys) / 4;
+    if (!matchStats || matchStats.matches_played === 0) return Math.round(base);
+
+    // match contribution: up to +5 bonus based on goal contributions per game
+    const mp = matchStats.matches_played || 1;
+    const contributions = (matchStats.goals || 0) + (matchStats.assists || 0);
+    const contribRate = Math.min(contributions / mp, 1.5); // cap at 1.5 per game
+    const matchBonus = contribRate * 3; // max +4.5
+
+    // discipline penalty: -2 per red, -0.5 per yellow (max -5)
+    const disciplinePenalty = Math.min(
+      (matchStats.red_cards || 0) * 2 + (matchStats.yellow_cards || 0) * 0.5,
+      5,
+    );
+
+    return Math.round(
+      Math.min(100, Math.max(0, base + matchBonus - disciplinePenalty)),
+    );
+  };
+
+  const wdlHTML = (W, D, L) => {
+    const total = W + D + L;
+    if (total === 0)
+      return `<span style="font-size:12px;color:var(--text3);">No matches logged</span>`;
+    return `
+    <div style="display:flex;gap:6px;align-items:center;">
+      <div style="padding:3px 10px;background:rgba(26,122,46,.15);border:0.5px solid var(--green);">
+        <span style="font-family:var(--font);font-size:13px;font-weight:700;color:var(--green);">${W}</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:2px;">W</span>
+      </div>
+      <div style="padding:3px 10px;background:rgba(196,154,10,.15);border:0.5px solid var(--gold);">
+        <span style="font-family:var(--font);font-size:13px;font-weight:700;color:var(--gold);">${D}</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:2px;">D</span>
+      </div>
+      <div style="padding:3px 10px;background:rgba(200,16,46,.1);border:0.5px solid var(--red);">
+        <span style="font-family:var(--font);font-size:13px;font-weight:700;color:var(--red);">${L}</span>
+        <span style="font-size:10px;color:var(--text3);margin-left:2px;">L</span>
+      </div>
+      <span style="font-size:11px;color:var(--text3);">${total} played</span>
+    </div>`;
   };
 
   const getDateForDay = (dayIndex) => {
@@ -545,6 +584,7 @@ const HF_UTILS = (() => {
     launchConfetti,
     launchEmojiConfetti,
     calcRating,
+    wdlHTML,
     getDateForDay,
     getDateForDayISO,
     showDayPicker,

@@ -234,4 +234,11 @@
     margin-bottom: 0;
     font-size: 20px;
   }
+  #auth-theme-toggle {
+    top: 20px;
+    right: 10px;
+    opacity: 0.5;
+    transform: scale(0.8);
+    transform-origin: top right;
+  }
 }

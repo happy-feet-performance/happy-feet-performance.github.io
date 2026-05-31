@@ -44,7 +44,7 @@ happyfeet/
 │   ├── functions/
 │   │   └── chat.js                  # Anthropic API proxy (Claude Sonnet)
 │   └── plugins/
-│       └── generate-config/         # Build plugin — injects env vars into config.js
+│       └── generate-config/         # Build plugin, which injects env vars into config.js
 ├── css/
 │   ├── base.css                     # Design tokens, reset, utilities, shared components
 │   ├── auth.css                     # Login, signup, role selection screens

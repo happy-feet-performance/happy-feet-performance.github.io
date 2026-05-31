@@ -15,12 +15,14 @@ const HF_ROUTER = (() => {
 
   // ─── Sidenav configs per role ───────────────────────────────
   const NAVS = {
-    player: [
+    player: (session) => [
       { section: "My journey" },
       { view: "dashboard", icon: "ti-home", label: "Dashboard" },
       { view: "profile", icon: "ti-user", label: "My profile" },
       { view: "stats", icon: "ti-chart-bar", label: "My stats" },
-      { view: "training", icon: "ti-clipboard-list", label: "Training plan" },
+      ...(session.profile?.club && session.profile?.status !== "unattached"
+        ? [{ view: "training", icon: "ti-clipboard-list", label: "Training" }]
+        : []),
       { view: "health", icon: "ti-heart-rate-monitor", label: "Health log" },
       { section: "Progress" },
       { view: "achievements", icon: "ti-trophy", label: "Achievements" },
@@ -105,7 +107,11 @@ const HF_ROUTER = (() => {
         { section: "Community" },
         { view: "messages", icon: "ti-message", label: "Messages" },
         { section: "Discover" },
-        { view: "findmyteam", icon: "ti-map-search", label: "Find my team" },
+        {
+          view: "findmytalent",
+          icon: "ti-map-search",
+          label: "Find my talent",
+        },
       );
       return nav;
     },
@@ -235,12 +241,17 @@ const HF_ROUTER = (() => {
         : Promise.resolve(0),
     ]);
 
+    window._sidenavCounts = {
+      unread: unreadCount + unreadTicketReplies,
+      pendingVerifications,
+      openTicketCount,
+    };
     _buildSidenav(
       session,
-      unreadCount + unreadTicketReplies,
-      pendingVerifications,
+      window._sidenavCounts.unread,
+      window._sidenavCounts.pendingVerifications,
       null,
-      openTicketCount,
+      window._sidenavCounts.openTicketCount,
     );
 
     // ── Ticket subscription (admin, immediate) ───────────────────
@@ -413,6 +424,18 @@ const HF_ROUTER = (() => {
       }
 
       if (session.role === "coach") {
+        // subscribe to incoming match requests
+        HF_DB.subscribeToMatchRequests(session.userId, async () => {
+          const { data: pending } = await HF_DB.getPendingMatchRequests(session.userId);
+          if (pending?.length > 0) {
+            HF_UTILS.toast(`New match request from ${pending[0].coach?.profile?.club || "a coach"}!`, "success");
+            const view = document.querySelector(".nav-item.active")?.dataset.view;
+            if (view === "training") window.HF_COACH?.training?.(HF_DB.getSession());
+          }
+        });
+      }
+
+      if (session.role === "coach") {
         HF_DB.subscribeToUserStatus(session.userId, async (updatedUser) => {
           if (
             (updatedUser.password_version || 1) > (session.passwordVersion || 1)
@@ -446,13 +469,15 @@ const HF_ROUTER = (() => {
             }
           }
 
-          if (
-            newProfile?.teamSize !== undefined &&
-            newProfile.teamSize !== session.profile?.teamSize
-          ) {
+          const { data: freshSquad } = await HF_DB.getSquadPlayers(
+            session.userId,
+          );
+          const freshSize =
+            freshSquad?.length ?? session.profile?.teamSize ?? 0;
+          if (freshSize !== session.profile?.teamSize) {
             session.profile = {
               ...session.profile,
-              teamSize: newProfile.teamSize,
+              teamSize: freshSize,
             };
             changed = true;
           }
@@ -556,13 +581,15 @@ const HF_ROUTER = (() => {
     const teamSize =
       teamSizeOverride !== null
         ? teamSizeOverride
-        : session?.profile?.teamSize || 0; // safe fallback
+        : session?.profile?.teamSize || 0;
 
     let items;
     if (session.role === "coach") {
       items = NAVS.coach(squadStatus, teamSize);
     } else if (session.role === "scout") {
       items = NAVS.scout(session.agencyStatus || "unregistered");
+    } else if (session.role === "player") {
+      items = NAVS.player(session);
     } else {
       items = NAVS[session.role] || [];
     }
@@ -778,6 +805,14 @@ const HF_ROUTER = (() => {
   };
 
   return {
+    buildSidenav: (session) =>
+      _buildSidenav(
+        session,
+        window._sidenavCounts?.unread || 0,
+        window._sidenavCounts?.pendingVerifications || 0,
+        null,
+        window._sidenavCounts?.openTicketCount || 0,
+      ),
     _forceLogout,
     launch,
     navTo,

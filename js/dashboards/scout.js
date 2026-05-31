@@ -17,7 +17,7 @@ const HF_SCOUT = (() => {
       reports,
       placements,
       messages,
-      findmyteam,
+      findmytalent,
     };
     const fn = views[view] || dashboard;
     fn(session);
@@ -1745,8 +1745,8 @@ const HF_SCOUT = (() => {
       </div>`);
   };
 
-  // ── FIND MY TEAM ───────────────────────────────────────────
-  const findmyteam = async (s) => {
+  // ── FIND MY TALENT ───────────────────────────────────────────
+  const findmytalent = async (s) => {
     const { data: coaches } = await HF_DB.getVerifiedCoaches();
     const { data: approved } = await HF_DB.getApprovedClubNetwork(s.userId);
 
@@ -1805,7 +1805,7 @@ const HF_SCOUT = (() => {
     window._scoutUserId = s.userId;
   };
 
-  // ── FIND MY TEAM HELPERS ───────────────────────────────────
+  // ── FIND MY TALENT HELPERS ────────────────────────────────
   const _scoutClubCard = (c, scoutId) => {
     const p = c.profile || {};
     const req = c.networkRequest;
@@ -1924,7 +1924,7 @@ const HF_SCOUT = (() => {
     );
 
     HF_UTILS.toast(`Network request sent to ${coachName}!`, "success");
-    findmyteam(session);
+    findmytalent(session);
   };
 
   const filterPlayers = () =>
@@ -2094,7 +2094,7 @@ const HF_SCOUT = (() => {
     prospects,
     profile,
     discover,
-    findmyteam,
+    findmytalent,
     resubmitAgency,
     submitAgencyResubmission,
     savePlayer,

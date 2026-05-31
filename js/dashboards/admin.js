@@ -312,7 +312,7 @@ const HF_ADMIN = (() => {
     const rejected = all?.filter((v) => v.status === "rejected") || [];
 
     const nameKey = isSquad ? "team_name" : "agency_name";
-    const color = isSquad ? "var(--gold)" : "var(--blue)";
+    const color = "var(--gold)";
 
     const section = (
       title,

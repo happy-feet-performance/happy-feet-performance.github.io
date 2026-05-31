@@ -40,7 +40,10 @@
       style="display: flex; flex-direction: column; min-height: 100vh"
     >
       <!-- Theme toggle -->
-      <div style="position: fixed; top: 16px; right: 16px; z-index: 999">
+      <div
+        id="auth-theme-toggle"
+        style="position: fixed; top: 12px; right: 12px; z-index: 999"
+      >
         <label class="theme-switch" title="Toggle dark mode">
           <input
             type="checkbox"
@@ -590,6 +593,7 @@
               type="text"
               id="su-security-a"
               placeholder="Enter your answer"
+              autocomplete="off"
               style="
                 padding: 10px 14px;
                 background: var(--bg2);

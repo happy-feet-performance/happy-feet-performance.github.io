@@ -273,8 +273,9 @@ const HF_COACH = (() => {
   };
 
   // ── PROFILE ───────────────────────────────────────────────
-  const profile = (s) => {
+  const profile = async (s) => {
     const p = s.profile || {};
+    const wdl = await HF_DB.getCoachWDL(s.userId);
 
     setMain(`
     <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
@@ -305,7 +306,14 @@ const HF_COACH = (() => {
         <div class="info-cell"><div class="info-label">Squad size</div><div class="info-val">${p.teamSize || 0} players</div></div>
         <div class="info-cell"><div class="info-label">${s.contactType === "phone" ? "Phone" : "Email"}</div><div class="info-val">${s.displayContact || s.contact}</div></div>
       </div>
+      <div style="margin-top:var(--sp-md);padding-top:var(--sp-md);border-top:0.5px solid var(--border);">
+        <div class="info-label" style="margin-bottom:8px;">Match record</div>
+        <div id="coach-wdl">Loading...</div>
+      </div>
     </div>`);
+
+    const wdlEl = document.getElementById("coach-wdl");
+    if (wdlEl) wdlEl.innerHTML = HF_UTILS.wdlHTML(wdl.W, wdl.D, wdl.L);
   };
 
   // ── PROFILE HELPERS ───────────────────────────────────────────────
@@ -613,11 +621,12 @@ const HF_COACH = (() => {
     ${trialPlayersHTML}
 
     <div class="card">
-      <div class="card-title" style="justify-content:space-between;">
+      <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
         <div style="display:flex;align-items:center;gap:var(--sp-sm);">
           <div class="card-dot"></div>Squad roster: ${p.club || "Your club"}
           <span style="font-family:var(--font);font-size:10px;color:var(--text3);margin-left:4px">${squadPlayers?.length || 0} players</span>
         </div>
+        <div id="squad-wdl"></div>
       </div>
 
       <div id="invite-panel" style="display:none;margin-bottom:var(--sp-lg);padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);">
@@ -644,59 +653,65 @@ const HF_COACH = (() => {
           <div style="font-size:13px">Invite players to your squad in Find my team.</div>
         </div>`
           : `
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Player</th>
-              <th>Position</th>
-              <th>Tier</th>
-              <th>Status</th>
-              <th>Rating</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            ${squadPlayers
-              .map((sp) => {
-                const rp = sp.player?.profile || {};
-                const name = sp.player?.name || "Unknown";
-                const safeName = name.replace(/'/g, "\\'");
-                const overall = rp.ratings
-                  ? Math.round(
-                      (rp.ratings.speed +
-                        rp.ratings.tech +
-                        rp.ratings.tact +
-                        rp.ratings.phys) /
-                        4,
-                    )
-                  : null;
-                return `
-                <tr style="cursor:pointer;" onclick="HF_COACH.trackPlayer('${sp.player_id}', '${safeName}')">
-                  <td style="font-weight:600">${name}</td>
-                  <td>${rp.pos || "-"}</td>
-                  <td>${rp.tier || "-"}</td>
-                  <td>
-                    <span style="font-size:10px;padding:1px 7px;font-weight:600;
-                      background:${rp.status === "signed" ? "rgba(26,122,46,.1)" : "rgba(196,154,10,.1)"};
-                      color:${rp.status === "signed" ? "var(--green)" : "var(--gold)"}">
-                      ${rp.status === "signed" ? "Signed" : "Unattached"}
-                    </span>
-                  </td>
-                  <td style="font-weight:700;color:${overall ? "var(--gold)" : "var(--text3)"}">
-                    ${overall !== null ? overall + "%" : "-"}
-                  </td>
-                  <td onclick="event.stopPropagation()">
-                    <button class="btn btn-danger btn-sm" onclick="HF_COACH.confirmKickPlayer('${sp.player_id}', '${safeName}')">
-                      <i class="ti ti-logout"></i> Remove
-                    </button>
-                  </td>
-                </tr>`;
-              })
-              .join("")}
-          </tbody>
-        </table>`
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Position</th>
+                <th>Tier</th>
+                <th>Status</th>
+                <th>Rating</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${squadPlayers
+                .map((sp) => {
+                  const rp = sp.player?.profile || {};
+                  const name = sp.player?.name || "Unknown";
+                  const safeName = name.replace(/'/g, "\\'");
+                  const overall = rp.ratings
+                    ? Math.round(
+                        (rp.ratings.speed +
+                          rp.ratings.tech +
+                          rp.ratings.tact +
+                          rp.ratings.phys) /
+                          4,
+                      )
+                    : null;
+                  return `
+                  <tr style="cursor:pointer;" onclick="HF_COACH.trackPlayer('${sp.player_id}', '${safeName}')">
+                    <td style="font-weight:600">${name}</td>
+                    <td>${rp.pos || "-"}</td>
+                    <td>${rp.tier || "-"}</td>
+                    <td>
+                      <span style="font-size:10px;padding:1px 7px;font-weight:600;
+                        background:${rp.status === "signed" ? "rgba(26,122,46,.1)" : "rgba(196,154,10,.1)"};
+                        color:${rp.status === "signed" ? "var(--green)" : "var(--gold)"}">
+                        ${rp.status === "signed" ? "Signed" : "Unattached"}
+                      </span>
+                    </td>
+                    <td style="font-weight:700;color:${overall ? "var(--gold)" : "var(--text3)"}">
+                      ${overall !== null ? overall + "%" : "-"}
+                    </td>
+                    <td onclick="event.stopPropagation()">
+                      <button class="btn btn-danger btn-sm" onclick="HF_COACH.confirmKickPlayer('${sp.player_id}', '${safeName}')">
+                        <i class="ti ti-logout"></i> Remove
+                      </button>
+                    </td>
+                  </tr>`;
+                })
+                .join("")}
+            </tbody>
+          </table>
+          </div>`
       }
     </div>`);
+
+    const wdl = await HF_DB.getCoachWDL(s.userId);
+    const wdlEl = document.getElementById("squad-wdl");
+    if (wdlEl) wdlEl.innerHTML = HF_UTILS.wdlHTML(wdl.W, wdl.D, wdl.L);
   };
 
   // ── SQUAD VERIFICATION HELPERS ───────────────────────────────────────────────
@@ -724,43 +739,45 @@ const HF_COACH = (() => {
           : ""
       }
 
-      <table class="table" style="margin-bottom:var(--sp-lg);">
-        <thead>
-          <tr>
-            <th>Field</th>
-            <th>Your submission</th>
-            <th>Admin's version</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style="font-weight:600">Team name</td>
-            <td>${data.team_name}</td>
-            <td style="color:${data.edited_team_name && data.edited_team_name !== data.team_name ? "var(--gold)" : "var(--text2)"}">
-              ${data.edited_team_name || data.team_name}
-              ${data.edited_team_name && data.edited_team_name !== data.team_name ? '<i class="ti ti-edit" style="margin-left:4px"></i>' : ""}
-            </td>
-          </tr>
-          <tr>
-            <td style="font-weight:600">League</td>
-            <td>${data.league}</td>
-            <td style="color:${data.edited_league && data.edited_league !== data.league ? "var(--gold)" : "var(--text2)"}">
-              ${data.edited_league || data.league}
-              ${data.edited_league && data.edited_league !== data.league ? '<i class="ti ti-edit" style="margin-left:4px"></i>' : ""}
-            </td>
-          </tr>
-          <tr>
-            <td style="font-weight:600">Founding year</td>
-            <td>${data.founding_year || "-"}</td>
-            <td>${data.edited_founding_year || data.founding_year || "-"}</td>
-          </tr>
-          <tr>
-            <td style="font-weight:600">Home ground</td>
-            <td>${data.home_ground || "-"}</td>
-            <td>${data.edited_home_ground || data.home_ground || "-"}</td>
-          </tr>
-        </tbody>
+      <div class="table-wrap">
+        <table class="table" style="margin-bottom:var(--sp-lg);">
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Your submission</th>
+              <th>Admin's version</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="font-weight:600">Team name</td>
+              <td>${data.team_name}</td>
+              <td style="color:${data.edited_team_name && data.edited_team_name !== data.team_name ? "var(--gold)" : "var(--text2)"}">
+                ${data.edited_team_name || data.team_name}
+                ${data.edited_team_name && data.edited_team_name !== data.team_name ? '<i class="ti ti-edit" style="margin-left:4px"></i>' : ""}
+              </td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">League</td>
+              <td>${data.league}</td>
+              <td style="color:${data.edited_league && data.edited_league !== data.league ? "var(--gold)" : "var(--text2)"}">
+                ${data.edited_league || data.league}
+                ${data.edited_league && data.edited_league !== data.league ? '<i class="ti ti-edit" style="margin-left:4px"></i>' : ""}
+              </td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">Founding year</td>
+              <td>${data.founding_year || "-"}</td>
+              <td>${data.edited_founding_year || data.founding_year || "-"}</td>
+            </tr>
+            <tr>
+              <td style="font-weight:600">Home ground</td>
+              <td>${data.home_ground || "-"}</td>
+              <td>${data.edited_home_ground || data.home_ground || "-"}</td>
+            </tr>
+          </tbody>
       </table>
+      </div>
 
       <div style="display:flex;gap:8px;">
         <button class="btn btn-primary" onclick="HF_COACH.acceptAdminEdits('${data.id}')">
@@ -1061,7 +1078,7 @@ const HF_COACH = (() => {
       return;
     }
 
-    HF_UTILS.toast(`Squad invite sent to ${playerName}!`, "success");
+    HF_UTILS.toast(`Squad invite sent to ${playerName}`, "success");
     squad(session);
   };
 
@@ -1124,15 +1141,6 @@ const HF_COACH = (() => {
 
   // ── TRAINING ───────────────────────────────────────────────
   const training = async (s) => {
-    const saved = await HF_DB.getTraining(s.userId);
-    let schedule = saved?.schedule || {};
-
-    // default all days to Rest if no schedule set
-    if (Object.keys(schedule).length === 0) {
-      const days = [0, 1, 2, 3, 4, 5, 6];
-      days.forEach((d) => (schedule[d] = "Rest"));
-      await HF_DB.saveTraining(s.userId, { ...saved, schedule });
-    }
     const { data: squadPlayers } = await HF_DB.getSquadPlayers(s.userId);
     const hasPlayers = squadPlayers?.length > 0;
 
@@ -1151,77 +1159,870 @@ const HF_COACH = (() => {
       return;
     }
 
-    // fetch today's player training plans
-    const playerPlans = await Promise.all(
-      squadPlayers.map(async (sp) => {
-        const { data: plan } = await HF_DB.getTraining(sp.player_id);
-        const todayType =
-          plan?.schedule?.[HF_DB.localDate()] ||
-          plan?.schedule?.[new Date().getDay()] ||
-          "Not set";
-        return { ...sp, todayType };
-      }),
+    const saved = await HF_DB.getTraining(s.userId);
+    let schedule = saved?.schedule || {};
+    const allSessions = saved?.sessions || [];
+    // load pending match requests for this coach (both as requester and opponent)
+    const { data: pendingRequests } = await HF_DB.getPendingMatchRequests(
+      s.userId,
     );
 
-    setMain(`
-    <div class="card">
-      <div class="card-title" style="justify-content:space-between;">
-        <div style="display:flex;flex-direction:column;gap:2px;">
+    // build a set of dates locked by incoming requests
+    const incomingLockedDates = new Set(
+      (pendingRequests || []).map((r) => r.date),
+    );
+
+    // client-side deadline fallback check
+    await HF_DB.checkLineupDeadlines(s.userId);
+
+    // one-time migration: clear legacy auto-defaulted Rest values
+    const numericKeys = Object.keys(schedule).filter((k) => !isNaN(k));
+    const isoKeys = Object.keys(schedule).filter((k) => isNaN(k));
+    const allNumericAreRest =
+      numericKeys.length === 7 &&
+      numericKeys.every((k) => schedule[k] === "Rest");
+    if (allNumericAreRest && isoKeys.length === 0) {
+      schedule = {};
+      await HF_DB.saveTraining(s.userId, { ...saved, schedule });
+    }
+
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const typeColors = {
+      Technical: "var(--gold)",
+      Tactical: "var(--blue)",
+      Physical: "var(--red)",
+      Recovery: "var(--green)",
+      Match: "var(--faith)",
+      Rest: "var(--text3)",
+    };
+    const types = Object.keys(typeColors);
+
+    const view = window._coachTrainingView || "week";
+    const selectedDay = window._coachTrainingSelectedDay ?? new Date().getDay();
+    window._coachTrainingSelectedDay = selectedDay;
+    const selectedDateISO =
+      window._coachTrainingSelectedDate ||
+      HF_UTILS.getDateForDayISO(selectedDay);
+    window._coachTrainingSelectedDate = selectedDateISO;
+    const selectedType = schedule[selectedDateISO] || null;
+    const effectiveType = selectedType === "Rest" ? null : selectedType;
+
+    let existingSession =
+      allSessions.find(
+        (ss) => ss.dayIndex === selectedDay || ss.date === selectedDateISO,
+      ) || null;
+
+    // check if this coach is the OPPONENT for a match on the selected day
+    let opponentMatchRequest = null;
+    if (!existingSession?.matchId) {
+      const { data: incomingMatch } = await HF_DB.getMatchForOpponentCoach(
+        s.userId,
+        selectedDateISO,
+      );
+      if (incomingMatch) opponentMatchRequest = incomingMatch;
+    }
+
+    if (effectiveType === "Match" && existingSession?.matchId) {
+      const { data: matchRecords } = await HF_DB.getCoachMatches(s.userId);
+      const match = (matchRecords || []).find(
+        (m) => m.id === existingSession.matchId,
+      );
+      if (match) {
+        existingSession = {
+          ...existingSession,
+          result: match.result,
+          adminVerified: match.admin_verified,
+          opponentApproved: match.opponent_approved !== false,
+          matchStatus: match.match_status,
+          opponentCoachId: match.opponent_coach_id,
+          coachConfirmed: match.coach_confirmed,
+          opponentConfirmed: match.opponent_confirmed,
+          coachLineupSubmitted: match.coach_lineup_submitted,
+          opponentLineupSubmitted: match.opponent_lineup_submitted,
+          lineupDeadline: match.lineup_deadline,
+          playerStats: match.player_stats || {},
+          opponentPlayerStats: match.opponent_player_stats || {},
+          opponent: match.opponent,
+          location: match.location,
+          venueType: existingSession?.venueType || null,
+          opponentGround: existingSession?.opponentGround || null,
+        };
+      }
+    }
+
+    // ── VIEW: WEEK ──
+    const weekViewHTML = () => `
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:var(--sp-lg);">
+        ${days
+          .map((day, i) => {
+            const dateISO = HF_UTILS.getDateForDayISO(i);
+            const t = schedule[dateISO] || null;
+            const c = t ? typeColors[t] : null;
+            const displayC = c || (t === "Rest" ? typeColors.Rest : null);
+            const isSelected = dateISO === selectedDateISO;
+            const isToday = i === new Date().getDay();
+            const hasSession = allSessions.some(
+              (ss) => ss.dayIndex === i || ss.date === dateISO,
+            );
+            return `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;"
+            onclick="window._coachTrainingSelectedDay=${i};window._coachTrainingSelectedDate='${HF_UTILS.getDateForDayISO(i)}';window._matchSaved=false;window._editingMatchDetails=false;window._matchTab=null;HF_COACH.training(HF_DB.getSession())"
+            title="${incomingLockedDates.has(HF_UTILS.getDateForDayISO(i)) ? "Incoming match request — approve or decline first" : ""}">
+            <div style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
+              color:${isSelected ? "var(--text)" : "var(--text3)"};">${day}</div>
+            <div style="width:100%;min-height:56px;padding:6px 4px;
+              background:${isSelected ? (displayC ? displayC + "22" : "var(--bg3)") : displayC ? displayC + "11" : "transparent"};
+              border:${isSelected ? "2px solid " + (displayC || "var(--text)") : isToday ? "1px solid var(--text3)" : "0.5px solid var(--border)"};
+              text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;">
+              ${
+                incomingLockedDates.has(dateISO)
+                  ? `<i class="ti ti-lock" style="font-size:9px;color:var(--faith);"></i>
+                   <span style="font-size:8px;font-weight:700;font-family:var(--font);text-transform:uppercase;color:var(--faith);">Match req</span>`
+                  : `<span style="font-size:9px;font-weight:700;font-family:var(--font);letter-spacing:0.04em;text-transform:uppercase;
+                    color:${displayC || "var(--text3)"};">${t || "-"}</span>
+                   ${hasSession ? `<i class="ti ti-clipboard-check" style="font-size:9px;color:var(--green);"></i>` : ""}`
+              }
+            </div>
+          </div>`;
+          })
+          .join("")}
+      </div>`;
+
+    // ── VIEW: DAY ──
+    const dayViewHTML = () => {
+      const t = schedule[selectedDateISO] || null;
+      const displayC = t ? typeColors[t] || null : null;
+      const hasSession = allSessions.some(
+        (ss) => ss.date === selectedDateISO || ss.dayIndex === selectedDay,
+      );
+      const dateLabel = new Date(
+        selectedDateISO + "T00:00:00",
+      ).toLocaleDateString("en-GB", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      });
+      return `
+      <div style="padding:var(--sp-lg);background:${displayC ? displayC + "22" : "var(--bg2)"};
+        border:${displayC ? "2px solid " + displayC : "0.5px solid var(--border)"};
+        text-align:center;margin-bottom:var(--sp-lg);">
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">
+          ${dateLabel}
+        </div>
+        <div style="font-family:var(--font);font-size:28px;font-weight:700;color:${displayC || "var(--text3)"};margin-bottom:4px;">
+          ${t || "No session set"}
+        </div>
+        ${hasSession ? `<div style="font-size:11px;color:var(--green);margin-top:6px;"><i class="ti ti-clipboard-check" style="margin-right:4px"></i>Session plan saved</div>` : ""}
+      </div>
+      <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-bottom:var(--sp-lg);">
+        ${days
+          .map((day, i) => {
+            const dISO = HF_UTILS.getDateForDayISO(i);
+            const dt = schedule[dISO] || null;
+            const dc = dt ? typeColors[dt] || "var(--text3)" : null;
+            const isSelected = dISO === selectedDateISO;
+            return `
+            <button class="btn btn-sm ${isSelected ? "btn-primary" : "btn-outline"}"
+              style="${isSelected && dc ? `background:${dc};border-color:${dc};color:#fff;` : ""}"
+              onclick="window._coachTrainingSelectedDay=${i};window._coachTrainingSelectedDate='${dISO}';window._matchTab=null;HF_COACH.training(HF_DB.getSession())">
+              ${day}
+            </button>`;
+          })
+          .join("")}
+      </div>`;
+    };
+
+    // ── VIEW: MONTH ──
+    const monthViewHTML = () => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const firstDay = new Date(year, month, 1).getDay();
+      let cells = "";
+      for (let i = 0; i < firstDay; i++) cells += "<div></div>";
+      for (let d = 1; d <= daysInMonth; d++) {
+        const date = new Date(year, month, d);
+        const dayOfWeek = date.getDay();
+        const isToday = d === now.getDate();
+        const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+        const t = schedule[dateStr] || null;
+        const color = t ? typeColors[t] : null;
+        const displayC = color || (t === "Rest" ? typeColors.Rest : null);
+        const hasSession = allSessions.some((ss) => ss.date === dateStr);
+        const isSelected = dateStr === selectedDateISO;
+        cells += `
+        <div onclick="window._coachTrainingSelectedDay=${dayOfWeek};window._coachTrainingSelectedDate='${dateStr}';window._matchSaved=false;window._editingMatchDetails=false;window._matchTab=null;HF_COACH.training(HF_DB.getSession())"
+          style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:40px;
+            background:${isSelected ? (displayC ? displayC + "22" : "var(--bg3)") : "transparent"};
+            border:${isSelected ? "2px solid " + (displayC || "var(--text)") : isToday ? "1.5px solid var(--text3)" : "0.5px solid var(--border)"};
+            color:${isSelected ? "var(--text)" : "var(--text2)"};font-size:11px;font-weight:${isToday ? "700" : "400"};
+            cursor:pointer;position:relative;">
+          <span>${d}</span>
+          ${
+            incomingLockedDates.has(dateStr)
+              ? `<div style="width:4px;height:4px;background:var(--faith);border-radius:50%;position:absolute;bottom:3px;"></div>`
+              : hasSession
+                ? `<div style="width:4px;height:4px;background:var(--green);border-radius:50%;position:absolute;bottom:3px;"></div>`
+                : t
+                  ? `<div style="width:4px;height:4px;background:${displayC};position:absolute;bottom:3px;"></div>`
+                  : ""
+          }
+        </div>`;
+      }
+      return `
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:6px;">
+        ${days.map((d) => `<div style="text-align:center;font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);padding:4px 0;">${d}</div>`).join("")}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:var(--sp-md);">
+        ${cells}
+      </div>`;
+    };
+
+    const dayMatchLocked =
+      existingSession?.matchId &&
+      ["pending", "confirmed"].includes(existingSession?.matchStatus);
+
+    // ── TYPE PICKER ──
+    const lockedByIncoming =
+      !existingSession?.matchId &&
+      opponentMatchRequest &&
+      ["pending", "confirmed"].includes(opponentMatchRequest.match_status);
+    const lockedByOwn =
+      existingSession?.matchId &&
+      ["pending", "confirmed"].includes(existingSession?.matchStatus);
+    const incomingClub =
+      opponentMatchRequest?.coach?.profile?.club ||
+      opponentMatchRequest?.coach?.name ||
+      "Another team";
+    const incomingStatus = opponentMatchRequest?.match_status;
+
+    const typePicker = dayMatchLocked
+      ? `
+    <div style="padding:var(--sp-md);background:var(--faith-lt);border-left:3px solid var(--faith);margin-bottom:var(--sp-md);">
+      <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--faith);margin-bottom:6px;">
+        Session type locked
+      </div>
+      <div style="font-size:12px;color:var(--text2);">
+        ${
+          lockedByIncoming
+            ? `${incomingClub} has sent you a match request for this day. ${incomingStatus === "confirmed" ? "The match is confirmed." : "Approve or decline the request below before changing this day's session type."}`
+            : `This day has a ${existingSession.matchStatus === "confirmed" ? "confirmed" : "pending"} match${existingSession.opponent ? ` vs ${existingSession.opponent}` : ""}. ${existingSession.matchStatus === "pending" ? "Both coaches must approve or decline before the session type can be changed." : "The match is confirmed — session type cannot be changed."}`
+        }
+      </div>
+    </div>`
+      : `
+    <div style="margin-bottom:var(--sp-md);">
+      <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
+        Session type for ${days[selectedDay]} · ${new Date(selectedDateISO + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        ${types
+          .map(
+            (t) => `
+          <button class="btn btn-sm ${selectedType === t ? "btn-primary" : "btn-outline"}"
+            style="${selectedType === t ? `background:${typeColors[t]};border-color:${typeColors[t]};color:${t === "Rest" ? "var(--text)" : "#fff"};` : ""}"
+            onclick="HF_COACH.setDayType(${selectedDay}, '${selectedDateISO}', '${t}')">
+            ${t}
+          </button>`,
+          )
+          .join("")}
+        ${
+          selectedType
+            ? `
+          <button class="btn btn-sm btn-outline" style="color:var(--text3);"
+            onclick="HF_COACH.clearDayType(${selectedDay}, '${selectedDateISO}')">
+            <i class="ti ti-x"></i> Clear
+          </button>`
+            : ""
+        }
+      </div>
+    </div>`;
+
+    // ── MATCH FORM ──
+    const { data: verifiedTeams } = await HF_DB.getVerifiedTeams();
+    const wdl = await HF_DB.getCoachWDL(s.userId);
+    const clubName = s.profile?.club || "Your team";
+
+    if (existingSession?.opponentGround) {
+      window._opponentGround = existingSession.opponentGround;
+    }
+
+    // determine match phase
+    const today = HF_DB.localDate();
+    const isMatchDay = selectedDateISO === today;
+    const isPostMatch = selectedDateISO < today;
+    const isPreMatch = selectedDateISO > today;
+    const matchPhase = isPostMatch ? "post" : isMatchDay ? "day" : "pre";
+
+    // load match stats for this coach's side
+    const isHomeCoach = existingSession?.matchId
+      ? (await HF_DB.getMatchById(existingSession.matchId))?.data?.coach_id ===
+        s.userId
+      : true;
+    const myStats = isHomeCoach
+      ? existingSession?.playerStats || {}
+      : existingSession?.opponentPlayerStats || {};
+
+    const formLocked =
+      window._matchSaved ||
+      (existingSession?.matchId && !window._editingMatchDetails);
+    const opponentRequestPending =
+      existingSession?.matchStatus === "pending" &&
+      existingSession?.opponentCoachId;
+
+    const matchTab = window._matchTab || "details";
+    window._matchTab = matchTab;
+
+    const statusColor =
+      existingSession?.matchStatus === "confirmed"
+        ? "var(--green)"
+        : existingSession?.matchStatus === "declined"
+          ? "var(--red)"
+          : existingSession?.matchStatus === "pending"
+            ? "var(--gold)"
+            : "var(--faith)";
+
+    const statusLabel =
+      existingSession?.matchStatus === "confirmed"
+        ? "Confirmed"
+        : existingSession?.matchStatus === "declined"
+          ? "Declined"
+          : existingSession?.matchStatus === "pending"
+            ? "Pending"
+            : "New";
+
+    const phaseLabel =
+      matchPhase === "pre"
+        ? "Pre-match"
+        : matchPhase === "day"
+          ? "Match day"
+          : "Post-match";
+
+    const matchFormHTML = `
+    <div class="card" style="border-top:2px solid var(--faith);padding:0;overflow:hidden;">
+
+      <!-- FIXTURE HERO -->
+      <div style="background:var(--bg);border-bottom:0.5px solid var(--border);padding:var(--sp-lg) var(--sp-xl);">
+
+        <!-- top row: date + phase + status -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:var(--sp-md);">
           <div style="display:flex;align-items:center;gap:var(--sp-sm);">
-            <div class="card-dot"></div>Session builder
+            <i class="ti ti-calendar-event" style="color:var(--faith);font-size:14px;"></i>
+            <span style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">
+              ${days[selectedDay]} · ${new Date(selectedDateISO + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+            </span>
+            <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;background:var(--faith-lt);color:var(--faith);">
+              ${phaseLabel}
+            </span>
           </div>
-          <div style="font-size:11px;color:var(--text3);font-family:var(--font);text-transform:none;letter-spacing:0;font-weight:400;">
-            Plan today's session and notify your squad
+          ${wdl.total > 0 ? `<div>${HF_UTILS.wdlHTML(wdl.W, wdl.D, wdl.L)}</div>` : ""}
+        </div>
+
+        <!-- fixture row: centred -->
+        <div style="display:flex;align-items:center;justify-content:center;gap:var(--sp-xl);">
+
+          <!-- home team -->
+          <div style="text-align:center;flex:1;max-width:160px;">
+            <div style="font-family:var(--font);font-size:18px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:4px;">
+                ${clubName}
+            </div>
+            <div style="font-size:10px;color:var(--text3);font-family:var(--font);letter-spacing:0.06em;text-transform:uppercase;">
+              ${existingSession?.venueType === "home" ? "Home" : existingSession?.venueType === "away" ? "Away" : "—"}
+            </div>
+          </div>
+
+          <!-- VS + venue -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;flex-shrink:0;">
+            <div style="font-family:var(--font);font-size:22px;font-weight:700;letter-spacing:0.12em;color:var(--text3);">VS</div>
+            ${
+              existingSession?.location
+                ? `
+            <div style="font-size:10px;color:var(--text2);display:flex;align-items:center;gap:4px;white-space:nowrap;">
+              <i class="ti ti-map-pin" style="font-size:10px;color:var(--faith);"></i>
+              ${existingSession.location}
+            </div>`
+                : `
+            <div style="font-size:10px;color:rgba(255,255,255,.2);">Venue TBD</div>`
+            }
+          </div>
+
+          <!-- opponent -->
+          <div style="text-align:center;flex:1;max-width:160px;">
+            <div style="font-family:var(--font);font-size:18px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:${existingSession?.opponent ? "var(--text)" : "var(--text3)"};">
+              ${existingSession?.opponent || "TBD"}
+            </div>
+            <div style="font-size:10px;color:var(--text3);font-family:var(--font);letter-spacing:0.06em;text-transform:uppercase;">
+              ${existingSession?.venueType === "away" ? "Home" : existingSession?.venueType === "home" ? "Away" : "—"}
+            </div>
           </div>
         </div>
-        <span style="font-size:11px;color:var(--text3);">
-          ${new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
-        </span>
+
+        <div style="margin-top:var(--sp-lg);padding-top:var(--sp-md);border-top:0.5px solid var(--border);display:flex;align-items:flex-start;gap:var(--sp-lg);flex-wrap:wrap;">
+          
+          <!-- coach note -->
+          <div style="flex:1;min-width:0;">
+            <div style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">Coach's note</div>
+            <div style="font-size:12px;color:${existingSession?.intent ? "var(--text2)" : "var(--text3)"};">
+              ${existingSession?.intent || "No note added"}
+            </div>
+          </div>
+
+          <!-- status -->
+          ${
+            existingSession?.matchStatus
+              ? `
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;margin-left:auto;align-self:center;">
+            <div style="display:inline-flex;align-items:center;background:${statusColor}22;border:1px solid ${statusColor}44;line-height:1;">
+              <span style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${statusColor};vertical-align:middle;">${statusLabel}</span>
+            </div>
+            ${
+              existingSession.matchStatus === "pending"
+                ? `
+            <div style="font-size:10px;color:var(--text3);text-align:center;">
+              Awaiting ${existingSession.opponent || "opponent"} approval
+            </div>`
+                : ""
+            }
+            ${
+              existingSession.matchStatus === "confirmed"
+                ? `
+            <div style="font-size:10px;color:var(--text3);text-align:center;">Both coaches approved</div>`
+                : ""
+            }
+          </div>`
+              : `
+          <div style="font-size:10px;color:var(--text3);">Not yet sent</div>`
+          }
+        </div>
       </div>
 
+      <!-- TABS -->
+      <div style="padding:0 var(--sp-xl);">
+        <div class="tab-toggle" style="margin:var(--sp-md) 0;">
+          <button class="${matchTab === "details" ? "active" : ""}"
+            onclick="window._matchTab='details';HF_COACH.training(HF_DB.getSession())"
+            style="${!window._editingMatchDetails && existingSession?.matchId ? "opacity:0.5;" : ""}">
+            <i class="ti ti-edit" style="font-size:11px;margin-right:3px;"></i>Edit
+          </button>
+          <button class="${matchTab === "lineup" ? "active" : ""}"
+            onclick="window._matchTab='lineup';HF_COACH.training(HF_DB.getSession())">
+            Lineup
+          </button>
+          ${
+            matchPhase !== "pre"
+              ? `
+          <button class="${matchTab === "stats" ? "active" : ""}"
+            onclick="window._matchTab='stats';HF_COACH.training(HF_DB.getSession())">
+            Stats
+          </button>`
+              : ""
+          }
+        </div>
+      </div>
+
+      <div style="padding:0 var(--sp-xl) var(--sp-xl);">
+
+      <!-- TAB: DETAILS -->
       ${
-        playerPlans.length > 0
+        matchTab === "details"
           ? `
-        <div style="margin-bottom:var(--sp-lg);">
-          <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
-            Player focus areas today
-          </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:var(--sp-sm);">
-            ${playerPlans
-              .map((pp) => {
-                const typeColors = {
-                  Technical: "var(--gold)",
-                  Tactical: "var(--blue)",
-                  Physical: "var(--red)",
-                  Recovery: "var(--green)",
-                  Match: "var(--faith)",
-                  Rest: "var(--text3)",
-                };
-                const color = typeColors[pp.todayType] || "var(--text3)";
-                return `
-                <div style="padding:var(--sp-sm) var(--sp-md);background:var(--bg2);border-left:3px solid ${color};display:flex;align-items:center;justify-content:space-between;">
-                  <span style="font-size:12px;font-weight:600;color:var(--text)">${pp.player?.name?.split(" ")[0] || "Player"}</span>
-                  <span style="font-size:10px;font-weight:700;font-family:var(--font);letter-spacing:0.04em;text-transform:uppercase;color:${color};">${pp.todayType}</span>
-                </div>`;
-              })
-              .join("")}
-          </div>
+      ${
+        formLocked
+          ? `
+      <div style="padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--faith);margin-bottom:var(--sp-md);">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:var(--sp-sm);">Click Edit above or the button below to change match details.</div>
+        ${
+          opponentRequestPending
+            ? `
+        <div style="font-size:11px;color:var(--gold);display:flex;align-items:center;gap:6px;">
+          <i class="ti ti-lock"></i> Opponent field locked while ${existingSession.opponent} reviews the request.
         </div>`
+            : ""
+        }
+      </div>
+      <button class="btn btn-outline btn-sm"
+        onclick="window._editingMatchDetails=true;window._matchSaved=false;window._matchTab='details';HF_COACH.training(HF_DB.getSession())">
+        <i class="ti ti-edit"></i> Edit match details
+      </button>`
+          : `
+      ${
+        opponentRequestPending
+          ? `
+      <div style="padding:var(--sp-sm) var(--sp-md);background:rgba(196,154,10,.06);border-left:2px solid var(--gold);margin-bottom:var(--sp-md);font-size:12px;color:var(--text2);">
+        <i class="ti ti-lock" style="margin-right:6px;color:var(--gold);"></i>
+        Opponent cannot be changed while ${existingSession.opponent} is reviewing the match request.
+      </div>`
           : ""
       }
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-md);margin-bottom:var(--sp-md);">
         <div class="fg">
+          <label class="required">Opponent</label>
+          <select id="match-opponent-select"
+            ${opponentRequestPending ? "disabled" : ""}
+            onchange="HF_COACH.onOpponentChange()"
+            style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);${opponentRequestPending ? "opacity:0.5;cursor:not-allowed;" : ""}">
+            <option value="">Select opponent</option>
+            ${(verifiedTeams || [])
+              .filter((t) => t.name !== clubName)
+              .map(
+                (t) =>
+                  `<option value="${t.name}" data-ground="${t.homeGround || ""}" ${existingSession?.opponent === t.name ? "selected" : ""}>${t.name}</option>`,
+              )
+              .join("")}
+            <option value="__other__" ${existingSession?.isUnverifiedOpponent ? "selected" : ""}>Other (requires admin approval)</option>
+          </select>
+        </div>
+        <div class="fg" id="opponent-other-wrap" style="display:${existingSession?.isUnverifiedOpponent ? "flex" : "none"};flex-direction:column;gap:5px;">
+          <label>Opponent name</label>
+          <input type="text" id="match-opponent-other"
+            value="${existingSession?.isUnverifiedOpponent ? existingSession.opponent : ""}"
+            placeholder="Enter team name"
+            style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="fg" style="margin-bottom:var(--sp-md);">
+        <label>Match venue</label>
+        <select id="match-location"
+          onchange="HF_COACH.onVenueChange()"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+          <option value="">Select venue</option>
+          <option value="home" ${existingSession?.venueType === "home" ? "selected" : ""}>
+            Home: ${s.profile?.homeGround || s.profile?.club || "Your ground"}
+          </option>
+          <option value="away" ${existingSession?.venueType === "away" ? "selected" : ""}>
+            Away: ${existingSession?.opponentGround || "Opponent's ground"}
+          </option>
+          <option value="neutral" ${existingSession?.venueType === "neutral" ? "selected" : ""}>
+            Neutral venue: requires admin approval
+          </option>
+        </select>
+        <div id="venue-neutral-wrap" style="display:${existingSession?.venueType === "neutral" ? "block" : "none"};margin-top:var(--sp-sm);">
+          <input type="text" id="match-location-neutral"
+            value="${existingSession?.venueType === "neutral" ? existingSession.location : ""}"
+            placeholder="e.g. Accra Sports Stadium"
+            autocomplete="off"
+            style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">
+            <i class="ti ti-info-circle" style="margin-right:4px;"></i>
+            Neutral venues require admin approval before the match is confirmed.
+          </div>
+        </div>
+      </div>
+
+      <div class="fg" style="margin-bottom:var(--sp-lg);">
+        <label>Coach's note</label>
+        <input type="text" id="session-intent" value="${existingSession?.intent || ""}"
+          placeholder="e.g. Press high, win second balls"
+          style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
+      </div>
+
+      ${
+        !existingSession?.matchId
+          ? `
+      <div style="padding:var(--sp-sm) var(--sp-md);background:rgba(196,154,10,.06);border-left:2px solid var(--gold);margin-bottom:var(--sp-md);font-size:12px;color:var(--text2);">
+        <i class="ti ti-info-circle" style="margin-right:6px;color:var(--gold);"></i>
+        After saving match details, go to the <strong>Lineup</strong> tab to submit your starting XI. The match request is sent to the opponent once your lineup is submitted.
+      </div>`
+          : ""
+      }
+
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="HF_COACH.saveMatchSession(${selectedDay},'${selectedDateISO}')">
+          <i class="ti ti-device-floppy"></i> ${existingSession?.matchId ? "Update details" : "Save match details"}
+        </button>
+        ${
+          existingSession?.matchStatus === "confirmed"
+            ? `
+        <button class="btn btn-outline" onclick="HF_COACH.notifySquadOfMatch('${existingSession.matchId}')">
+          <i class="ti ti-send"></i> Notify my squad
+        </button>`
+            : ""
+        }
+        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('dashboard')">Cancel</button>
+      </div>`
+      }
+
+      ${
+        matchPhase !== "pre" && existingSession?.matchId
+          ? `
+      <div style="margin-top:var(--sp-lg);padding-top:var(--sp-lg);border-top:0.5px solid var(--border);">
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">Match result</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          ${["W", "D", "L"]
+            .map(
+              (r) => `
+            <button class="btn btn-sm ${existingSession.result === r ? "btn-primary" : "btn-outline"}"
+              style="${existingSession.result === r ? `background:${r === "W" ? "var(--green)" : r === "D" ? "var(--gold)" : "var(--red)"};border-color:${r === "W" ? "var(--green)" : r === "D" ? "var(--gold)" : "var(--red)"};color:#fff;` : ""}"
+              onclick="HF_COACH.logMatchResult('${existingSession.matchId}','${r}',${selectedDay},'${selectedDateISO}')">
+              ${r === "W" ? "Win" : r === "D" ? "Draw" : "Loss"}
+            </button>`,
+            )
+            .join("")}
+          ${
+            existingSession.result
+              ? `
+          <span style="font-size:11px;color:var(--text3);">
+            <i class="ti ti-${existingSession.adminVerified ? "circle-check" : "clock"}" style="color:${existingSession.adminVerified ? "var(--green)" : "var(--text3)"}"></i>
+            ${existingSession.adminVerified ? "Verified by admin" : "Pending admin verification"}
+          </span>`
+              : ""
+          }
+        </div>
+      </div>`
+          : ""
+      }`
+          : ""
+      }
+
+      <!-- TAB: LINEUP -->
+      ${
+        matchTab === "lineup"
+          ? `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-md);flex-wrap:wrap;gap:8px;">
+        <div style="font-size:12px;color:var(--text2);">
+          ${matchPhase === "post" ? "Lineup submitted before the match." : "Set your starting XI, subs, and bench before the match."}
+        </div>
+        ${
+          existingSession?.matchId && matchPhase !== "post"
+            ? (() => {
+                const mySubmitted = isHomeCoach
+                  ? existingSession.coachConfirmed
+                  : existingSession.opponentConfirmed;
+                const deadlinePassed =
+                  existingSession.lineupDeadline &&
+                  new Date() >= new Date(existingSession.lineupDeadline);
+                return `
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+            ${
+              existingSession.lineupDeadline
+                ? `
+            <div style="font-size:11px;color:${deadlinePassed ? "var(--red)" : "var(--gold)"};">
+              <i class="ti ti-clock" style="margin-right:4px;"></i>
+              Deadline: ${new Date(existingSession.lineupDeadline).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+            </div>`
+                : `
+            <div style="font-size:11px;color:var(--text3);">
+              Deadline set to 24hrs before match once submitted
+            </div>`
+            }
+            <button class="btn btn-sm ${mySubmitted ? "btn-outline" : "btn-primary"}"
+              onclick="HF_COACH.saveLineup('${existingSession.matchId}')">
+              <i class="ti ti-${mySubmitted ? "refresh" : "send"}"></i>
+              ${mySubmitted ? "Update lineup" : "Submit lineup to opponent"}
+            </button>
+          </div>`;
+              })()
+            : ""
+        }
+      </div>
+
+      <table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;">
+        <colgroup>
+          <col style="width:auto;">
+          <col style="width:70px;">
+          <col style="width:60px;">
+          <col style="width:60px;">
+        </colgroup>
+        <thead>
+          <tr style="border-bottom:2px solid var(--border);">
+            <th style="text-align:left;padding:6px 8px;font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">Player</th>
+            <th style="text-align:center;padding:4px;font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);">Role</th>
+            <th style="text-align:center;padding:4px;font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);">Sub on</th>
+            <th style="text-align:center;padding:4px;font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);">Sub off</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${squadPlayers
+            .map((sp) => {
+              const pos = sp.player?.profile?.pos || "CM";
+              const e = myStats[sp.player_id] || {};
+              const role = e.role || "starter";
+              const locked = matchPhase === "post";
+              const s = (val) => (locked ? `style="opacity:0.6;"` : "");
+              return `
+            <tr style="border-bottom:0.5px solid var(--border);">
+              <td style="padding:6px 8px;font-weight:600;color:var(--text);">
+                ${sp.player?.name?.split(" ")[0] || "Player"}
+                <span style="font-size:9px;color:var(--text3);margin-left:4px;">${pos}</span>
+              </td>
+              <td style="padding:3px 4px;">
+                <select data-pid="${sp.player_id}" data-stat="role" class="lineup-input"
+                  ${locked ? "disabled" : ""}
+                  onchange="const r=this.closest('tr');const on=r.querySelector('[data-stat=sub_on_min]');const off=r.querySelector('[data-stat=sub_off_min]');if(on&&off){const isSub=this.value==='sub';const isBench=this.value==='bench';on.disabled=!isSub;on.style.opacity=isSub?'1':'0.4';off.disabled=isBench;off.style.opacity=!isBench?'1':'0.4';}"
+                  style="width:100%;padding:5px 4px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:11px;font-family:var(--font);outline:none;box-sizing:border-box;">
+                  <option value="starter" ${role === "starter" ? "selected" : ""}>Starter</option>
+                  <option value="sub" ${role === "sub" ? "selected" : ""}>Sub</option>
+                  <option value="bench" ${role === "bench" ? "selected" : ""}>Bench</option>
+                </select>
+              </td>
+              <td style="padding:3px 4px;">
+                <input type="number" min="0" max="120" value="${e.sub_on_min ?? ""}"
+                  data-pid="${sp.player_id}" data-stat="sub_on_min"
+                  placeholder="min" class="lineup-input"
+                  ${role !== "sub" || locked ? "disabled" : ""}
+                  style="width:100%;padding:5px 3px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);text-align:center;outline:none;box-sizing:border-box;opacity:${role === "sub" && !locked ? "1" : "0.4"};">
+              </td>
+              <td style="padding:3px 4px;">
+                <input type="number" min="0" max="120" value="${e.sub_off_min ?? ""}"
+                  data-pid="${sp.player_id}" data-stat="sub_off_min"
+                  placeholder="min" class="lineup-input"
+                  ${role === "bench" || locked ? "disabled" : ""}
+                  style="width:100%;padding:5px 3px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);text-align:center;outline:none;box-sizing:border-box;opacity:${role !== "bench" && !locked ? "1" : "0.4"};">
+              </td>
+            </tr>`;
+            })
+            .join("")}
+        </tbody>
+      </table>`
+          : ""
+      }
+
+      <!-- TAB: STATS -->
+      ${
+        matchTab === "stats" && matchPhase !== "pre"
+          ? `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-md);flex-wrap:wrap;gap:8px;">
+        <div style="font-size:12px;color:var(--text2);">Fill in player statistics after the match.</div>
+        ${
+          existingSession?.matchId
+            ? `
+        <button class="btn btn-primary btn-sm" onclick="HF_COACH.savePostStats('${existingSession.matchId}')">
+          <i class="ti ti-circle-check"></i> Save stats
+        </button>`
+            : ""
+        }
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table style="border-collapse:collapse;font-size:12px;width:100%;">
+          <colgroup>
+            <col style="min-width:110px;">
+            <col style="width:50px;">
+            <col style="width:50px;">
+            <col style="width:50px;">
+            <col style="width:50px;">
+            <col style="width:50px;">
+            <col style="width:50px;">
+            <col style="width:44px;">
+            <col style="width:44px;">
+          </colgroup>
+          <thead>
+            <tr style="border-bottom:2px solid var(--border);">
+              <th style="text-align:left;padding:6px 8px;font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">Player</th>
+              <th style="text-align:center;padding:4px;color:var(--text2);font-size:13px;"><i class="ti ti-clock" title="Minutes"></i></th>
+              <th style="text-align:center;padding:4px;color:var(--text2);font-size:13px;"><i class="ti ti-ball-football" title="Goals"></i></th>
+              <th style="text-align:center;padding:4px;color:var(--text2);font-size:13px;"><i class="ti ti-arrow-forward-up" title="Assists"></i></th>
+              <th style="text-align:center;padding:4px;color:var(--text2);font-size:13px;"><i class="ti ti-target" title="Shots"></i></th>
+              <th style="text-align:center;padding:4px;color:var(--text2);font-size:13px;"><i class="ti ti-shield" title="Saves"></i></th>
+              <th style="text-align:center;padding:4px;color:var(--text2);font-size:13px;"><i class="ti ti-sword" title="Tackles"></i></th>
+              <th style="text-align:center;padding:4px;color:#f5c518;font-size:13px;"><i class="ti ti-square" title="Yellow"></i></th>
+              <th style="text-align:center;padding:4px;color:var(--red);font-size:13px;"><i class="ti ti-square" title="Red"></i></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${squadPlayers
+              .filter(
+                (sp) => (myStats[sp.player_id]?.role || "starter") !== "bench",
+              )
+              .map((sp) => {
+                const pos = sp.player?.profile?.pos || "CM";
+                const e = myStats[sp.player_id] || {};
+                const isGK = pos === "GK";
+                const isDefMid = ["CB", "LB", "RB", "DM"].includes(pos);
+                const inp = (stat, val, min = 0, max = 20) =>
+                  `<input type="number" min="${min}" max="${max}" value="${val}"
+                  data-pid="${sp.player_id}" data-stat="${stat}" class="post-stat-input"
+                  style="width:100%;padding:5px 3px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);text-align:center;outline:none;box-sizing:border-box;">`;
+                const na = `<input type="text" value="N/A" disabled
+                style="width:100%;padding:5px 3px;background:var(--bg3);border:0.5px solid var(--border);color:var(--text3);font-size:12px;font-family:var(--font);text-align:center;outline:none;box-sizing:border-box;cursor:default;">`;
+                const dim = (stat, val) =>
+                  `<input type="number" min="0" max="20" value="${val}"
+                  data-pid="${sp.player_id}" data-stat="${stat}" class="post-stat-input"
+                  title="Not typical for this position"
+                  style="width:100%;padding:5px 3px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text3);font-size:12px;font-family:var(--font);text-align:center;outline:none;box-sizing:border-box;opacity:0.35;">`;
+                const td = (c) => `<td style="padding:3px 2px;">${c}</td>`;
+                return `
+              <tr style="border-bottom:0.5px solid var(--border);">
+                <td style="padding:6px 8px;font-weight:600;color:var(--text);">
+                  ${sp.player?.name?.split(" ")[0] || "Player"}
+                  <span style="font-size:9px;color:var(--text3);margin-left:4px;">${pos}</span>
+                  ${e.role === "sub" ? `<span style="font-size:9px;color:var(--faith);margin-left:4px;">↑${e.sub_on_min ? "'" + e.sub_on_min : ""}</span>` : ""}
+                  ${e.sub_off_min ? `<span style="font-size:9px;color:var(--red);margin-left:2px;">↓${e.sub_off_min}'</span>` : ""}
+                </td>
+                ${td(inp("minutes", e.minutes ?? 90, 0, 120))}
+                ${
+                  isGK
+                    ? `${td(na)}${td(na)}${td(na)}${td(inp("saves", e.saves ?? 0))}${td(na)}`
+                    : `${td(inp("goals", e.goals ?? 0))}${td(inp("assists", e.assists ?? 0))}${td(inp("shots", e.shots ?? 0))}${td(dim("saves", e.saves ?? 0))}${isDefMid ? td(inp("tackles", e.tackles ?? 0)) : td(na)}`
+                }
+                ${td(inp("yellow_cards", e.yellow_cards ?? 0, 0, 2))}
+                ${td(inp("red_cards", e.red_cards ?? 0, 0, 1))}
+              </tr>`;
+              })
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+
+      ${
+        existingSession?.matchStatus === "confirmed"
+          ? `
+      <div style="margin-top:var(--sp-lg);padding-top:var(--sp-lg);border-top:0.5px solid var(--border);">
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--faith);margin-bottom:8px;">
+          ${existingSession.opponent} lineup
+        </div>
+        <div id="opponent-squad-list" style="font-size:13px;color:var(--text2);">Loading...</div>
+      </div>`
+          : `
+      <div style="margin-top:var(--sp-lg);padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--faith);">
+        <div style="font-size:12px;color:var(--text2);">
+          <i class="ti ti-clock" style="color:var(--gold);margin-right:6px;"></i>
+          ${
+            existingSession?.matchStatus === "pending"
+              ? `Waiting for ${existingSession.opponent} to confirm. Opponent lineup visible once both coaches approve.`
+              : "Opponent lineup available once match is confirmed by both coaches."
+          }
+        </div>
+      </div>`
+      }`
+          : ""
+      }
+    </div>
+    </div>`;
+
+    // ── SESSION BUILDER FORM (non-match) ──
+    const sessionBuilderHTML =
+      effectiveType && effectiveType !== "Match"
+        ? `
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+          <div class="card-dot"></div>Session plan · ${days[selectedDay]}
+          <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;background:${typeColors[effectiveType]}22;color:${typeColors[effectiveType]};">
+            ${effectiveType}
+          </span>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-md);margin-bottom:var(--sp-md);">
+        <div class="fg">
           <label class="required">Session name</label>
-          <input type="text" id="session-name" placeholder="e.g. Tuesday technical block"
+          <input type="text" id="session-name" value="${existingSession?.name || ""}" placeholder="e.g. Tuesday technical block"
             style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
         </div>
         <div class="fg">
           <label class="required">Category</label>
           <select id="session-category"
             style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-            <option>Technical</option><option>Tactical</option><option>Physical</option>
-            <option>Recovery</option><option>Match prep</option><option>Faith & devotion</option>
+            <option ${effectiveType === "Technical" ? "selected" : ""}>Technical</option>
+            <option ${effectiveType === "Tactical" ? "selected" : ""}>Tactical</option>
+            <option ${effectiveType === "Physical" ? "selected" : ""}>Physical</option>
+            <option ${effectiveType === "Recovery" ? "selected" : ""}>Recovery</option>
+            <option>Match prep</option>
+            <option>Faith & devotion</option>
           </select>
         </div>
       </div>
@@ -1231,35 +2032,51 @@ const HF_COACH = (() => {
           <label>Intensity</label>
           <select id="session-intensity"
             style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
-            <option>Low</option><option selected>Medium</option><option>High</option>
+            <option ${existingSession?.intensity === "Low" ? "selected" : ""}>Low</option>
+            <option ${!existingSession || existingSession?.intensity === "Medium" ? "selected" : ""}>Medium</option>
+            <option ${existingSession?.intensity === "High" ? "selected" : ""}>High</option>
           </select>
         </div>
         <div class="fg">
           <label>Duration (min)</label>
-          <input type="number" id="session-duration" value="90" min="15" max="180"
+          <input type="number" id="session-duration" value="${existingSession?.duration || 90}" min="15" max="180"
             style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
         </div>
       </div>
 
       <div class="fg" style="margin-bottom:var(--sp-lg);">
         <label>Coaching intent</label>
-        <input type="text" id="session-intent" placeholder="e.g. Focus on press triggers and compact shape"
+        <input type="text" id="session-intent" value="${existingSession?.intent || ""}" placeholder="e.g. Focus on press triggers and compact shape"
           style="padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;width:100%;outline:none;font-family:var(--font);">
       </div>
 
-      <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">
-        Drills
-      </div>
+      <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">Drills</div>
       <div id="drills-list" style="margin-bottom:var(--sp-md);">
+        ${
+          existingSession?.drills?.length
+            ? existingSession.drills
+                .map(
+                  (d, i) => `
+          <div id="drill-${i}" style="display:flex;align-items:center;gap:var(--sp-sm);padding:8px var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:4px;">
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${d.name}</div>
+              <div style="font-size:11px;color:var(--text2)">${d.type} · ${d.duration} min</div>
+            </div>
+            <button class="btn btn-danger btn-sm" onclick="HF_ROLE_UTILS.removeDrill(${i})">
+              <i class="ti ti-x"></i>
+            </button>
+          </div>`,
+                )
+                .join("")
+            : `
         <div style="text-align:center;padding:24px;background:var(--bg2);border:0.5px dashed var(--border);color:var(--text3);font-size:13px;">
-          No drills yet: add one below.
-        </div>
+          No drills yet! Add one below.
+        </div>`
+        }
       </div>
 
       <div style="background:var(--bg2);padding:var(--sp-md);border-left:3px solid var(--border);margin-bottom:var(--sp-lg);">
-        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:var(--sp-sm);">
-          Add a drill
-        </div>
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:var(--sp-sm);">Add a drill</div>
         <div class="fg" style="margin-bottom:var(--sp-sm);">
           <input type="text" id="drill-name" placeholder="e.g. 4v4 rondo: possession under pressure"
             style="padding:8px 12px;background:var(--bg);border:0.5px solid var(--border);color:var(--text);font-size:13px;width:100%;outline:none;font-family:var(--font);">
@@ -1280,14 +2097,670 @@ const HF_COACH = (() => {
       </div>
 
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" onclick="HF_COACH.saveSession()">
+        <button class="btn btn-primary" onclick="HF_COACH.saveSession(${selectedDay}, '${selectedDateISO}')">
           <i class="ti ti-send"></i> Save and notify squad
         </button>
         <button class="btn btn-outline" onclick="HF_ROUTER.navTo('dashboard')">Cancel</button>
       </div>
-    </div>`);
+    </div>`
+        : selectedType === "Rest"
+          ? `
+    <div class="card">
+      <div style="text-align:center;padding:24px;color:var(--text2);">
+        <i class="ti ti-moon" style="font-size:28px;margin-bottom:8px;display:block;color:var(--text3)"></i>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">${days[selectedDay]} is a rest day</div>
+        <div style="font-size:13px;">Change the session type above to plan a different session.</div>
+      </div>
+    </div>`
+          : `
+    <div class="card">
+      <div style="text-align:center;padding:24px;color:var(--text2);">
+        <i class="ti ti-calendar-plus" style="font-size:28px;margin-bottom:8px;display:block;color:var(--text3)"></i>
+        <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">No session set for ${days[selectedDay]}</div>
+        <div style="font-size:13px;">Select a session type above to start planning.</div>
+      </div>
+    </div>`;
 
-    window._sessionDrills = [];
+    setMain(`
+    ${
+      pendingRequests?.length > 0
+        ? `
+    <div class="card" style="border-top:2px solid var(--faith);">
+      <div class="card-title">
+        <div class="card-dot" style="background:var(--faith);"></div>
+        Pending match requests
+        <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;background:var(--faith-lt);color:var(--faith);">
+          ${pendingRequests.length} pending
+        </span>
+      </div>
+      ${pendingRequests
+        .map((req) => {
+          const requestingClub =
+            req.coach?.profile?.club || req.coach?.name || "Unknown club";
+          const matchDate = new Date(req.date + "T00:00:00").toLocaleDateString(
+            "en-GB",
+            { weekday: "long", day: "numeric", month: "long" },
+          );
+          return `
+        <div style="padding:var(--sp-md);background:var(--bg2);border-left:3px solid var(--faith);margin-bottom:var(--sp-sm);">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;">
+            <i class="ti ti-whistle" style="color:var(--faith);margin-right:6px;"></i>
+            ${requestingClub} wants to play you on ${matchDate}
+          </div>
+          ${req.location ? `<div style="font-size:11px;color:var(--text2);margin-bottom:8px;"><i class="ti ti-map-pin" style="margin-right:4px;"></i>${req.location}</div>` : ""}
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" onclick="HF_COACH.approveMatchRequest('${req.id}', '${requestingClub}', ${s.userId === req.coach_id ? "false" : "true"})">
+              <i class="ti ti-circle-check"></i> Approve
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="HF_COACH.declineMatchRequest('${req.id}', '${req.coach_id}', '${requestingClub}')">
+              <i class="ti ti-x"></i> Decline
+            </button>
+          </div>
+        </div>`;
+        })
+        .join("")}
+    </div>`
+        : ""
+    }
+
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between;">
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <div style="display:flex;align-items:center;gap:var(--sp-sm);">
+            <div class="card-dot"></div>Weekly plan
+          </div>
+          <div style="font-size:11px;color:var(--text3);font-family:var(--font);text-transform:none;letter-spacing:0;font-weight:400;">
+            ${new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })} · click a day to build its session
+          </div>
+        </div>
+        <div style="display:flex;gap:4px;">
+          ${["day", "week", "month"]
+            .map(
+              (v) => `
+            <button class="btn btn-sm ${view === v ? "btn-primary" : "btn-outline"}"
+              onclick="window._coachTrainingView='${v}';window._coachTrainingSelectedDate=null;HF_COACH.training(HF_DB.getSession())">
+              ${v.charAt(0).toUpperCase() + v.slice(1)}
+            </button>`,
+            )
+            .join("")}
+        </div>
+      </div>
+
+      <div style="padding:0 0 var(--sp-sm) 0;">
+        ${view === "month" ? monthViewHTML() : view === "day" ? dayViewHTML() : weekViewHTML()}
+      </div>
+
+      ${typePicker}
+
+      <div style="background:var(--bg2);padding:var(--sp-sm) var(--sp-md);">
+        <div style="display:flex;gap:var(--sp-md);flex-wrap:wrap;">
+          ${types
+            .map(
+              (t) => `
+            <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);">
+              <div style="width:8px;height:8px;background:${typeColors[t]};"></div>${t}
+            </div>`,
+            )
+            .join("")}
+        </div>
+      </div>
+    </div>
+
+    ${effectiveType === "Match" ? matchFormHTML : sessionBuilderHTML}
+
+    ${
+      opponentMatchRequest
+        ? `
+    <div class="card" style="border-top:2px solid var(--faith);">
+      <div class="card-title">
+        <div class="card-dot" style="background:var(--faith);"></div>
+        Incoming match request
+        <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;
+          background:${opponentMatchRequest.match_status === "confirmed" ? "rgba(26,122,46,.15)" : "rgba(196,154,10,.15)"};
+          color:${opponentMatchRequest.match_status === "confirmed" ? "var(--green)" : "var(--gold)"};">
+          ${opponentMatchRequest.match_status === "confirmed" ? "Confirmed" : "Pending your approval"}
+        </span>
+      </div>
+
+      <div style="font-size:16px;font-weight:700;color:var(--faith);font-family:var(--font);margin-bottom:var(--sp-md);">
+        ${opponentMatchRequest.coach?.profile?.club || opponentMatchRequest.coach?.name} vs ${opponentMatchRequest.opponent}
+      </div>
+
+      <div style="display:flex;gap:var(--sp-lg);flex-wrap:wrap;font-size:12px;color:var(--text2);margin-bottom:var(--sp-lg);">
+        <span><i class="ti ti-calendar" style="margin-right:4px"></i>${new Date(opponentMatchRequest.date + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</span>
+        ${opponentMatchRequest.location ? `<span><i class="ti ti-map-pin" style="margin-right:4px"></i>${opponentMatchRequest.location}</span>` : ""}
+      </div>
+
+      ${
+        opponentMatchRequest.match_status === "pending"
+          ? `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:var(--sp-md);">
+        <button class="btn btn-primary btn-sm" onclick="HF_COACH.approveMatchRequest('${opponentMatchRequest.id}','${opponentMatchRequest.coach?.profile?.club || opponentMatchRequest.coach?.name}',true)">
+          <i class="ti ti-circle-check"></i> Approve match
+        </button>
+        <button class="btn btn-danger btn-sm" onclick="HF_COACH.declineMatchRequest('${opponentMatchRequest.id}','${opponentMatchRequest.coach_id}','${(opponentMatchRequest.coach?.profile?.club || opponentMatchRequest.coach?.name || "").replace(/'/g, "\\'")}')">
+          <i class="ti ti-x"></i> Decline
+        </button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);">
+        <i class="ti ti-clock" style="margin-right:4px;"></i>
+        You have 24 hours to respond. No response = auto-decline.
+      </div>`
+          : opponentMatchRequest.match_status === "confirmed"
+            ? `
+      <div style="margin-bottom:var(--sp-md);">
+        <div class="tab-toggle">
+          <button class="${matchTab === "lineup" || !matchTab ? "active" : ""}"
+            onclick="window._matchTab='lineup';HF_COACH.training(HF_DB.getSession())">Lineup</button>
+          ${
+            matchPhase !== "pre"
+              ? `
+          <button class="${matchTab === "stats" ? "active" : ""}"
+            onclick="window._matchTab='stats';HF_COACH.training(HF_DB.getSession())">Stats</button>`
+              : ""
+          }
+        </div>
+
+        ${
+          matchTab === "lineup" || !matchTab
+            ? `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-md);flex-wrap:wrap;gap:8px;">
+          <div style="font-size:12px;color:var(--text2);">Set your lineup at least 24hrs before the match.</div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+            ${
+              opponentMatchRequest.lineup_deadline
+                ? `
+            <div style="font-size:11px;color:${new Date() >= new Date(opponentMatchRequest.lineup_deadline) ? "var(--red)" : "var(--gold)"};">
+              <i class="ti ti-clock" style="margin-right:4px;"></i>
+              Deadline: ${new Date(opponentMatchRequest.lineup_deadline).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+            </div>`
+                : ""
+            }
+            <button class="btn btn-sm ${opponentMatchRequest.opponent_lineup_submitted ? "btn-outline" : "btn-primary"}"
+              onclick="HF_COACH.saveOpponentLineup('${opponentMatchRequest.id}')">
+              <i class="ti ti-${opponentMatchRequest.opponent_lineup_submitted ? "refresh" : "send"}"></i>
+              ${opponentMatchRequest.opponent_lineup_submitted ? "Update lineup" : "Submit lineup"}
+            </button>
+          </div>
+        </div>
+
+        <table style="width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed;">
+          <colgroup>
+            <col style="width:auto;"><col style="width:70px;"><col style="width:60px;"><col style="width:60px;">
+          </colgroup>
+          <thead>
+            <tr style="border-bottom:2px solid var(--border);">
+              <th style="text-align:left;padding:6px 8px;font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);">Player</th>
+              <th style="text-align:center;padding:4px;font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);">Role</th>
+              <th style="text-align:center;padding:4px;font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);">Sub on</th>
+              <th style="text-align:center;padding:4px;font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);">Sub off</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${squadPlayers
+              .map((sp) => {
+                const pos = sp.player?.profile?.pos || "CM";
+                const e =
+                  (opponentMatchRequest.opponent_player_stats || {})[
+                    sp.player_id
+                  ] || {};
+                const role = e.role || "starter";
+                return `
+              <tr style="border-bottom:0.5px solid var(--border);">
+                <td style="padding:6px 8px;font-weight:600;color:var(--text);">
+                  ${sp.player?.name?.split(" ")[0] || "Player"}
+                  <span style="font-size:9px;color:var(--text3);margin-left:4px;">${pos}</span>
+                </td>
+                <td style="padding:3px 4px;">
+                  <select data-pid="${sp.player_id}" data-stat="role" class="opp-lineup-input"
+                    onchange="const r=this.closest('tr');const on=r.querySelector('[data-stat=sub_on_min]');const off=r.querySelector('[data-stat=sub_off_min]');if(on&&off){const isSub=this.value==='sub';const isBench=this.value==='bench';on.disabled=!isSub;on.style.opacity=isSub?'1':'0.4';off.disabled=isBench;off.style.opacity=!isBench?'1':'0.4';}"
+                    style="width:100%;padding:5px 4px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:11px;font-family:var(--font);outline:none;box-sizing:border-box;">
+                    <option value="starter" ${role === "starter" ? "selected" : ""}>Starter</option>
+                    <option value="sub" ${role === "sub" ? "selected" : ""}>Sub</option>
+                    <option value="bench" ${role === "bench" ? "selected" : ""}>Bench</option>
+                  </select>
+                </td>
+                <td style="padding:3px 4px;">
+                  <input type="number" min="0" max="120" value="${e.sub_on_min ?? ""}"
+                    data-pid="${sp.player_id}" data-stat="sub_on_min" class="opp-lineup-input"
+                    ${role !== "sub" ? "disabled" : ""}
+                    placeholder="min"
+                    style="width:100%;padding:5px 3px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);text-align:center;outline:none;box-sizing:border-box;opacity:${role === "sub" ? "1" : "0.4"};">
+                </td>
+                <td style="padding:3px 4px;">
+                  <input type="number" min="0" max="120" value="${e.sub_off_min ?? ""}"
+                    data-pid="${sp.player_id}" data-stat="sub_off_min" class="opp-lineup-input"
+                    ${role === "bench" ? "disabled" : ""}
+                    placeholder="min"
+                    style="width:100%;padding:5px 3px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);text-align:center;outline:none;box-sizing:border-box;opacity:${role !== "bench" ? "1" : "0.4"};">
+                </td>
+              </tr>`;
+              })
+              .join("")}
+          </tbody>
+        </table>`
+            : ""
+        }
+
+        ${
+          matchTab === "stats" && matchPhase !== "pre"
+            ? `
+        <div style="font-size:12px;color:var(--text2);padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--faith);">
+          Post-match stats for your side will be available here after the match.
+        </div>`
+            : ""
+        }
+      </div>`
+            : ""
+      }
+    </div>`
+        : ""
+    }
+    `);
+
+    // load opponent squad if match is confirmed
+    if (
+      existingSession?.matchId &&
+      existingSession?.matchStatus === "confirmed"
+    ) {
+      const squadEl = document.getElementById("opponent-squad-list");
+      if (squadEl) {
+        HF_DB.getOpponentSquad(existingSession.matchId, s.userId).then(
+          ({ data: opSquad }) => {
+            if (!opSquad || opSquad.length === 0) {
+              squadEl.innerHTML = `<div style="color:var(--text3);font-size:12px;">No lineup submitted yet.</div>`;
+              return;
+            }
+            squadEl.innerHTML = opSquad
+              .map((p) => {
+                const prof = p.player?.profile || {};
+                const overall = prof.ratings
+                  ? Math.round(
+                      (prof.ratings.speed +
+                        prof.ratings.tech +
+                        prof.ratings.tact +
+                        prof.ratings.phys) /
+                        4,
+                    )
+                  : null;
+                return `
+            <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-sm) var(--sp-md);background:var(--bg2);border-left:2px solid var(--faith);margin-bottom:4px;">
+              <div style="font-family:var(--font);font-size:10px;font-weight:700;padding:2px 6px;background:var(--faith-lt);color:var(--faith);">${prof.pos || "?"}</div>
+              <div style="flex:1;font-size:13px;font-weight:600;color:var(--text)">${p.player?.name || "Unknown"}</div>
+              ${overall !== null ? `<div style="font-family:var(--font);font-size:13px;font-weight:700;color:var(--gold)">${overall}%</div>` : ""}
+            </div>`;
+              })
+              .join("");
+          },
+        );
+      }
+    }
+
+    window._sessionDrills = existingSession?.drills
+      ? [...existingSession.drills]
+      : [];
+  };
+
+  // ── TRAINING HELPERS ──────────────────────────────────────
+  const saveMatchSession = async (dayIndex, dateISO) => {
+    const session = HF_DB.getSession();
+    const select = document.getElementById("match-opponent-select");
+    const isOther = select?.value === "__other__";
+    const opponent = isOther
+      ? document.getElementById("match-opponent-other")?.value.trim()
+      : select?.value;
+    const venueType = document.getElementById("match-location")?.value;
+    const location =
+      venueType === "home"
+        ? session.profile?.homeGround || session.profile?.club || "Home ground"
+        : venueType === "away"
+          ? window._opponentGround || "Away"
+          : venueType === "neutral"
+            ? document.getElementById("match-location-neutral")?.value.trim()
+            : "";
+    const isNeutralVenue = venueType === "neutral";
+    const intent = document.getElementById("session-intent")?.value.trim();
+
+    if (!opponent) {
+      HF_UTILS.toast("Please select or enter an opponent.", "error");
+      return;
+    }
+
+    // collect player stats from inputs
+    const playerStats = {};
+
+    const existing = await HF_DB.getTraining(session.userId);
+    const sessions = (existing?.sessions || []).filter(
+      (ss) => ss.dayIndex !== dayIndex && ss.date !== dateISO,
+    );
+
+    let matchId = null;
+
+    // check if match record already exists for this day
+    const existingSession = (existing?.sessions || []).find(
+      (ss) => ss.dayIndex === dayIndex || ss.date === dateISO,
+    );
+
+    if (existingSession?.matchId) {
+      matchId = existingSession.matchId;
+      // update stats for each player
+      for (const pid of Object.keys(playerStats)) {
+        await HF_DB.updateMatchPlayerStats(matchId, pid, playerStats[pid]);
+      }
+    } else {
+      // create new match record
+      const { data: newMatch } = await HF_DB.createMatch(session.userId, {
+        opponent,
+        location,
+        date: dateISO,
+        playerStats,
+      });
+      matchId = newMatch?.id;
+    }
+
+    // check if selected day has a locked match
+    const dayMatchLocked =
+      (existingSession?.matchId &&
+        ["pending", "confirmed"].includes(existingSession?.matchStatus)) ||
+      (opponentMatchRequest &&
+        ["pending", "confirmed"].includes(opponentMatchRequest.match_status));
+
+    sessions.unshift({
+      name: `vs ${opponent}`,
+      category: "Match",
+      intent,
+      dayIndex,
+      date: dateISO,
+      matchId,
+      opponent,
+      location,
+      venueType,
+      opponentGround: window._opponentGround || null,
+      isUnverifiedOpponent: isOther,
+      createdAt: new Date().toISOString(),
+    });
+
+    await HF_DB.saveTraining(session.userId, { ...existing, sessions });
+
+    if (isNeutralVenue && matchId && location) {
+      const adminIds = await HF_DB.getAdminIds();
+      for (const adminId of adminIds || []) {
+        await HF_DB._sendMessage(
+          "system",
+          adminId,
+          "Neutral venue approval needed",
+          `${session.name} (${session.profile?.club}) has requested a neutral venue: "${location}" for a match on ${dateISO}.\n\nPlease verify and approve.`,
+        );
+      }
+    }
+
+    if (isOther && matchId) {
+      await HF_DB.submitUnverifiedOpponent(
+        session.userId,
+        matchId,
+        opponent,
+        dateISO,
+      );
+      HF_UTILS.toast(
+        `Match vs ${opponent} saved: awaiting admin approval for opponent.`,
+        "success",
+      );
+    }
+
+    // update running match stats for all players
+    for (const pid of Object.keys(playerStats)) {
+      await HF_DB.updateMatchPlayerStats(matchId, pid, playerStats[pid]);
+    }
+
+    // if verified opponent, find their coach and send match request
+    if (!isOther && matchId) {
+      // fetch full coach list (not mapped) to get accurate coach user IDs
+      const { data: allCoaches } = await HF_DB.getVerifiedCoachesRaw();
+      const opponentCoach = (allCoaches || []).find(
+        (c) => (c.profile?.club || c.name) === opponent,
+      );
+      if (opponentCoach?.id) {
+        const reqResult = await HF_DB.sendMatchRequest(
+          session.userId,
+          matchId,
+          opponentCoach.id,
+          dateISO,
+          opponent,
+        );
+        if (reqResult.error) {
+          HF_UTILS.toast(
+            "Match saved but could not notify opponent: " + reqResult.error,
+            "error",
+          );
+        } else {
+          HF_UTILS.toast(`Match request sent to ${opponent}!`, "success");
+        }
+      } else {
+        HF_UTILS.toast(
+          `Match saved. Could not find coach for ${opponent}.`,
+          "error",
+        );
+      }
+    }
+
+    // notify own squad
+    const { data: squadPlayers } = await HF_DB.getSquadPlayers(session.userId);
+    if (squadPlayers?.length > 0) {
+      for (const sp of squadPlayers) {
+        await HF_DB._sendMessage(
+          "system",
+          sp.player_id,
+          `Match day: vs ${opponent}`,
+          `${session.name} has scheduled a match against ${opponent}${location ? " at " + location : ""} on ${new Date(dateISO + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}.${intent ? "\n\nCoach's note: " + intent : ""}`,
+        );
+      }
+    }
+
+    window._coachTrainingSelectedDay = dayIndex;
+    window._editingMatchDetails = false;
+    window._matchSaved = true;
+    HF_UTILS.toast(`Match vs ${opponent} saved!`, "success");
+    training(session);
+  };
+
+  const logMatchResult = async (matchId, result, dayIndex, dateISO) => {
+    const session = HF_DB.getSession();
+    const res = await HF_DB.logMatchResult(matchId, result);
+    if (res.error) {
+      HF_UTILS.toast(res.error, "error");
+      return;
+    }
+
+    // notify admin for verification
+    const adminIds = await HF_DB.getAdminIds();
+    for (const adminId of adminIds || []) {
+      await HF_DB._sendMessage(
+        "system",
+        adminId,
+        "Match result logged: needs verification",
+        `${session.name} (${session.profile?.club || "Unknown club"}) logged a match result: ${result === "W" ? "Win" : result === "D" ? "Draw" : "Loss"}.\n\nPlease verify in the admin dashboard.`,
+      );
+    }
+
+    window._coachTrainingSelectedDay = dayIndex;
+    HF_UTILS.toast(
+      `Result logged: ${result === "W" ? "Win" : result === "D" ? "Draw" : "Loss"}. Sent for admin verification.`,
+      "success",
+    );
+    training(session);
+  };
+
+  const approveMatchRequest = async (
+    matchId,
+    requestingClub,
+    isOpponentCoach,
+  ) => {
+    const session = HF_DB.getSession();
+    let result;
+    if (isOpponentCoach) {
+      result = await HF_DB.respondMatchRequest(matchId, session.userId, true);
+    } else {
+      result = await HF_DB.confirmMatchAsCoach(matchId);
+    }
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+    if (result.confirmed) {
+      HF_UTILS.toast(
+        `Match vs ${requestingClub} confirmed! Both coaches approved.`,
+        "success",
+      );
+    } else {
+      HF_UTILS.toast(
+        `Match approved! Waiting for ${requestingClub} to confirm.`,
+        "success",
+      );
+    }
+    window._coachTrainingSelectedDay =
+      window._coachTrainingSelectedDay ?? new Date().getDay();
+    training(session);
+  };
+
+  const declineMatchRequest = async (
+    matchId,
+    requestingCoachId,
+    requestingClub,
+  ) => {
+    const session = HF_DB.getSession();
+    const result = await HF_DB.respondMatchRequest(
+      matchId,
+      session.userId,
+      false,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    // notify requesting coach
+    await HF_DB._sendMessage(
+      "system",
+      requestingCoachId,
+      `Match request declined`,
+      `${session.profile?.club || session.name} has declined your match request. You can change the session type for that day.`,
+    );
+
+    HF_UTILS.toast(`Match request from ${requestingClub} declined.`, "success");
+    training(session);
+  };
+
+  const saveLineup = async (matchId) => {
+    const session = HF_DB.getSession();
+    const lineup = {};
+    document.querySelectorAll(".lineup-input[data-pid]").forEach((input) => {
+      const pid = input.dataset.pid;
+      const stat = input.dataset.stat;
+      if (!lineup[pid]) lineup[pid] = {};
+      lineup[pid][stat] = input.value || null;
+    });
+
+    // validate at least one starter
+    const hasStarter = Object.values(lineup).some((p) => p.role === "starter");
+    if (!hasStarter) {
+      HF_UTILS.toast("Please set at least one player as a starter.", "error");
+      return;
+    }
+
+    const result = await HF_DB.submitLineup(matchId, session.userId, lineup);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+    HF_UTILS.toast("Lineup submitted! Opponent has been notified.", "success");
+    window._matchTab = "lineup";
+    training(session);
+  };
+
+  const savePostStats = async (matchId) => {
+    const session = HF_DB.getSession();
+    const stats = {};
+    document.querySelectorAll(".post-stat-input[data-pid]").forEach((input) => {
+      const pid = input.dataset.pid;
+      const stat = input.dataset.stat;
+      if (!stats[pid]) stats[pid] = {};
+      stats[pid][stat] = parseInt(input.value) || 0;
+    });
+
+    const result = await HF_DB.saveMatchPostStats(
+      matchId,
+      session.userId,
+      stats,
+    );
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+    HF_UTILS.toast("Match stats saved!", "success");
+    training(session);
+  };
+
+  const notifySquadOfMatch = async (matchId) => {
+    const session = HF_DB.getSession();
+    const { data: match } = await HF_DB.getMatchById(matchId);
+    if (!match) {
+      HF_UTILS.toast("Match not found.", "error");
+      return;
+    }
+
+    const { data: squadPlayers } = await HF_DB.getSquadPlayers(session.userId);
+    if (!squadPlayers?.length) {
+      HF_UTILS.toast("No players to notify.", "error");
+      return;
+    }
+
+    const dateLabel = new Date(match.date + "T00:00:00").toLocaleDateString(
+      "en-GB",
+      { weekday: "long", day: "numeric", month: "long" },
+    );
+    for (const sp of squadPlayers) {
+      await HF_DB._sendMessage(
+        "system",
+        sp.player_id,
+        `Confirmed match: vs ${match.opponent}`,
+        `Your coach has confirmed a match against ${match.opponent} on ${dateLabel}.${match.location ? "\n\nVenue: " + match.location : ""}${match.intent ? "\n\nCoach's note: " + match.intent : ""}\n\nBe ready!`,
+      );
+    }
+    HF_UTILS.toast(
+      `Squad notified about the match vs ${match.opponent}!`,
+      "success",
+    );
+  };
+
+  const saveOpponentLineup = async (matchId) => {
+    const session = HF_DB.getSession();
+    const lineup = {};
+    document
+      .querySelectorAll(".opp-lineup-input[data-pid]")
+      .forEach((input) => {
+        const pid = input.dataset.pid;
+        const stat = input.dataset.stat;
+        if (!lineup[pid]) lineup[pid] = {};
+        lineup[pid][stat] = input.value || null;
+      });
+
+    const hasStarter = Object.values(lineup).some((p) => p.role === "starter");
+    if (!hasStarter) {
+      HF_UTILS.toast("Please set at least one player as a starter.", "error");
+      return;
+    }
+
+    const result = await HF_DB.submitLineup(matchId, session.userId, lineup);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+    HF_UTILS.toast(
+      "Lineup submitted! Requesting coach has been notified.",
+      "success",
+    );
+    window._matchTab = "lineup";
+    training(session);
   };
 
   // ── TRACKING ───────────────────────────────────────────────
@@ -1365,33 +2838,35 @@ const HF_COACH = (() => {
         <div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">
           No ratings logged yet.
         </div>`
-          : `<table class="table">
-          <thead>
-            <tr>
-              <th>Player</th>
-              <th>Type</th>
-              <th>Overall</th>
-              <th>Notes</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${recentRatings
-              .map(
-                (r) => `
+          : `<div class="table-wrap">
+            <table class="table">
+            <thead>
               <tr>
-                <td style="font-weight:600">${r.player?.name || "-"}</td>
-                <td>${r.session_type}</td>
-                <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
-                  ${r.overall}/100
-                </td>
-                <td style="color:var(--text2);font-size:11px">${r.notes && r.notes !== "null" ? r.notes : "None"}</td>
-                <td style="color:var(--text2)">${new Date(r.created_at).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}</td>
-              </tr>`,
-              )
-              .join("")}
-          </tbody>
-        </table>`
+                <th>Player</th>
+                <th>Type</th>
+                <th>Overall</th>
+                <th>Notes</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${recentRatings
+                .map(
+                  (r) => `
+                <tr>
+                  <td style="font-weight:600">${r.player?.name || "-"}</td>
+                  <td>${r.session_type}</td>
+                  <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
+                    ${r.overall}/100
+                  </td>
+                  <td style="color:var(--text2);font-size:11px">${r.notes && r.notes !== "null" ? r.notes : "None"}</td>
+                  <td style="color:var(--text2)">${new Date(r.created_at).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}</td>
+                </tr>`,
+                )
+                .join("")}
+            </tbody>
+          </table>
+          </div>`
       }
     </div>`);
   };
@@ -1554,53 +3029,55 @@ const HF_COACH = (() => {
 
       <div class="card">
         <div class="card-title"><div class="card-dot"></div>Session history</div>
-        <table class="table">
-          <thead><tr><th>Date</th><th>Type</th><th>Overall</th><th>Speed</th><th>Technical</th><th>Tactical</th><th>Physical</th></tr></thead>
-          <tbody>
-            ${sessions
-              .map((r) => {
-                const dateStr = new Date(r.created_at).toLocaleDateString(
-                  "en-GB",
-                  {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  },
-                );
-                const isToday =
-                  new Date(r.created_at).toISOString().split("T")[0] ===
-                  HF_DB.localDate();
-                const showHeader = dateStr !== lastDate;
-                lastDate = dateStr;
-                return `
-                ${
-                  showHeader
-                    ? `
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Date</th><th>Type</th><th>Overall</th><th>Speed</th><th>Technical</th><th>Tactical</th><th>Physical</th></tr></thead>
+            <tbody>
+              ${sessions
+                .map((r) => {
+                  const dateStr = new Date(r.created_at).toLocaleDateString(
+                    "en-GB",
+                    {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    },
+                  );
+                  const isToday =
+                    new Date(r.created_at).toISOString().split("T")[0] ===
+                    HF_DB.localDate();
+                  const showHeader = dateStr !== lastDate;
+                  lastDate = dateStr;
+                  return `
+                  ${
+                    showHeader
+                      ? `
+                    <tr>
+                      <td colspan="7" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isToday ? "var(--gold)" : "var(--text3)"};padding:8px 0 4px;border-bottom:0.5px solid var(--border);">
+                        ${isToday ? "Today: " : ""}${dateStr}
+                      </td>
+                    </tr>`
+                      : ""
+                  }
                   <tr>
-                    <td colspan="7" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isToday ? "var(--gold)" : "var(--text3)"};padding:8px 0 4px;border-bottom:0.5px solid var(--border);">
-                      ${isToday ? "Today: " : ""}${dateStr}
+                    <td style="color:${isToday ? "var(--gold)" : "var(--text2)"}">
+                      ${isToday ? "Today" : new Date(r.created_at).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}
                     </td>
-                  </tr>`
-                    : ""
-                }
-                <tr>
-                  <td style="color:${isToday ? "var(--gold)" : "var(--text2)"}">
-                    ${isToday ? "Today" : new Date(r.created_at).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })}
-                  </td>
-                  <td>${r.session_type}</td>
-                  <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
-                    ${r.overall}
-                  </td>
-                  <td>${r.speed}</td>
-                  <td>${r.technical}</td>
-                  <td>${r.tactical}</td>
-                  <td>${r.physical}</td>
-                </tr>`;
-              })
-              .join("")}
-          </tbody>
-        </table>
+                    <td>${r.session_type}</td>
+                    <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
+                      ${r.overall}
+                    </td>
+                    <td>${r.speed}</td>
+                    <td>${r.technical}</td>
+                    <td>${r.tactical}</td>
+                    <td>${r.physical}</td>
+                  </tr>`;
+                })
+                .join("")}
+            </tbody>
+          </table>
+          </div>
       </div>`
         : ""
     }
@@ -1730,7 +3207,84 @@ const HF_COACH = (() => {
     }
   };
 
-  const saveSession = async () => {
+  const setDayType = async (dayIndex, dateISO, type) => {
+    const session = HF_DB.getSession();
+
+    // check if this day has an incoming match request
+    const { data: incomingForDay } = await HF_DB.getMatchForOpponentCoach(
+      session.userId,
+      dateISO,
+    );
+    if (
+      incomingForDay &&
+      ["pending", "confirmed"].includes(incomingForDay.match_status)
+    ) {
+      HF_UTILS.toast(
+        "You cannot change this day's session type until you approve or decline the incoming match request.",
+        "error",
+      );
+      return;
+    }
+
+    const existing = await HF_DB.getTraining(session.userId);
+    const schedule = existing?.schedule || {};
+    schedule[dateISO] = type;
+    delete schedule[dayIndex];
+    await HF_DB.saveTraining(session.userId, { ...existing, schedule });
+    window._coachTrainingSelectedDay = dayIndex;
+    training(session);
+  };
+
+  const clearDayType = async (dayIndex, dateISO) => {
+    const session = HF_DB.getSession();
+    const existing = await HF_DB.getTraining(session.userId);
+
+    // check if there's a match on this day
+    const daySession = (existing?.sessions || []).find(
+      (ss) => ss.dayIndex === dayIndex || ss.date === dateISO,
+    );
+
+    if (daySession?.matchId) {
+      const { data: match } = await HF_DB.getMatchById(daySession.matchId);
+      if (match && ["pending", "confirmed"].includes(match.match_status)) {
+        if (
+          !confirm(
+            `This day has a ${match.match_status} match vs ${match.opponent}.\n\nCancelling will notify the opponent and remove the match. Continue?`,
+          )
+        ) {
+          return;
+        }
+        const result = await HF_DB.cancelMatch(
+          daySession.matchId,
+          session.userId,
+        );
+        if (result.error) {
+          HF_UTILS.toast(result.error, "error");
+          return;
+        }
+        HF_UTILS.toast("Match cancelled and opponent notified.", "success");
+      }
+    }
+
+    const schedule = existing?.schedule || {};
+    delete schedule[dateISO];
+    delete schedule[dayIndex];
+    const sessions = (existing?.sessions || []).filter(
+      (ss) => ss.dayIndex !== dayIndex && ss.date !== dateISO,
+    );
+    await HF_DB.saveTraining(session.userId, {
+      ...existing,
+      schedule,
+      sessions,
+    });
+    window._coachTrainingSelectedDay = dayIndex;
+    window._matchTab = null;
+    window._matchSaved = false;
+    window._editingMatchDetails = false;
+    training(session);
+  };
+
+  const saveSession = async (dayIndex = null, dateISO = null) => {
     const session = HF_DB.getSession();
     const name = document.getElementById("session-name")?.value.trim();
     const category = document.getElementById("session-category")?.value;
@@ -1744,11 +3298,12 @@ const HF_COACH = (() => {
     }
 
     const drills = window._sessionDrills || [];
-    const totalDrillTime = drills.reduce((sum, d) => sum + d.duration, 0);
 
     // save to training table
     const existing = await HF_DB.getTraining(session.userId);
-    const sessions = existing?.sessions || [];
+    const sessions = (existing?.sessions || []).filter(
+      (ss) => ss.dayIndex !== dayIndex && ss.date !== dateISO,
+    );
     sessions.unshift({
       name,
       category,
@@ -1756,7 +3311,8 @@ const HF_COACH = (() => {
       duration: parseInt(duration),
       intent,
       drills,
-      date: HF_DB.localDate(),
+      dayIndex,
+      date: dateISO || HF_DB.localDate(),
       createdAt: new Date().toISOString(),
     });
     await HF_DB.saveTraining(session.userId, { ...existing, sessions });
@@ -1800,19 +3356,8 @@ const HF_COACH = (() => {
           <i class="ti ti-stethoscope" style="font-size:32px;margin-bottom:10px;display:block;color:var(--text3)"></i>
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px">No players to monitor yet</div>
           <div style="font-size:13px;margin-bottom:16px">Invite players to your squad to start tracking their health.</div>
-          <button class="btn btn-primary btn-sm" onclick="HF_ROUTER.navTo('squad')">
-            <i class="ti ti-users"></i> Go to squad
-          </button>
         </div>
       </div>`);
-      setTimeout(
-        () =>
-          HF_UTILS.toast(
-            "Invite players to your squad to unlock health tracking.",
-            "success",
-          ),
-        300,
-      );
       return;
     }
 
@@ -1836,66 +3381,68 @@ const HF_COACH = (() => {
         </span>
       </div>
 
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Player</th>
-            <th title="Energy"><i class="ti ti-bolt"></i></th>
-            <th title="Mood"><i class="ti ti-mood-smile"></i></th>
-            <th title="Sleep"><i class="ti ti-moon"></i></th>
-            <th title="Soreness"><i class="ti ti-activity"></i></th>
-            <th title="Hydration"><i class="ti ti-droplet"></i></th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${playerHealth
-            .map((ph) => {
-              const name = ph.player?.name || "Unknown";
-              const log = ph.todayLog;
-              const avg = log
-                ? Math.round(
-                    (log.energy +
-                      log.mood +
-                      log.sleep +
-                      (10 - log.soreness) +
-                      log.hydration) /
-                      5,
-                  )
-                : null;
-              const statusColor = !log
-                ? "var(--text3)"
-                : avg >= 8
-                  ? "var(--green)"
-                  : avg >= 6
-                    ? "var(--gold)"
-                    : "var(--red)";
-              const statusLabel = !log
-                ? "No check-in"
-                : avg >= 8
-                  ? "Ready"
-                  : avg >= 6
-                    ? "Monitor"
-                    : "At risk";
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th title="Energy"><i class="ti ti-bolt"></i></th>
+              <th title="Mood"><i class="ti ti-mood-smile"></i></th>
+              <th title="Sleep"><i class="ti ti-moon"></i></th>
+              <th title="Soreness"><i class="ti ti-activity"></i></th>
+              <th title="Hydration"><i class="ti ti-droplet"></i></th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${playerHealth
+              .map((ph) => {
+                const name = ph.player?.name || "Unknown";
+                const log = ph.todayLog;
+                const avg = log
+                  ? Math.round(
+                      (log.energy +
+                        log.mood +
+                        log.sleep +
+                        (10 - log.soreness) +
+                        log.hydration) /
+                        5,
+                    )
+                  : null;
+                const statusColor = !log
+                  ? "var(--text3)"
+                  : avg >= 8
+                    ? "var(--green)"
+                    : avg >= 6
+                      ? "var(--gold)"
+                      : "var(--red)";
+                const statusLabel = !log
+                  ? "No check-in"
+                  : avg >= 8
+                    ? "Ready"
+                    : avg >= 6
+                      ? "Monitor"
+                      : "At risk";
 
-              return `
-              <tr style="cursor:pointer;" onclick="HF_COACH.viewPlayerHealth('${ph.player_id}', '${name.replace(/'/g, "\\'")}')">
-                <td style="font-weight:600">${name}</td>
-                <td>${log?.energy || "-"}</td>
-                <td>${log?.mood || "-"}</td>
-                <td>${log?.sleep || "-"}</td>
-                <td>${log?.soreness || "-"}</td>
-                <td>${log?.hydration || "-"}</td>
-                <td>
-                  <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;color:${statusColor};background:${statusColor}22;">
-                    ${statusLabel}
-                  </span>
-                </td>
-              </tr>`;
-            })
-            .join("")}
-        </tbody>
-      </table>
+                return `
+                <tr style="cursor:pointer;" onclick="HF_COACH.viewPlayerHealth('${ph.player_id}', '${name.replace(/'/g, "\\'")}')">
+                  <td style="font-weight:600">${name}</td>
+                  <td>${log?.energy || "-"}</td>
+                  <td>${log?.mood || "-"}</td>
+                  <td>${log?.sleep || "-"}</td>
+                  <td>${log?.soreness || "-"}</td>
+                  <td>${log?.hydration || "-"}</td>
+                  <td>
+                    <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 6px;color:${statusColor};background:${statusColor}22;">
+                      ${statusLabel}
+                    </span>
+                  </td>
+                </tr>`;
+              })
+              .join("")}
+          </tbody>
+        </table>
+        </div>
     </div>
 
     <div class="card">
@@ -2032,38 +3579,40 @@ const HF_COACH = (() => {
         ? `
       <div class="card">
         <div class="card-title"><div class="card-dot"></div>Wellness history</div>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th title="Energy"><i class="ti ti-bolt"></i></th>
-              <th title="Mood"><i class="ti ti-mood-smile"></i></th>
-              <th title="Sleep"><i class="ti ti-moon"></i></th>
-              <th title="Soreness"><i class="ti ti-activity"></i></th>
-              <th title="Hydration"><i class="ti ti-droplet"></i></th>
-              <th>Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${logs
-              .map((l) => {
-                const isToday = l.date === HF_DB.localDate();
-                return `
-                <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
-                  <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
-                    ${isToday ? "Today" : new Date(l.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
-                  </td>
-                  <td>${l.energy || "-"}</td>
-                  <td>${l.mood || "-"}</td>
-                  <td>${l.sleep || "-"}</td>
-                  <td>${l.soreness || "-"}</td>
-                  <td>${l.hydration || "-"}</td>
-                  <td style="color:var(--text2);font-size:11px">${l.notes || "-"}</td>
-                </tr>`;
-              })
-              .join("")}
-          </tbody>
-        </table>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th title="Energy"><i class="ti ti-bolt"></i></th>
+                <th title="Mood"><i class="ti ti-mood-smile"></i></th>
+                <th title="Sleep"><i class="ti ti-moon"></i></th>
+                <th title="Soreness"><i class="ti ti-activity"></i></th>
+                <th title="Hydration"><i class="ti ti-droplet"></i></th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${logs
+                .map((l) => {
+                  const isToday = l.date === HF_DB.localDate();
+                  return `
+                  <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
+                    <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
+                      ${isToday ? "Today" : new Date(l.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                    </td>
+                    <td>${l.energy || "-"}</td>
+                    <td>${l.mood || "-"}</td>
+                    <td>${l.sleep || "-"}</td>
+                    <td>${l.soreness || "-"}</td>
+                    <td>${l.hydration || "-"}</td>
+                    <td style="color:var(--text2);font-size:11px">${l.notes || "-"}</td>
+                  </tr>`;
+                })
+                .join("")}
+            </tbody>
+          </table>
+          </div>
       </div>`
         : ""
     }
@@ -2520,6 +4069,9 @@ const HF_COACH = (() => {
     window._fmtAllPlayers = players;
     window._fmtCoachId = s.userId;
     window._fmtIsVerified = isVerified;
+    window._fmtIsOpenForRecruitment = isOpenForRecruitment;
+    window._fmtInvitedIds = invitedIds;
+    window._fmtDeclinedMap = declinedMap;
   };
 
   // ── FIND MY TEAM HELPERS ───────────────────────────────────────────────
@@ -2661,7 +4213,7 @@ const HF_COACH = (() => {
       return;
     }
 
-    HF_UTILS.toast(`Invite sent to ${playerName}! 🎉`, "success");
+    HF_UTILS.toast(`Invite sent to ${playerName}`, "success");
     findmyteam(session);
   };
 
@@ -2731,7 +4283,15 @@ const HF_COACH = (() => {
   const filterPlayers = () =>
     HF_ROLE_UTILS.filterPlayers(
       "_fmtAllPlayers",
-      (p) => _playerCard(p, window._fmtCoachId, window._fmtIsVerified),
+      (p) =>
+        _playerCard(
+          p,
+          window._fmtCoachId,
+          window._fmtIsVerified,
+          window._fmtIsOpenForRecruitment,
+          window._fmtInvitedIds,
+          window._fmtDeclinedMap,
+        ),
       "fmt-players-list",
       {
         pos: document.getElementById("fmt-pos")?.value,
@@ -2778,6 +4338,35 @@ const HF_COACH = (() => {
     findmyteam(session);
   };
 
+  const onOpponentChange = () => {
+    const select = document.getElementById("match-opponent-select");
+    const otherWrap = document.getElementById("opponent-other-wrap");
+    if (otherWrap)
+      otherWrap.style.display = select?.value === "__other__" ? "flex" : "none";
+
+    // cache opponent's home ground for venue dropdown
+    const selectedOption = select?.options[select.selectedIndex];
+    const ground = selectedOption?.dataset?.ground || null;
+    window._opponentGround = ground;
+
+    // update the Away option label
+    const venueSelect = document.getElementById("match-location");
+    if (venueSelect) {
+      const awayOption = venueSelect.querySelector('option[value="away"]');
+      if (awayOption) {
+        awayOption.textContent = `Away: ${ground || "Opponent's ground"}`;
+      }
+    }
+  };
+
+  const onVenueChange = () => {
+    const select = document.getElementById("match-location");
+    const neutralWrap = document.getElementById("venue-neutral-wrap");
+    if (neutralWrap)
+      neutralWrap.style.display =
+        select?.value === "neutral" ? "block" : "none";
+  };
+
   return {
     render,
     dashboard,
@@ -2799,23 +4388,35 @@ const HF_COACH = (() => {
     confirmKickPlayer,
     editProfile,
     saveProfile,
+    saveMatchSession,
+    logMatchResult,
     logSessionRating,
     checkExistingRating,
     trackPlayer,
     viewPlayerHealth,
     filterPlayers,
     toggleRecruitment,
+    setDayType,
+    clearDayType,
     saveSession,
     messageScout,
     sendScoutMessage,
     respondTrialRequest,
     acceptTrialRequest,
     declineTrialRequest,
+    approveMatchRequest,
+    declineMatchRequest,
     approveTrialPlayer,
     removeTrialPlayer,
     approveNetworkRequest,
     declineNetworkRequest,
+    saveLineup,
+    savePostStats,
     selectNeededPosition,
+    onOpponentChange,
+    onVenueChange,
+    notifySquadOfMatch,
+    saveOpponentLineup,
   };
 })();
 

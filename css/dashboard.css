@@ -622,3 +622,63 @@
     display: block;
   }
 }
+
+/* ── MOBILE RESPONSIVENESS ── */
+@media (max-width: 768px) {
+  /* Topbar */
+  .topbar {
+    padding: 0 var(--sp-md);
+    gap: var(--sp-sm);
+  }
+  .topbar-name {
+    font-size: 14px;
+  }
+  .role-pill {
+    display: none;
+  }
+
+  .sidenav {
+    top: 56px;
+    height: calc(100vh - 56px);
+  }
+
+  .main {
+    padding: var(--sp-md);
+  }
+
+  .ai-agent-panel {
+    width: calc(100vw - 32px);
+    right: 16px;
+    left: 16px;
+    bottom: 80px;
+  }
+
+  .ai-agent-btn {
+    bottom: 16px;
+    right: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar {
+    padding: 0 var(--sp-sm);
+  }
+  .topbar-name {
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+  .btn-logout {
+    padding: 5px 8px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+  }
+  .theme-switch {
+    width: 36px;
+    height: 20px;
+  }
+
+  /* Main */
+  .main {
+    padding: var(--sp-sm);
+  }
+}

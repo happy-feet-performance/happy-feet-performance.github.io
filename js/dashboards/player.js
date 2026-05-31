@@ -164,6 +164,7 @@ const HF_PLAYER = (() => {
       s.profile = freshUser.profile;
       HF_DB.saveSession(s);
     }
+    const ms = freshUser?.match_stats || {};
     const p = s.profile || {};
     const r = p.ratings || {};
     const overall = HF_UTILS.calcRating(r);
@@ -214,9 +215,19 @@ const HF_PLAYER = (() => {
         <div style="display:flex;align-items:center;gap:var(--sp-sm);">
           <div class="card-dot"></div>Player details
         </div>
-        <button class="btn btn-outline btn-sm" onclick="HF_PLAYER.editProfile()">
-          <i class="ti ti-edit"></i> Edit
-        </button>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-outline btn-sm" onclick="HF_PLAYER.editProfile()">
+            <i class="ti ti-edit"></i> Edit
+          </button>
+          ${
+            p.club && p.status !== "unattached"
+              ? `
+          <button class="btn btn-danger btn-sm" onclick="HF_PLAYER.leaveTeam()">
+            <i class="ti ti-logout"></i> Leave team
+          </button>`
+              : ""
+          }
+        </div>
       </div>
       <div class="info-grid">
         <div class="info-cell"><div class="info-label">Position</div><div class="info-val">${p.pos || "-"}</div></div>
@@ -234,6 +245,11 @@ const HF_PLAYER = (() => {
     </div>
 
     <!-- ── ABILITY RATINGS ── -->
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>Match stats</div>
+      <div id="player-match-stats">Loading...</div>
+    </div>
+
     <div class="card">
       <div class="card-title"><div class="card-dot"></div>Ability ratings</div>
       ${
@@ -269,6 +285,48 @@ const HF_PLAYER = (() => {
         </button>
       </div>
     </div>`);
+    const msEl = document.getElementById("player-match-stats");
+    if (msEl) {
+      if (!ms || ms.matches_played === 0) {
+        msEl.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text2);font-size:13px;">No match data yet.</div>`;
+      } else {
+        msEl.innerHTML = `
+        <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:0;">
+          <div class="metric-card">
+            <div class="metric-val" style="color:var(--gold)">${ms.matches_played || 0}</div>
+            <div class="metric-label">Matches</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-val" style="color:var(--green)">${ms.goals || 0}</div>
+            <div class="metric-label">Goals</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-val" style="color:var(--blue)">${ms.assists || 0}</div>
+            <div class="metric-label">Assists</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-val" style="color:var(--text2)">${ms.shots || 0}</div>
+            <div class="metric-label">Shots</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-val" style="color:var(--faith)">${ms.saves || 0}</div>
+            <div class="metric-label">Saves</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-val" style="color:var(--gold)">${ms.minutes_played || 0}</div>
+            <div class="metric-label">Minutes</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-val" style="color:#f5c518">${ms.yellow_cards || 0}</div>
+            <div class="metric-label">Yellows</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-val" style="color:var(--red)">${ms.red_cards || 0}</div>
+            <div class="metric-label">Reds</div>
+          </div>
+        </div>`;
+      }
+    }
   };
 
   // ── PROFILE HELPERS  ─────────────────────────────────────────
@@ -494,66 +552,83 @@ const HF_PLAYER = (() => {
           <div style="font-size:13px">Session history will appear once your coach starts logging data.</div>
         </div>`
           : `
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Type</th>
-              <th>Overall</th>
-              <th>Speed</th>
-              <th>Technical</th>
-              <th>Tactical</th>
-              <th>Physical</th>
-              <th>Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${sessions
-              .map((r) => {
-                const isToday =
-                  r.created_at?.split("T")[0] === HF_DB.localDate();
-                return `
-                <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
-                  <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
-                    ${isToday ? "Today" : HF_UTILS.timeAgo(r.created_at)}
-                  </td>
-                  <td>${r.session_type}</td>
-                  <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
-                    ${r.overall}
-                  </td>
-                  <td>${r.speed}</td>
-                  <td>${r.technical}</td>
-                  <td>${r.tactical}</td>
-                  <td>${r.physical}</td>
-                  <td>${r.notes}</td>
-                </tr>`;
-              })
-              .join("")}
-          </tbody>
-        </table>`
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Overall</th>
+                  <th>Speed</th>
+                  <th>Technical</th>
+                  <th>Tactical</th>
+                  <th>Physical</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${sessions
+                  .map((r) => {
+                    const isToday =
+                      r.created_at?.split("T")[0] === HF_DB.localDate();
+                    return `
+                    <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
+                      <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
+                        ${isToday ? "Today" : HF_UTILS.timeAgo(r.created_at)}
+                      </td>
+                      <td>${r.session_type}</td>
+                      <td style="font-weight:700;color:${r.overall >= 80 ? "var(--green)" : r.overall >= 65 ? "var(--gold)" : "var(--red)"}">
+                        ${r.overall}
+                      </td>
+                      <td>${r.speed}</td>
+                      <td>${r.technical}</td>
+                      <td>${r.tactical}</td>
+                      <td>${r.physical}</td>
+                      <td>${r.notes}</td>
+                    </tr>`;
+                  })
+                  .join("")}
+              </tbody>
+            </table>
+            </div>`
       }
     </div>`);
   };
 
   // ── TRAINING ─────────────────────────────────────────────────
   const training = async (s) => {
-    const selectedDate = window._trainingSelectedDate || HF_DB.localDate();
-    const saved = await HF_DB.getTraining(s.userId);
-    const schedule = saved?.schedule || {};
+    const p = s.profile || {};
+
+    // Gate: player must be on a team
+    if (!p.club || p.status === "unattached") {
+      setMain(`
+      <div class="card">
+        <div style="text-align:center;padding:40px 24px;color:var(--text2)">
+          <i class="ti ti-clipboard-list" style="font-size:40px;margin-bottom:12px;display:block;color:var(--text3)"></i>
+          <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">No training plan yet</div>
+          <div style="font-size:13px;margin-bottom:20px;line-height:1.6">
+            You need to join a verified squad before you can see training plans.<br>
+            Your coach will broadcast sessions directly to you.
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="HF_ROUTER.navTo('findmyteam')">
+            <i class="ti ti-search"></i> Find a team
+          </button>
+        </div>
+      </div>`);
+      return;
+    }
+
+    // Load coach's training plan
+    const { data: coachData } = await HF_DB.getCoachTrainingForPlayer(s.userId);
+    const schedule = coachData?.schedule || {};
+    const sessions = coachData?.sessions || [];
     const { data: logs } = await HF_DB.getTrainingLogs(s.userId);
-    const { data: todayLog } = await HF_DB.getTodayTrainingLog(s.userId);
+
     const today = new Date().getDay();
-    const todayType = schedule[today];
+    const todayISO = HF_DB.localDate();
+    const todayType = schedule[todayISO] || schedule[today] || null;
 
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const types = [
-      "Rest",
-      "Technical",
-      "Tactical",
-      "Physical",
-      "Recovery",
-      "Match",
-    ];
     const typeColors = {
       Rest: "var(--text3)",
       Technical: "var(--gold)",
@@ -567,118 +642,133 @@ const HF_PLAYER = (() => {
     window._trainingLogs = logs;
     window._trainingTypeColors = typeColors;
 
-    // get current view from window state or default to week
-    const view = window._trainingView || "week";
+    // most recent broadcast session
+    const latestSession = sessions[0] || null;
 
-    const dayView = () => {
-      const todayISO = HF_DB.localDate();
-      const selected = schedule[todayISO] || null;
-      const color = selected ? typeColors[selected] : "var(--border)";
+    const logForToday = logs?.find((l) => l.date === todayISO);
+    const isDone = logForToday?.completed;
 
-      return `
-      <div style="padding:var(--sp-xl);background:${selected ? color + "22" : "var(--bg2)"};border:${selected ? "2px solid " + color : "0.5px solid var(--border)"};text-align:center;margin-bottom:var(--sp-md);cursor:pointer;"
-        onclick="HF_UTILS.showDayPicker(${today}, '${HF_DB.localDate()}')">
-        <div style="font-family:var(--font);font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;">
-          ${new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+    const playerView = window._playerTrainingView || "week";
+    const selectedPlayerDay = window._playerTrainingSelectedDay ?? today;
+    const selectedPlayerDateISO =
+      window._playerTrainingSelectedDate ||
+      HF_UTILS.getDateForDayISO(selectedPlayerDay);
+
+    const playerWeekStrip = days
+      .map((day, i) => {
+        const dateISO = HF_UTILS.getDateForDayISO(i);
+        const isToday = i === today;
+        const isSelected = dateISO === selectedPlayerDateISO;
+        const sessionType = schedule[dateISO] || null;
+        const color = sessionType ? typeColors[sessionType] : null;
+        const displayColor =
+          color || (sessionType === "Rest" ? typeColors.Rest : null);
+        const hasLog = logs?.find((l) => l.date === dateISO);
+        return `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;"
+        onclick="window._playerTrainingSelectedDay=${i};window._playerTrainingSelectedDate='${dateISO}';HF_PLAYER.training(HF_DB.getSession())">
+        <div style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
+          color:${isSelected ? "var(--text)" : "var(--text3)"};">${day}</div>
+        <div style="width:100%;padding:8px 4px;
+          background:${isSelected ? (displayColor ? displayColor + "33" : "var(--bg3)") : displayColor ? displayColor + "11" : "transparent"};
+          border:${isSelected ? "2px solid " + (displayColor || "var(--text)") : isToday ? "1.5px solid var(--text3)" : "0.5px solid var(--border)"};
+          text-align:center;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;">
+          <span style="font-size:9px;font-weight:600;font-family:var(--font);letter-spacing:0.04em;text-transform:uppercase;
+            color:${displayColor || "var(--text3)"};">${sessionType || "-"}</span>
+          ${hasLog ? `<i class="ti ti-circle-check" style="font-size:10px;color:var(--green);"></i>` : ""}
         </div>
-        <div style="font-family:var(--font);font-size:32px;font-weight:700;color:${selected ? color : "var(--text3)"};">
-          ${selected || "No session planned"}
-        </div>
-        <div style="font-size:11px;color:var(--text3);margin-top:6px;">
-          <i class="ti ti-edit" style="margin-right:4px"></i>${selected ? "Click to change session" : "Click to set session"}
-        </div>
-      </div>
-      ${completionSection()}`;
-    };
+      </div>`;
+      })
+      .join("");
 
-    const weekView = () => `
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:var(--sp-lg);">
-        ${days
-          .map((day, i) => {
-            const isToday = i === today;
-            const dateISO = HF_UTILS.getDateForDayISO(i);
-            const selected = schedule[dateISO] || null;
-            const color = selected ? typeColors[selected] : null;
-            const logDate = HF_UTILS.getDateForDayISO(i);
-            const hasLog = logs?.find((l) => l.date === logDate);
-
-            return `
-            <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-              <div style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${isToday ? "var(--text)" : "var(--text3)"};">
-                ${day}
-              </div>
-              <div data-date="${HF_UTILS.getDateForDayISO(i)}"
-                style="width:100%;padding:8px 4px;
-                  background:${selected ? color + "33" : "transparent"};
-                  border:${isToday ? "2px solid var(--text)" : selected ? "2px solid " + color : "0.5px solid var(--border)"};
-                  text-align:center;cursor:pointer;min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;"
-                onclick="HF_PLAYER.selectTrainingDay('${HF_UTILS.getDateForDayISO(i)}', ${i})">
-                <span class="cell-label" style="font-size:9px;font-weight:600;color:${selected ? color : "var(--text3)"};font-family:var(--font);letter-spacing:0.04em;text-transform:uppercase;">
-                  ${selected || "+"}
-                </span>
-                ${hasLog ? `<i class="ti ti-circle-check" style="font-size:10px;color:var(--green);"></i>` : ""}
-              </div>
-            </div>
-            `;
-          })
-          .join("")}
-      </div>
-      ${completionSection()}`;
-
-    const monthView = () => {
+    const playerMonthView = () => {
       const now = new Date();
       const year = now.getFullYear();
       const month = now.getMonth();
       const daysInMonth = new Date(year, month + 1, 0).getDate();
       const firstDay = new Date(year, month, 1).getDay();
-
       let cells = "";
       for (let i = 0; i < firstDay; i++) cells += "<div></div>";
-
       for (let d = 1; d <= daysInMonth; d++) {
-        const date = new Date(year, month, d);
-        const dayOfWeek = date.getDay();
-        const isToday = d === now.getDate();
-        const isFuture = date > now;
         const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-
-        const selected = !isFuture ? schedule[dateStr] || null : null;
-        const color = selected ? typeColors[selected] : null;
+        const dayOfWeek = new Date(year, month, d).getDay();
+        const isToday = d === now.getDate();
+        const isSelected = dateStr === selectedPlayerDateISO;
+        const t = schedule[dateStr] || null;
+        const c = t ? typeColors[t] : null;
+        const dc = c || (t === "Rest" ? typeColors.Rest : null);
         const hasLog = logs?.find((l) => l.date === dateStr);
-
         cells += `
-          <div data-date="${dateStr}"
-            style="display:flex;flex-direction:column;align-items:center;justify-content:center;
-              height:40px;
-              background:transparent;
-              border:${isToday && selected ? `2px solid var(--text)` : isToday ? "2px solid var(--text)" : selected ? "2px solid " + color : "0.5px solid var(--border)"};
-              color:${isToday ? "var(--text)" : selected ? color : "var(--text2)"};
-              font-weight:${isToday ? "700" : "400"};
-              opacity:${isFuture ? 0.4 : 1};
-              cursor:${!isFuture ? "pointer" : "default"};
-              font-size:11px;
-              position:relative;"
-            onclick="${!isFuture ? `HF_PLAYER.selectTrainingDay('${dateStr}', ${dayOfWeek})` : ""}">
-            <span class="cell-label">${d}</span>
-            ${
-              hasLog
-                ? `<div style="width:4px;height:4px;background:var(--green);border-radius:50%;position:absolute;bottom:4px;"></div>`
-                : selected && !isToday
-                  ? `<div style="width:4px;height:4px;background:${color};position:absolute;bottom:4px;"></div>`
-                  : ""
-            }
-          </div>`;
+        <div onclick="window._playerTrainingSelectedDay=${dayOfWeek};window._playerTrainingSelectedDate='${dateStr}';HF_PLAYER.training(HF_DB.getSession())"
+          style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:40px;
+            background:${isSelected ? (dc ? dc + "22" : "var(--bg3)") : "transparent"};
+            border:${isSelected ? "2px solid " + (dc || "var(--text)") : isToday ? "1.5px solid var(--text3)" : "0.5px solid var(--border)"};
+            color:${isSelected ? "var(--text)" : "var(--text2)"};font-size:11px;font-weight:${isToday ? "700" : "400"};
+            cursor:pointer;position:relative;">
+          <span>${d}</span>
+          ${hasLog ? `<div style="width:4px;height:4px;background:var(--green);border-radius:50%;position:absolute;bottom:3px;"></div>` : t ? `<div style="width:4px;height:4px;background:${dc};position:absolute;bottom:3px;"></div>` : ""}
+        </div>`;
       }
-
       return `
-        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:8px;">
-          ${days.map((d) => `<div style="text-align:center;font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);padding:4px 0;">${d}</div>`).join("")}
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:var(--sp-md);">
-          ${cells}
-        </div>
-        ${completionSection()}`;
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:6px;">
+        ${days.map((d) => `<div style="text-align:center;font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);padding:4px 0;">${d}</div>`).join("")}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:var(--sp-md);">
+        ${cells}
+      </div>`;
     };
+
+    // rebuild completionBlock for selected date (not just today)
+    const selectedLogForDate = logs?.find(
+      (l) => l.date === selectedPlayerDateISO,
+    );
+    const selectedIsDone = selectedLogForDate?.completed;
+    const selectedDayType = schedule[selectedPlayerDateISO] || null;
+    const selectedColor = selectedDayType
+      ? typeColors[selectedDayType]
+      : "var(--border)";
+    const isSelectedToday = selectedPlayerDateISO === todayISO;
+    const selectedDateLabel = new Date(
+      selectedPlayerDateISO + "T00:00:00",
+    ).toLocaleDateString("en-GB", {
+      weekday: "long",
+      day: "numeric",
+      month: "short",
+    });
+
+    const selectedCompletionBlock = selectedDayType
+      ? `
+    <div id="completion-section" style="padding:var(--sp-md);background:${selectedIsDone ? "rgba(26,122,46,.08)" : selectedColor + "22"};border-left:3px solid ${selectedIsDone ? "var(--green)" : selectedColor};margin-bottom:var(--sp-lg);">
+      <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:6px;">
+        ${isSelectedToday ? "Today" : selectedDateLabel}
+      </div>
+      ${
+        selectedIsDone
+          ? `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+            <div style="font-size:13px;color:var(--green);display:flex;align-items:center;gap:6px;">
+              <i class="ti ti-circle-check"></i> ${selectedDayType} completed!
+              ${selectedLogForDate.notes ? `<span style="font-size:11px;color:var(--text2);">"${selectedLogForDate.notes}"</span>` : ""}
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="HF_PLAYER.toggleSessionComplete('${selectedDayType}', '${selectedPlayerDateISO}', false)">
+              <i class="ti ti-x"></i> Uncomplete
+            </button>
+          </div>`
+          : `<div style="font-size:13px;color:var(--text);margin-bottom:8px;">
+            Coach has planned: <strong style="color:${selectedColor}">${selectedDayType}</strong>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <input type="text" id="session-notes-${selectedPlayerDateISO}" placeholder="Add session notes (optional)..."
+              style="flex:1;min-width:150px;padding:8px 12px;background:var(--bg);border:0.5px solid var(--border);color:var(--text);font-size:13px;outline:none;font-family:var(--font);">
+            <button class="btn btn-primary btn-sm" onclick="HF_PLAYER.toggleSessionComplete('${selectedDayType}', '${selectedPlayerDateISO}', true)">
+              <i class="ti ti-circle-check"></i> Mark completed
+            </button>
+          </div>`
+      }
+    </div>`
+      : `
+    <div style="padding:var(--sp-md);background:var(--bg2);border-left:3px solid var(--border);margin-bottom:var(--sp-lg);font-size:13px;color:var(--text2);">
+      ${isSelectedToday ? "No session planned for today by your coach." : `No session planned for ${selectedDateLabel}.`}
+    </div>`;
 
     setMain(`
     <div class="card">
@@ -691,15 +781,15 @@ const HF_PLAYER = (() => {
             </span>
           </div>
           <div style="font-size:11px;color:var(--text3);font-family:var(--font);text-transform:none;letter-spacing:0;font-weight:400;">
-            Click on each cell to update the session for that day
+            Set by ${p.club} coaching staff · read-only
           </div>
         </div>
         <div style="display:flex;gap:4px;">
           ${["day", "week", "month"]
             .map(
               (v) => `
-            <button class="btn ${view === v ? "btn-primary" : "btn-outline"} btn-sm"
-              onclick="window._trainingView='${v}';HF_PLAYER.training(HF_DB.getSession())">
+            <button class="btn btn-sm ${playerView === v ? "btn-primary" : "btn-outline"}"
+              onclick="window._playerTrainingView='${v}';window._playerTrainingSelectedDate=null;HF_PLAYER.training(HF_DB.getSession())">
               ${v.charAt(0).toUpperCase() + v.slice(1)}
             </button>`,
             )
@@ -707,27 +797,141 @@ const HF_PLAYER = (() => {
         </div>
       </div>
 
-      ${view === "day" ? dayView() : view === "month" ? monthView() : weekView()}
+      ${selectedCompletionBlock}
 
-      <div id="day-picker" style="display:none;padding:var(--sp-md);background:var(--bg2);border-left:2px solid var(--gold);margin-bottom:var(--sp-md);">
-        <div id="day-picker-label" style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;"></div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;" id="day-picker-options"></div>
-      </div>
+      ${playerView === "month" ? playerMonthView() : playerView === "day" ? `
+      <div style="padding:var(--sp-lg);background:${schedule[selectedPlayerDateISO] ? (typeColors[schedule[selectedPlayerDateISO]]||"var(--gold)")+"22" : "var(--bg2)"};
+        border:${schedule[selectedPlayerDateISO] ? "2px solid "+(typeColors[schedule[selectedPlayerDateISO]]||"var(--gold)") : "0.5px solid var(--border)"};
+        text-align:center;margin-bottom:var(--sp-lg);">
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">
+          ${new Date(selectedPlayerDateISO+"T00:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})}
+        </div>
+        <div style="font-family:var(--font);font-size:28px;font-weight:700;color:${schedule[selectedPlayerDateISO] ? (typeColors[schedule[selectedPlayerDateISO]]||"var(--gold)") : "var(--text3)"};margin-bottom:4px;">
+          ${schedule[selectedPlayerDateISO] || "No session set"}
+        </div>
+        <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-top:var(--sp-md);">
+          ${days.map((day, i) => {
+            const dISO = HF_UTILS.getDateForDayISO(i);
+            const dt = schedule[dISO] || null;
+            const dc = dt ? (typeColors[dt] || "var(--text3)") : null;
+            const isSelected = dISO === selectedPlayerDateISO;
+            return `<button class="btn btn-sm ${isSelected ? "btn-primary" : "btn-outline"}"
+              style="${isSelected && dc ? `background:${dc};border-color:${dc};color:#fff;` : ""}"
+              onclick="window._playerTrainingSelectedDay=${i};window._playerTrainingSelectedDate='${dISO}';HF_PLAYER.training(HF_DB.getSession())">
+              ${day}
+            </button>`;
+          }).join("")}
+        </div>
+      </div>` : `
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:var(--sp-lg);">
+        ${playerWeekStrip}
+      </div>`}
 
       <div style="padding:var(--sp-md);background:var(--bg2);">
         <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">Legend</div>
         <div style="display:flex;gap:var(--sp-md);flex-wrap:wrap;">
-          ${types
+          ${Object.entries(typeColors)
             .map(
-              (t) => `
+              ([t, c]) => `
             <div style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);">
-              <div style="width:10px;height:10px;background:${typeColors[t]};"></div>
-              ${t}
+              <div style="width:10px;height:10px;background:${c};"></div>${t}
             </div>`,
             )
             .join("")}
         </div>
       </div>
+    </div>
+
+    ${
+      latestSession
+        ? (() => {
+            const typeColors = {
+              Technical: "var(--gold)",
+              Tactical: "var(--blue)",
+              Physical: "var(--red)",
+              Recovery: "var(--green)",
+              Match: "var(--faith)",
+              Rest: "var(--text3)",
+            };
+            const cat = latestSession.category || "";
+            const isMatch = cat === "Match";
+            const color =
+              typeColors[cat] ||
+              typeColors[
+                latestSession.name?.includes("vs") ? "Match" : "Technical"
+              ] ||
+              "var(--gold)";
+            const bgColor = isMatch ? "var(--faith-lt)" : color + "11";
+
+            return `
+  <div class="card" style="border-top:2px solid ${color};">
+    <div class="card-title"><div class="card-dot" style="background:${color};"></div>Latest session from coach</div>
+    <div style="padding:var(--sp-md);background:${bgColor};border-left:3px solid ${color};">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:var(--sp-sm);">
+        <div style="font-size:14px;font-weight:600;color:${isMatch ? color : "var(--text)"};">
+          ${isMatch ? `<i class="ti ti-whistle" style="margin-right:6px"></i>${p.club || "Your team"} ${latestSession.name}` : latestSession.name}
+        </div>
+        <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;background:${color}22;color:${color};">${cat}</span>
+      </div>
+      ${
+        isMatch
+          ? `
+      ${latestSession.location ? `<div style="font-size:12px;color:var(--text2);margin-bottom:var(--sp-sm);"><i class="ti ti-map-pin" style="margin-right:4px"></i>${latestSession.location}</div>` : ""}
+      ${latestSession.intent ? `<div style="font-size:12px;color:var(--text2);"><i class="ti ti-target" style="margin-right:4px"></i>${latestSession.intent}</div>` : ""}
+      `
+          : `
+      <div style="display:flex;gap:var(--sp-lg);flex-wrap:wrap;font-size:12px;color:var(--text2);margin-bottom:${latestSession.drills?.length ? "var(--sp-md)" : "0"};">
+        ${latestSession.duration ? `<span><i class="ti ti-clock" style="margin-right:4px"></i>${latestSession.duration} min</span>` : ""}
+        ${latestSession.intensity ? `<span><i class="ti ti-gauge" style="margin-right:4px"></i>${latestSession.intensity} intensity</span>` : ""}
+        ${latestSession.intent ? `<span><i class="ti ti-target" style="margin-right:4px"></i>${latestSession.intent}</span>` : ""}
+      </div>
+      ${
+        latestSession.drills?.length
+          ? `
+      <div style="margin-top:var(--sp-sm);">
+        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:6px;">Drills</div>
+        ${latestSession.drills
+          .map(
+            (d) => `
+          <div style="display:flex;align-items:center;gap:var(--sp-sm);padding:6px 0;border-bottom:0.5px solid var(--border);">
+            <div style="width:6px;height:6px;background:${color};flex-shrink:0;"></div>
+            <span style="flex:1;font-size:12px;color:var(--text)">${d.name}</span>
+            <span style="font-size:11px;color:var(--text3)">${d.type} · ${d.duration}min</span>
+          </div>`,
+          )
+          .join("")}
+      </div>`
+          : ""
+      }
+      `
+      }
+    </div>
+  </div>`;
+          })()
+        : ""
+    }
+
+    <div class="card">
+      <div class="card-title"><div class="card-dot"></div>My completion log</div>
+      ${
+        !logs || logs.length === 0
+          ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px;">No sessions logged yet. Mark today's session complete above.</div>`
+          : `<div class="table-wrap"><table class="table">
+            <thead><tr><th>Date</th><th>Type</th><th>Notes</th></tr></thead>
+            <tbody>
+              ${logs
+                .map(
+                  (l) => `
+                <tr>
+                  <td style="color:var(--text2)">${new Date(l.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</td>
+                  <td>${l.session_type || "-"}</td>
+                  <td style="font-size:11px;color:var(--text2)">${l.notes || "-"}</td>
+                </tr>`,
+                )
+                .join("")}
+            </tbody>
+          </table></div>`
+      }
     </div>`);
   };
 
@@ -1054,38 +1258,40 @@ const HF_PLAYER = (() => {
 
       <div class="card">
         <div class="card-title"><div class="card-dot"></div>Recent wellness history</div>
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th title="Energy"><i class="ti ti-bolt"></i></th>
-              <th title="Mood"><i class="ti ti-mood-smile"></i></th>
-              <th title="Sleep"><i class="ti ti-moon"></i></th>
-              <th title="Soreness"><i class="ti ti-activity"></i></th>
-              <th title="Hydration"><i class="ti ti-droplet"></i></th>
-              <th>Notes</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${logs
-              .map((l) => {
-                const isToday = l.date === HF_DB.localDate();
-                return `
-                <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
-                  <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
-                    ${isToday ? "Today" : new Date(l.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
-                  </td>
-                  <td>${l.energy || "-"}</td>
-                  <td>${l.mood || "-"}</td>
-                  <td>${l.sleep || "-"}</td>
-                  <td>${l.soreness || "-"}</td>
-                  <td>${l.hydration || "-"}</td>
-                  <td style="color:var(--text2);font-size:11px">${l.notes && l.notes !== "null" ? l.notes : "None"}</td>
-                </tr>`;
-              })
-              .join("")}
-          </tbody>
-        </table>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th title="Energy"><i class="ti ti-bolt"></i></th>
+                <th title="Mood"><i class="ti ti-mood-smile"></i></th>
+                <th title="Sleep"><i class="ti ti-moon"></i></th>
+                <th title="Soreness"><i class="ti ti-activity"></i></th>
+                <th title="Hydration"><i class="ti ti-droplet"></i></th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${logs
+                .map((l) => {
+                  const isToday = l.date === HF_DB.localDate();
+                  return `
+                  <tr style="${isToday ? "background:rgba(196,154,10,.05)" : ""}">
+                    <td style="color:${isToday ? "var(--gold)" : "var(--text2)"};font-weight:${isToday ? "600" : "400"}">
+                      ${isToday ? "Today" : new Date(l.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                    </td>
+                    <td>${l.energy || "-"}</td>
+                    <td>${l.mood || "-"}</td>
+                    <td>${l.sleep || "-"}</td>
+                    <td>${l.soreness || "-"}</td>
+                    <td>${l.hydration || "-"}</td>
+                    <td style="color:var(--text2);font-size:11px">${l.notes && l.notes !== "null" ? l.notes : "None"}</td>
+                  </tr>`;
+                })
+                .join("")}
+            </tbody>
+          </table>
+          </div>
       </div>`
         : ""
     }
@@ -1864,10 +2070,11 @@ const HF_PLAYER = (() => {
       };
       HF_DB.saveSession(session);
 
-      // update coach team size
       await HF_DB.updateTeamSize(coachId, 1);
 
       HF_UTILS.toast(`Welcome to ${squadName}!`, "success");
+
+      HF_ROUTER.buildSidenav(session);
     } else {
       HF_UTILS.toast("Invite declined.", "success");
     }
@@ -2006,14 +2213,20 @@ const HF_PLAYER = (() => {
   const findmyteam = async (s) => {
     const { data: coaches } = await HF_DB.getVerifiedCoaches(true);
 
-    // fetch trial request status for each coach
-    const coachesWithStatus = await Promise.all(
-      (coaches || []).map(async (c) => {
-        const { data: req } = await HF_DB.getTrialRequestStatus(s.userId, c.id);
-        return { ...c, trialRequest: req };
-      }),
-    );
+    const { data: currentInvite } = await HF_DB.getPlayerCurrentCoach(s.userId);
+    const currentCoachId = currentInvite?.coach_id || null;
 
+    const coachesWithStatus = await Promise.all(
+      (coaches || [])
+        .filter((c) => c.id !== currentCoachId)
+        .map(async (c) => {
+          const { data: req } = await HF_DB.getTrialRequestStatus(
+            s.userId,
+            c.id,
+          );
+          return { ...c, trialRequest: req };
+        }),
+    );
     setMain(`
     <div class="welcome-banner">
       <div>
@@ -2181,6 +2394,65 @@ const HF_PLAYER = (() => {
     HF_UTILS.toast(`Trial request sent to ${coachName}!`, "success");
   };
 
+  // ── LEAVE TEAM ───────────────────────────────────────────────
+  const leaveTeam = async () => {
+    const session = HF_DB.getSession();
+    const clubName = session.profile?.club || "your team";
+
+    if (
+      !confirm(
+        `Are you sure you want to leave ${clubName}?\n\nThis cannot be undone. Your coach will be notified.`,
+      )
+    )
+      return;
+
+    const reason = prompt("Please enter a reason for leaving (required):");
+    if (!reason || reason.trim().length < 3) {
+      HF_UTILS.toast("A reason is required to leave your team.", "error");
+      return;
+    }
+
+    const { data: invite } = await HF_DB.getPlayerCurrentCoach(session.userId);
+
+    const result = await HF_DB.leaveSquad(session.userId);
+    if (result.error) {
+      HF_UTILS.toast(result.error, "error");
+      return;
+    }
+
+    // notify coach
+    if (invite?.coach_id) {
+      const [msgResult, sizeResult] = await Promise.all([
+        HF_DB._sendMessage(
+          "system",
+          invite.coach_id,
+          `${session.name} has left the squad`,
+          `${session.name} has left ${clubName}.\n\nReason: ${reason.trim()}\n\nTheir slot is now available.`,
+        ),
+        HF_DB.updateTeamSize(invite.coach_id, -1),
+      ]);
+      if (sizeResult?.error) {
+        console.error("Failed to decrement team size:", sizeResult.error);
+      }
+    } else {
+      console.warn("leaveTeam: no coach_id found on invite", invite);
+    }
+
+    // update session
+    session.profile = {
+      ...session.profile,
+      club: null,
+      status: "unattached",
+    };
+    HF_DB.saveSession(session);
+
+    // rebuild sidenav so training tab disappears
+    HF_ROUTER.buildSidenav(session);
+
+    HF_UTILS.toast(`You have left ${clubName}.`, "success");
+    profile(session);
+  };
+
   return {
     render,
     training,
@@ -2191,16 +2463,15 @@ const HF_PLAYER = (() => {
     findmyteam,
     profile,
     dashboard,
-    updateTrainingDay,
     logSessionComplete,
     toggleSessionComplete,
-    selectTrainingDay,
     logHealthCheckin,
     showHealthSliders,
     showHealthCards,
     editProfile,
     saveProfile,
     respondInvite,
+    leaveTeam,
     filterCoaches,
     requestTrial,
     messageCoach,
