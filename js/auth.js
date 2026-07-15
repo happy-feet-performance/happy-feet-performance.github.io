@@ -580,6 +580,12 @@ const HF_AUTH = (() => {
     HF_ROUTER.resetSubscriptions();
     HF_AGENT.hide();
     HF_AGENT.reset();
+    window._cachedVerifiedTeams = null;
+    window._cachedWDL = null;
+    window._deadlineChecked = false;
+    window._cachedSquadPlayers = null;
+    window._cachedPendingRequests = null;
+    window._cachedCoachMatches = null;
 
     // clear all form fields
     [

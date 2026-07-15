@@ -1047,9 +1047,25 @@ const HF_DB = (() => {
   };
 
   const setJerseyNumber = async (coachId, playerId, number) => {
+    // check for duplicate number on another player
+    if (number) {
+      const { data: existing } = await _client
+        .from("squad_invites")
+        .select("player_id")
+        .eq("coach_id", coachId)
+        .eq("jersey_number", number)
+        .eq("status", "accepted")
+        .neq("player_id", playerId)
+        .maybeSingle();
+      if (existing)
+        return {
+          error: `Jersey #${number} is already assigned to another player.`,
+        };
+    }
+
     const { error } = await _client
       .from("squad_invites")
-      .update({ jersey_number: number })
+      .update({ jersey_number: number || null })
       .eq("coach_id", coachId)
       .eq("player_id", playerId)
       .eq("status", "accepted");
@@ -2758,9 +2774,12 @@ const HF_DB = (() => {
     // only confirm if requesting coach has also confirmed
     const bothConfirmed = match?.coach_confirmed === true;
     const newStatus = bothConfirmed ? "confirmed" : "pending";
-    
+
     // guard: if already confirmed or declined don't re-process
-    if (match?.match_status === "confirmed" || match?.match_status === "declined") {
+    if (
+      match?.match_status === "confirmed" ||
+      match?.match_status === "declined"
+    ) {
       return { success: true, confirmed: match.match_status === "confirmed" };
     }
 
@@ -2790,7 +2809,7 @@ const HF_DB = (() => {
 
       // add session entry if not already there
       const alreadyExists = sessions.some(
-        ss => ss.date === match.date || ss.matchId === matchId
+        (ss) => ss.date === match.date || ss.matchId === matchId,
       );
       if (!alreadyExists) {
         sessions.unshift({
@@ -3167,7 +3186,7 @@ const HF_DB = (() => {
       .select("*, coach:users!matches_coach_id_fkey(id, name, profile)")
       .eq("opponent_coach_id", coachId)
       .eq("date", dateISO)
-      .in("match_status", ["pending","confirmed","completed"])
+      .in("match_status", ["pending", "confirmed", "completed"])
       .maybeSingle();
     if (error) return { data: null };
     if (!data) {
@@ -3178,7 +3197,7 @@ const HF_DB = (() => {
         .eq("opponent_coach_id", coachId)
         .gte("date", dateISO)
         .lte("date", dateISO)
-        .in("match_status", ["pending","confirmed","completed"])
+        .in("match_status", ["pending", "confirmed", "completed"])
         .maybeSingle();
       return { data: fallback };
     }
@@ -3331,6 +3350,22 @@ const HF_DB = (() => {
           schema: "public",
           table: "matches",
           filter: `opponent_coach_id=eq.${coachId}`,
+        },
+        callback,
+      )
+      .subscribe();
+  };
+
+  const subscribeToCoachTraining = (coachId, callback) => {
+    return _client
+      .channel(`training-${coachId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "training",
+          filter: `user_id=eq.${coachId}`,
         },
         callback,
       )
@@ -3528,6 +3563,7 @@ const HF_DB = (() => {
     subscribeToTickets,
     subscribeToUserTickets,
     subscribeToMatchRequests,
+    subscribeToCoachTraining,
     removeAllChannels,
   };
 })();

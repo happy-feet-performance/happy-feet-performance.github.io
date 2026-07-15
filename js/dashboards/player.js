@@ -802,33 +802,41 @@ const HF_PLAYER = (() => {
 
       ${selectedCompletionBlock}
 
-      ${playerView === "month" ? playerMonthView() : playerView === "day" ? `
-      <div style="padding:var(--sp-lg);background:${schedule[selectedPlayerDateISO] ? (typeColors[schedule[selectedPlayerDateISO]]||"var(--gold)")+"22" : "var(--bg2)"};
-        border:${schedule[selectedPlayerDateISO] ? "2px solid "+(typeColors[schedule[selectedPlayerDateISO]]||"var(--gold)") : "0.5px solid var(--border)"};
+      ${
+        playerView === "month"
+          ? playerMonthView()
+          : playerView === "day"
+            ? `
+      <div style="padding:var(--sp-lg);background:${schedule[selectedPlayerDateISO] ? (typeColors[schedule[selectedPlayerDateISO]] || "var(--gold)") + "22" : "var(--bg2)"};
+        border:${schedule[selectedPlayerDateISO] ? "2px solid " + (typeColors[schedule[selectedPlayerDateISO]] || "var(--gold)") : "0.5px solid var(--border)"};
         text-align:center;margin-bottom:var(--sp-lg);">
         <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">
-          ${new Date(selectedPlayerDateISO+"T00:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"})}
+          ${new Date(selectedPlayerDateISO + "T00:00:00").toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
         </div>
-        <div style="font-family:var(--font);font-size:28px;font-weight:700;color:${schedule[selectedPlayerDateISO] ? (typeColors[schedule[selectedPlayerDateISO]]||"var(--gold)") : "var(--text3)"};margin-bottom:4px;">
+        <div style="font-family:var(--font);font-size:28px;font-weight:700;color:${schedule[selectedPlayerDateISO] ? typeColors[schedule[selectedPlayerDateISO]] || "var(--gold)" : "var(--text3)"};margin-bottom:4px;">
           ${schedule[selectedPlayerDateISO] || "No session set"}
         </div>
         <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-top:var(--sp-md);">
-          ${days.map((day, i) => {
-            const dISO = HF_UTILS.getDateForDayISO(i);
-            const dt = schedule[dISO] || null;
-            const dc = dt ? (typeColors[dt] || "var(--text3)") : null;
-            const isSelected = dISO === selectedPlayerDateISO;
-            return `<button class="btn btn-sm ${isSelected ? "btn-primary" : "btn-outline"}"
+          ${days
+            .map((day, i) => {
+              const dISO = HF_UTILS.getDateForDayISO(i);
+              const dt = schedule[dISO] || null;
+              const dc = dt ? typeColors[dt] || "var(--text3)" : null;
+              const isSelected = dISO === selectedPlayerDateISO;
+              return `<button class="btn btn-sm ${isSelected ? "btn-primary" : "btn-outline"}"
               style="${isSelected && dc ? `background:${dc};border-color:${dc};color:#fff;` : ""}"
               onclick="window._playerTrainingSelectedDay=${i};window._playerTrainingSelectedDate='${dISO}';HF_PLAYER.training(HF_DB.getSession())">
               ${day}
             </button>`;
-          }).join("")}
+            })
+            .join("")}
         </div>
-      </div>` : `
+      </div>`
+            : `
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:var(--sp-lg);">
         ${playerWeekStrip}
-      </div>`}
+      </div>`
+      }
 
       <div style="padding:var(--sp-md);background:var(--bg2);">
         <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:8px;">Legend</div>
@@ -1112,7 +1120,12 @@ const HF_PLAYER = (() => {
         id: "hydration",
         label: "Hydration",
         icon: "ti-droplet",
-        desc: "Water intake",
+        desc: "Litres consumed today",
+        type: "number",
+        step: 0.1,
+        min: 0,
+        max: 10,
+        placeholder: "e.g. 2.5",
       },
     ];
 
@@ -1149,15 +1162,19 @@ const HF_PLAYER = (() => {
               </div>
             </div>
             <span id="hv-${m.id}" style="font-family:var(--font);font-size:28px;font-weight:700;color:var(--gold);">
-              ${todayLog?.[m.id] || 5}
+              ${m.id === "hydration" ? (todayLog?.[m.id] || 0) + "L" : todayLog?.[m.id] || 5}
             </span>
           </div>
-          <input type="range" min="1" max="10" value="${todayLog?.[m.id] || 5}" step="1"
-            disabled
-            style="width:100%;accent-color:var(--gold);opacity:0.5;pointer-events:none;">
+          ${m.id === "hydration" ? `
+          <div style="font-size:13px;color:var(--text2);margin-top:4px;">
+            ${todayLog?.[m.id] || 0}L consumed
+          </div>` : `
+          <div style="height:6px;background:var(--border);margin-top:8px;">
+            <div style="height:100%;width:${((todayLog?.[m.id] || 5) / 10) * 100}%;background:var(--gold);"></div>
+          </div>
           <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:4px;">
             <span>1: Low</span><span>10: High</span>
-          </div>
+          </div>`}
         </div>`,
         )
         .join("")}
@@ -1183,13 +1200,28 @@ const HF_PLAYER = (() => {
               <i class="ti ${m.icon}" style="color:var(--text2)"></i>
               <span style="font-size:13px;font-weight:600;color:var(--text)">${m.label}</span>
             </div>
+            ${m.id !== "hydration" ? `
             <span id="sv-${m.id}" style="font-family:var(--font);font-size:14px;font-weight:700;color:var(--gold)">
               ${todayLog?.[m.id] || 5}
-            </span>
+            </span>` : `<span id="sv-${m.id}" style="display:none;">0</span>`}
           </div>
+          ${
+            m.type === "number"
+              ? `
+          <input type="number" min="${m.min || 0}" max="${m.max || 10}" step="${m.step || 1}"
+            value="${todayLog?.[m.id] || ""}" placeholder="${m.placeholder || ""}"
+            id="sv-${m.id}-input"
+            style="width:100%;padding:10px 14px;background:var(--bg2);border:0.5px solid var(--border);color:var(--text);font-size:14px;outline:none;font-family:var(--font);"
+            oninput="document.getElementById('sv-${m.id}').textContent=parseFloat(this.value)||0">
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">Litres</div>`
+              : `
           <input type="range" min="1" max="10" value="${todayLog?.[m.id] || 5}" step="1"
             style="width:100%;accent-color:var(--gold)"
             oninput="document.getElementById('sv-${m.id}').textContent=this.value">
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:4px;">
+            <span>1: Low</span><span>10: High</span>
+          </div>`
+          }
         </div>`,
         )
         .join("")}
@@ -1310,10 +1342,15 @@ const HF_PLAYER = (() => {
     if (!todayLog) return;
 
     ["energy", "mood", "sleep", "soreness", "hydration"].forEach((k) => {
-      const val = todayLog[k] || 5;
-      const slider = document.querySelector(`input[oninput*="sv-${k}"]`);
+      const val = todayLog[k] || (k === "hydration" ? 0 : 5);
+      if (k === "hydration") {
+        const numInput = document.getElementById("sv-hydration-input");
+        if (numInput) numInput.value = val;
+      } else {
+        const slider = document.querySelector(`input[oninput*="sv-${k}"]`);
+        if (slider) slider.value = val;
+      }
       const display = document.getElementById(`sv-${k}`);
-      if (slider) slider.value = val;
       if (display) display.textContent = val;
     });
 
@@ -1329,6 +1366,17 @@ const HF_PLAYER = (() => {
   const logHealthCheckin = async () => {
     const session = HF_DB.getSession();
 
+    const hydration = parseFloat(
+      document.getElementById("sv-hydration-input")?.value ||
+      document.getElementById("sv-hydration")?.textContent ||
+      0
+    );
+
+    if (hydration < 0 || hydration > 10) {
+      HF_UTILS.toast("Hydration must be between 0 and 10 litres.", "error");
+      return;
+    }
+
     const data = {
       energy: parseInt(document.getElementById("sv-energy")?.textContent || 5),
       mood: parseInt(document.getElementById("sv-mood")?.textContent || 5),
@@ -1336,9 +1384,7 @@ const HF_PLAYER = (() => {
       soreness: parseInt(
         document.getElementById("sv-soreness")?.textContent || 5,
       ),
-      hydration: parseInt(
-        document.getElementById("sv-hydration")?.textContent || 5,
-      ),
+      hydration,
       notes: document.getElementById("health-notes")?.value.trim() || null,
     };
 

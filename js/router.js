@@ -413,12 +413,27 @@ const HF_ROUTER = (() => {
         });
       }
 
-      if (session.role === "player" || session.role === "admin") {
+     if (session.role === "player" || session.role === "admin") {
         HF_DB.subscribeToUserStatus(session.userId, async (updatedUser) => {
           if (
             (updatedUser.password_version || 1) > (session.passwordVersion || 1)
           ) {
             _forceLogout();
+          }
+        });
+      }
+
+      if (session.role === "player") {
+        // subscribe to coach's training row for real-time plan updates
+        HF_DB.getPlayerCurrentCoach(session.userId).then(({ data: invite }) => {
+          if (invite?.coach_id) {
+            HF_DB.subscribeToCoachTraining(invite.coach_id, () => {
+              HF_UTILS.toast("Your coach updated the training plan.", "success");
+              const view = document.querySelector(".nav-item.active")?.dataset.view;
+              if (view === "training") {
+                window.HF_PLAYER?.training?.(HF_DB.getSession());
+              }
+            });
           }
         });
       }
