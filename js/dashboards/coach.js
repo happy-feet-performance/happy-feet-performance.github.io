@@ -1314,7 +1314,9 @@ const HF_COACH = (() => {
       Match: "var(--faith)",
       Rest: "var(--text3)",
     };
-    const types = Object.keys(typeColors);
+
+    // Change when we're ready to work on matches functionality
+    const types = Object.keys(typeColors).filter(t => t !== "Match");
 
     const view = window._coachTrainingView || "week";
     const selectedDay = window._coachTrainingSelectedDay ?? new Date().getDay();
