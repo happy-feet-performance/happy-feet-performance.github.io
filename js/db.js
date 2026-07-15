@@ -2166,6 +2166,16 @@ const HF_DB = (() => {
     }
   };
 
+  const getTrainingCached = async (userId) => {
+    if (window._cachedTrainingData && window._cachedTrainingDataFor === userId) {
+      return window._cachedTrainingData;
+    }
+    const data = await getTraining(userId);
+    window._cachedTrainingData = data;
+    window._cachedTrainingDataFor = userId;
+    return data;
+  };
+
   // ── HEALTH ──────────────────────────────────────────────────
   const getHealth = async (userId) =>
     (await _getData("health", userId)) || { checkins: {}, injuries: [] };
@@ -3204,6 +3214,17 @@ const HF_DB = (() => {
     return { data };
   };
 
+  const getIncomingMatchesForCoach = async (coachId) => {
+    const { data, error } = await _client
+      .from("matches")
+      .select("*, coach:users!matches_coach_id_fkey(id, name, profile)")
+      .eq("opponent_coach_id", coachId)
+      .in("match_status", ["pending","confirmed","completed"])
+      .order("date", { ascending: true });
+    if (error) return { data: [] };
+    return { data: data || [] };
+  };
+
   // ── AI AGENT ────────────────────────────────────────────────
   const saveAgentConversation = async (
     userId,
@@ -3497,6 +3518,7 @@ const HF_DB = (() => {
     getTrainingLogs,
     getTodayTrainingLog,
     getCoachTrainingForPlayer,
+    getTrainingCached,
 
     // ── HEALTH ──────────────────────────────────────────────────
     getHealth,
@@ -3547,6 +3569,7 @@ const HF_DB = (() => {
     cancelMatch,
     checkLineupDeadlines,
     getMatchForOpponentCoach,
+    getIncomingMatchesForCoach,
 
     // ── AI AGENT ────────────────────────────────────────────────
     saveAgentConversation,

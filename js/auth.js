@@ -586,6 +586,7 @@ const HF_AUTH = (() => {
     window._cachedSquadPlayers = null;
     window._cachedPendingRequests = null;
     window._cachedCoachMatches = null;
+    window._cachedIncomingMatches = null;
 
     // clear all form fields
     [

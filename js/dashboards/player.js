@@ -35,12 +35,19 @@ const HF_PLAYER = (() => {
     const p = s.profile || {};
     const r = p.ratings || {};
     const overall = HF_UTILS.calcRating(r);
-    const tracker = await HF_DB.getTracker(s.userId);
-    const sessionsThisMonth = tracker?.sessionsThisMonth || 0;
-    const loginStreak = await HF_DB.getLoginStreak(s.userId);
     const newUser = HF_UTILS.isNewUser(s);
-    const { data: agentConvos } = await HF_DB.getAgentConversations(s.userId);
-    const unreadCount = await HF_DB.getUnreadCount(s.userId);
+    const [
+      tracker,
+      loginStreak,
+      { data: agentConvos },
+      unreadCount,
+    ] = await Promise.all([
+      HF_DB.getTracker(s.userId),
+      HF_DB.getLoginStreak(s.userId),
+      HF_DB.getAgentConversations(s.userId),
+      HF_DB.getUnreadCount(s.userId),
+    ]);
+    const sessionsThisMonth = tracker?.sessionsThisMonth || 0;
 
     setMain(`
     <div class="welcome-banner">
@@ -645,9 +652,6 @@ const HF_PLAYER = (() => {
     window._trainingLogs = logs;
     window._trainingTypeColors = typeColors;
 
-    // most recent broadcast session
-    const latestSession = sessions[0] || null;
-
     const logForToday = logs?.find((l) => l.date === todayISO);
     const isDone = logForToday?.completed;
 
@@ -852,75 +856,6 @@ const HF_PLAYER = (() => {
         </div>
       </div>
     </div>
-
-    ${
-      latestSession
-        ? (() => {
-            const typeColors = {
-              Technical: "var(--gold)",
-              Tactical: "var(--blue)",
-              Physical: "var(--red)",
-              Recovery: "var(--green)",
-              Match: "var(--faith)",
-              Rest: "var(--text3)",
-            };
-            const cat = latestSession.category || "";
-            const isMatch = cat === "Match";
-            const color =
-              typeColors[cat] ||
-              typeColors[
-                latestSession.name?.includes("vs") ? "Match" : "Technical"
-              ] ||
-              "var(--gold)";
-            const bgColor = isMatch ? "var(--faith-lt)" : color + "11";
-
-            return `
-  <div class="card" style="border-top:2px solid ${color};">
-    <div class="card-title"><div class="card-dot" style="background:${color};"></div>Latest session from coach</div>
-    <div style="padding:var(--sp-md);background:${bgColor};border-left:3px solid ${color};">
-      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:var(--sp-sm);">
-        <div style="font-size:14px;font-weight:600;color:${isMatch ? color : "var(--text)"};">
-          ${isMatch ? `<i class="ti ti-whistle" style="margin-right:6px"></i>${p.club || "Your team"} ${latestSession.name}` : latestSession.name}
-        </div>
-        <span style="font-family:var(--font);font-size:9px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;background:${color}22;color:${color};">${cat}</span>
-      </div>
-      ${
-        isMatch
-          ? `
-      ${latestSession.location ? `<div style="font-size:12px;color:var(--text2);margin-bottom:var(--sp-sm);"><i class="ti ti-map-pin" style="margin-right:4px"></i>${latestSession.location}</div>` : ""}
-      ${latestSession.intent ? `<div style="font-size:12px;color:var(--text2);"><i class="ti ti-target" style="margin-right:4px"></i>${latestSession.intent}</div>` : ""}
-      `
-          : `
-      <div style="display:flex;gap:var(--sp-lg);flex-wrap:wrap;font-size:12px;color:var(--text2);margin-bottom:${latestSession.drills?.length ? "var(--sp-md)" : "0"};">
-        ${latestSession.duration ? `<span><i class="ti ti-clock" style="margin-right:4px"></i>${latestSession.duration} min</span>` : ""}
-        ${latestSession.intensity ? `<span><i class="ti ti-gauge" style="margin-right:4px"></i>${latestSession.intensity} intensity</span>` : ""}
-        ${latestSession.intent ? `<span><i class="ti ti-target" style="margin-right:4px"></i>${latestSession.intent}</span>` : ""}
-      </div>
-      ${
-        latestSession.drills?.length
-          ? `
-      <div style="margin-top:var(--sp-sm);">
-        <div style="font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text2);margin-bottom:6px;">Drills</div>
-        ${latestSession.drills
-          .map(
-            (d) => `
-          <div style="display:flex;align-items:center;gap:var(--sp-sm);padding:6px 0;border-bottom:0.5px solid var(--border);">
-            <div style="width:6px;height:6px;background:${color};flex-shrink:0;"></div>
-            <span style="flex:1;font-size:12px;color:var(--text)">${d.name}</span>
-            <span style="font-size:11px;color:var(--text3)">${d.type} · ${d.duration}min</span>
-          </div>`,
-          )
-          .join("")}
-      </div>`
-          : ""
-      }
-      `
-      }
-    </div>
-  </div>`;
-          })()
-        : ""
-    }
 
     <div class="card">
       <div class="card-title"><div class="card-dot"></div>My completion log</div>

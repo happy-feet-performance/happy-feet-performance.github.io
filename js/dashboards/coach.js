@@ -32,11 +32,18 @@ const HF_COACH = (() => {
 
   // ── DASHBOARD ───────────────────────────────────────────────
   const dashboard = async (s) => {
-    const { data: freshStatus } = await HF_DB.getUserStatus(s.userId, "squad");
-    if (
-      freshStatus?.squad_status &&
-      freshStatus.squad_status !== s.squadStatus
-    ) {
+    // run all dashboard queries in parallel
+    const [
+      { data: freshStatus },
+      { data: readiness },
+      { data: agentConvos },
+    ] = await Promise.all([
+      HF_DB.getUserStatus(s.userId, "squad"),
+      HF_DB.getSquadReadiness(s.userId),
+      HF_DB.getAgentConversations(s.userId),
+    ]);
+
+    if (freshStatus?.squad_status && freshStatus.squad_status !== s.squadStatus) {
       s.squadStatus = freshStatus.squad_status;
       HF_DB.saveSession(s);
     }
@@ -49,8 +56,6 @@ const HF_COACH = (() => {
     const isRejected = squadStatus === "rejected";
     const isAwaitingCoach = squadStatus === "awaiting_coach_approval";
     const newUser = HF_UTILS.isNewUser(s);
-    const { data: readiness } = await HF_DB.getSquadReadiness(s.userId);
-    const { data: agentConvos } = await HF_DB.getAgentConversations(s.userId);
 
     const alertCount = isVerified && readiness ? readiness.alertCount : 0;
 
@@ -1265,7 +1270,7 @@ const HF_COACH = (() => {
       return;
     }
 
-    const saved = await HF_DB.getTraining(s.userId);
+    const saved = await HF_DB.getTrainingCached(s.userId);
     let schedule = saved?.schedule || {};
     const allSessions = saved?.sessions || [];
     // load pending match requests for this coach (both as requester and opponent)
@@ -1276,9 +1281,12 @@ const HF_COACH = (() => {
     const pendingRequests = window._cachedPendingRequests;
 
     // build a set of dates locked by incoming requests
-    const incomingLockedDates = new Set(
-      (pendingRequests || []).map((r) => r.date),
-    );
+    const incomingLockedDates = new Set([
+      ...(pendingRequests || []).map((r) => r.date),
+      ...(window._cachedIncomingMatches || [])
+        .filter((m) => ["pending", "confirmed"].includes(m.match_status))
+        .map((m) => m.date),
+    ]);
 
     // client-side deadline fallback (only run once per session, not on every render)
     if (!window._deadlineChecked) {
@@ -1324,17 +1332,15 @@ const HF_COACH = (() => {
       ) || null;
 
     // check if this coach is the OPPONENT for a match on the selected day
+    if (!window._cachedIncomingMatches) {
+      const { data: im } = await HF_DB.getIncomingMatchesForCoach(s.userId);
+      window._cachedIncomingMatches = im || [];
+    }
     let opponentMatchRequest = null;
     if (!existingSession?.matchId) {
-      const cacheKey = `_cachedOpponentMatch_${selectedDateISO}`;
-      if (window[cacheKey] === undefined) {
-        const { data: incomingMatch } = await HF_DB.getMatchForOpponentCoach(
-          s.userId,
-          selectedDateISO,
-        );
-        window[cacheKey] = incomingMatch || null;
-      }
-      opponentMatchRequest = window[cacheKey];
+      opponentMatchRequest =
+        window._cachedIncomingMatches.find((m) => m.date === selectedDateISO) ||
+        null;
     }
 
     if (effectiveType === "Match" && existingSession?.matchId) {
@@ -2635,7 +2641,7 @@ const HF_COACH = (() => {
     // collect player stats from inputs
     const playerStats = {};
 
-    const existing = await HF_DB.getTraining(session.userId);
+    const existing = await HF_DB.getTrainingCached(session.userId);
     const sessions = (existing?.sessions || []).filter(
       (ss) => ss.dayIndex !== dayIndex && ss.date !== dateISO,
     );
@@ -3435,24 +3441,46 @@ const HF_COACH = (() => {
       return;
     }
 
-    const existing = await HF_DB.getTraining(session.userId);
+    const existing = await HF_DB.getTrainingCached(session.userId);
     const schedule = existing?.schedule || {};
     schedule[dateISO] = type;
     delete schedule[dayIndex];
+    _invalidateTrainingCache(); // invalidate before write so next read is fresh
     await HF_DB.saveTraining(session.userId, { ...existing, schedule });
     window._coachTrainingSelectedDay = dayIndex;
-    _invalidateTrainingCache();
     training(session);
   };
 
   const clearDayType = async (dayIndex, dateISO) => {
     const session = HF_DB.getSession();
-    const existing = await HF_DB.getTraining(session.userId);
+    const existing = await HF_DB.getTrainingCached(session.userId);
 
-    // check if there's a match on this day
+    // check if there's a saved session for this day
     const daySession = (existing?.sessions || []).find(
       (ss) => ss.dayIndex === dayIndex || ss.date === dateISO,
     );
+    const hasSession = !!daySession?.name;
+    const hasMatchId = !!daySession?.matchId;
+
+    if (hasMatchId) {
+      // match cancel flow already handled separately
+    } else if (hasSession) {
+      if (
+        !confirm(
+          `Clear the session plan for ${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dayIndex]}?\n\nThis will remove "${daySession.name}" and notify your squad.`,
+        )
+      ) {
+        return;
+      }
+    } else {
+      if (
+        !confirm(
+          `Clear the session type for ${["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][dayIndex]}?`,
+        )
+      ) {
+        return;
+      }
+    }
 
     if (daySession?.matchId) {
       const { data: match } = await HF_DB.getMatchById(daySession.matchId);
@@ -3487,10 +3515,33 @@ const HF_COACH = (() => {
       schedule,
       sessions,
     });
+
+    // notify squad if a named session was cleared
+    if (hasSession && !hasMatchId) {
+      const { data: squadPlayers } = await HF_DB.getSquadPlayers(
+        session.userId,
+      );
+      if (squadPlayers?.length > 0) {
+        const dayLabel = new Date(dateISO + "T00:00:00").toLocaleDateString(
+          "en-GB",
+          { weekday: "long", day: "numeric", month: "long" },
+        );
+        for (const sp of squadPlayers) {
+          await HF_DB._sendMessage(
+            "system",
+            sp.player_id,
+            `Session cancelled: ${daySession.name}`,
+            `${session.name} has cancelled the ${daySession.category || "training"} session planned for ${dayLabel}.`,
+          );
+        }
+      }
+    }
+
     window._coachTrainingSelectedDay = dayIndex;
     window._matchTab = null;
     window._matchSaved = false;
     window._editingMatchDetails = false;
+    _invalidateTrainingCache();
     training(session);
   };
 
@@ -3510,7 +3561,14 @@ const HF_COACH = (() => {
     const drills = window._sessionDrills || [];
 
     // save to training table
-    const existing = await HF_DB.getTraining(session.userId);
+    const existing = await HF_DB.getTrainingCached(session.userId);
+
+    // look up existing session for this day to determine if this is an update
+    const existingSession =
+      (existing?.sessions || []).find(
+        (ss) => ss.dayIndex === dayIndex || ss.date === dateISO,
+      ) || null;
+
     const sessions = (existing?.sessions || []).filter(
       (ss) => ss.dayIndex !== dayIndex && ss.date !== dateISO,
     );
@@ -4601,9 +4659,11 @@ const HF_COACH = (() => {
     window._cachedSquadPlayersFor = null;
     window._cachedPendingRequests = null;
     window._cachedCoachMatches = null;
-    // clear all per-date opponent match caches
-    Object.keys(window).filter(k => k.startsWith('_cachedOpponentMatch_') || k.startsWith('_cachedIsHomeCoach_'))
-      .forEach(k => delete window[k]);
+    window._cachedIncomingMatches = null;
+    window._cachedTrainingData = null;
+    Object.keys(window)
+      .filter((k) => k.startsWith("_cachedIsHomeCoach_"))
+      .forEach((k) => delete window[k]);
   };
 
   return {

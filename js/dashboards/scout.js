@@ -34,17 +34,18 @@ const HF_SCOUT = (() => {
     const newUser = HF_UTILS.isNewUser(s);
     const { data: agentConvos } = await HF_DB.getAgentConversations(s.userId);
 
-    let trackedCount = 0,
-      eliteCount = 0,
-      sharedCount = 0,
-      placedCount = 0;
-    if (isVerified) {
-      const { data: prospects } = await HF_DB.getScoutProspects(s.userId);
-      trackedCount = prospects?.length || 0;
-      eliteCount = prospects?.filter((p) => p.flagged).length || 0;
-      sharedCount = prospects?.filter((p) => p.report_shared).length || 0;
-      placedCount = prospects?.filter((p) => p.placed).length || 0;
-    }
+    const [
+      { data: agentConvos },
+      { data: prospects },
+    ] = await Promise.all([
+      HF_DB.getAgentConversations(s.userId),
+      isVerified ? HF_DB.getScoutProspects(s.userId) : Promise.resolve({ data: null }),
+    ]);
+
+    const trackedCount = prospects?.length || 0;
+    const eliteCount = prospects?.filter((p) => p.flagged).length || 0;
+    const sharedCount = prospects?.filter((p) => p.report_shared).length || 0;
+    const placedCount = prospects?.filter((p) => p.placed).length || 0;
 
     const regionsDisplay = Array.isArray(p.regionsCovered)
       ? p.regionsCovered.join(", ")
