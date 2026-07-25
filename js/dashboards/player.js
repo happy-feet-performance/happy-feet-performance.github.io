@@ -36,17 +36,13 @@ const HF_PLAYER = (() => {
     const r = p.ratings || {};
     const overall = HF_UTILS.calcRating(r);
     const newUser = HF_UTILS.isNewUser(s);
-    const [
-      tracker,
-      loginStreak,
-      { data: agentConvos },
-      unreadCount,
-    ] = await Promise.all([
-      HF_DB.getTracker(s.userId),
-      HF_DB.getLoginStreak(s.userId),
-      HF_DB.getAgentConversations(s.userId),
-      HF_DB.getUnreadCount(s.userId),
-    ]);
+    const [tracker, loginStreak, { data: agentConvos }, unreadCount] =
+      await Promise.all([
+        HF_DB.getTracker(s.userId),
+        HF_DB.getLoginStreak(s.userId),
+        HF_DB.getAgentConversations(s.userId),
+        HF_DB.getUnreadCount(s.userId),
+      ]);
     const sessionsThisMonth = tracker?.sessionsThisMonth || 0;
 
     setMain(`
@@ -1062,6 +1058,12 @@ const HF_PLAYER = (() => {
         max: 10,
         placeholder: "e.g. 2.5",
       },
+      {
+        id: "nutrition",
+        label: "Nutrition",
+        icon: "ti-salad",
+        desc: "How healthy was your food today?",
+      },
     ];
 
     const today = new Date().toLocaleDateString("en-GB", {
@@ -1100,16 +1102,20 @@ const HF_PLAYER = (() => {
               ${m.id === "hydration" ? (todayLog?.[m.id] || 0) + "L" : todayLog?.[m.id] || 5}
             </span>
           </div>
-          ${m.id === "hydration" ? `
+          ${
+            m.id === "hydration"
+              ? `
           <div style="font-size:13px;color:var(--text2);margin-top:4px;">
             ${todayLog?.[m.id] || 0}L consumed
-          </div>` : `
+          </div>`
+              : `
           <div style="height:6px;background:var(--border);margin-top:8px;">
             <div style="height:100%;width:${((todayLog?.[m.id] || 5) / 10) * 100}%;background:var(--gold);"></div>
           </div>
           <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:4px;">
             <span>1: Low</span><span>10: High</span>
-          </div>`}
+          </div>`
+          }
         </div>`,
         )
         .join("")}
@@ -1135,10 +1141,14 @@ const HF_PLAYER = (() => {
               <i class="ti ${m.icon}" style="color:var(--text2)"></i>
               <span style="font-size:13px;font-weight:600;color:var(--text)">${m.label}</span>
             </div>
-            ${m.id !== "hydration" ? `
+            ${
+              m.id !== "hydration"
+                ? `
             <span id="sv-${m.id}" style="font-family:var(--font);font-size:14px;font-weight:700;color:var(--gold)">
               ${todayLog?.[m.id] || 5}
-            </span>` : `<span id="sv-${m.id}" style="display:none;">0</span>`}
+            </span>`
+                : `<span id="sv-${m.id}" style="display:none;">0</span>`
+            }
           </div>
           ${
             m.type === "number"
@@ -1238,6 +1248,7 @@ const HF_PLAYER = (() => {
                 <th title="Sleep"><i class="ti ti-moon"></i></th>
                 <th title="Soreness"><i class="ti ti-activity"></i></th>
                 <th title="Hydration"><i class="ti ti-droplet"></i></th>
+                <th title="Nutrition"><i class="ti ti-salad"></i></th>
                 <th>Notes</th>
               </tr>
             </thead>
@@ -1254,9 +1265,10 @@ const HF_PLAYER = (() => {
                     <td>${l.mood || "-"}</td>
                     <td>${l.sleep || "-"}</td>
                     <td>${l.soreness || "-"}</td>
-                    <td>${l.hydration || "-"}</td>
+                    <td>${l.hydration != null ? l.hydration + "L" : "-"}</td>
+                    <td>${l.nutrition || "-"}</td>
                     <td style="color:var(--text2);font-size:11px">${l.notes && l.notes !== "null" ? l.notes : "None"}</td>
-                  </tr>`;
+                    </tr>`;
                 })
                 .join("")}
             </tbody>
@@ -1276,18 +1288,20 @@ const HF_PLAYER = (() => {
     const todayLog = window._todayHealthLog;
     if (!todayLog) return;
 
-    ["energy", "mood", "sleep", "soreness", "hydration"].forEach((k) => {
-      const val = todayLog[k] || (k === "hydration" ? 0 : 5);
-      if (k === "hydration") {
-        const numInput = document.getElementById("sv-hydration-input");
-        if (numInput) numInput.value = val;
-      } else {
-        const slider = document.querySelector(`input[oninput*="sv-${k}"]`);
-        if (slider) slider.value = val;
-      }
-      const display = document.getElementById(`sv-${k}`);
-      if (display) display.textContent = val;
-    });
+    ["energy", "mood", "sleep", "soreness", "hydration", "nutrition"].forEach(
+      (k) => {
+        const val = todayLog[k] || (k === "hydration" ? 0 : 5);
+        if (k === "hydration") {
+          const numInput = document.getElementById("sv-hydration-input");
+          if (numInput) numInput.value = val;
+        } else {
+          const slider = document.querySelector(`input[oninput*="sv-${k}"]`);
+          if (slider) slider.value = val;
+        }
+        const display = document.getElementById(`sv-${k}`);
+        if (display) display.textContent = val;
+      },
+    );
 
     const notes = document.getElementById("health-notes");
     if (notes) notes.value = todayLog.notes || "";
@@ -1303,8 +1317,8 @@ const HF_PLAYER = (() => {
 
     const hydration = parseFloat(
       document.getElementById("sv-hydration-input")?.value ||
-      document.getElementById("sv-hydration")?.textContent ||
-      0
+        document.getElementById("sv-hydration")?.textContent ||
+        0,
     );
 
     if (hydration < 0 || hydration > 10) {
@@ -1320,6 +1334,9 @@ const HF_PLAYER = (() => {
         document.getElementById("sv-soreness")?.textContent || 5,
       ),
       hydration,
+      nutrition: parseInt(
+        document.getElementById("sv-nutrition")?.textContent || 5,
+      ),
       notes: document.getElementById("health-notes")?.value.trim() || null,
     };
 
