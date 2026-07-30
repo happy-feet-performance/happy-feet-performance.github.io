@@ -6,6 +6,66 @@
 const HF_PLAYER = (() => {
   const { barHTML, miniChartHTML, avatarHTML, badgeHTML, toast } = HF_UTILS;
 
+  // ── ONE-TIME SLIDER STYLING (health check-in) ────────────────
+  if (!document.getElementById("hf-slider-styles")) {
+    const style = document.createElement("style");
+    style.id = "hf-slider-styles";
+    style.textContent = `
+      .hf-slider {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        height: 4px;
+        background: var(--border);
+        outline: none;
+        cursor: pointer;
+        margin: 4px 0;
+      }
+      .hf-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        background: var(--gold);
+        border: 2px solid var(--bg);
+        box-shadow: 0 0 0 1px var(--gold);
+        cursor: pointer;
+        transition: transform 0.1s ease;
+      }
+      .hf-slider::-webkit-slider-thumb:hover {
+        transform: scale(1.15);
+      }
+      .hf-slider::-moz-range-track {
+        height: 4px;
+        background: var(--border);
+        border: none;
+      }
+      .hf-slider::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        background: var(--gold);
+        border: 2px solid var(--bg);
+        border-radius: 0;
+        box-shadow: 0 0 0 1px var(--gold);
+        cursor: pointer;
+      }
+      .hf-slider:disabled {
+        cursor: default;
+        opacity: 1;
+      }
+      .hf-slider:disabled::-webkit-slider-thumb {
+        background: var(--text3);
+        box-shadow: none;
+        cursor: default;
+      }
+      .hf-slider:disabled::-moz-range-thumb {
+        background: var(--text3);
+        box-shadow: none;
+        cursor: default;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   const setMain = (html) => {
     if (window._stopConfetti) window._stopConfetti();
     const mc = document.getElementById("main-content");
@@ -897,15 +957,21 @@ const HF_PLAYER = (() => {
       { id: "sleep", label: "Sleep", icon: "ti-moon", desc: "Quality of rest" },
       {
         id: "soreness",
-        label: "Soreness",
+        label: "Training Readiness",
         icon: "ti-activity",
-        desc: "Muscle soreness",
+        desc: "How ready your body feels",
       },
       {
         id: "hydration",
         label: "Hydration",
         icon: "ti-droplet",
         desc: "Water intake",
+      },
+      {
+        id: "nutrition",
+        label: "Nutrition",
+        icon: "ti-apple",
+        desc: "Diet & fueling quality",
       },
     ];
 
@@ -942,14 +1008,14 @@ const HF_PLAYER = (() => {
               </div>
             </div>
             <span id="hv-${m.id}" style="font-family:var(--font);font-size:28px;font-weight:700;color:var(--gold);">
-              ${todayLog?.[m.id] || 5}
+              ${todayLog?.[m.id] ?? 5}
             </span>
           </div>
-          <input type="range" min="1" max="10" value="${todayLog?.[m.id] || 5}" step="1"
+          <input type="range" min="0" max="10" value="${todayLog?.[m.id] ?? 5}" step="1"
             disabled
-            style="width:100%;accent-color:var(--gold);opacity:0.5;pointer-events:none;">
+            class="hf-slider">
           <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:4px;">
-            <span>1: Low</span><span>10: High</span>
+            <span>0: Low</span><span>10: High</span>
           </div>
         </div>`,
         )
@@ -977,11 +1043,11 @@ const HF_PLAYER = (() => {
               <span style="font-size:13px;font-weight:600;color:var(--text)">${m.label}</span>
             </div>
             <span id="sv-${m.id}" style="font-family:var(--font);font-size:14px;font-weight:700;color:var(--gold)">
-              ${todayLog?.[m.id] || 5}
+              ${todayLog?.[m.id] ?? 5}
             </span>
           </div>
-          <input type="range" min="1" max="10" value="${todayLog?.[m.id] || 5}" step="1"
-            style="width:100%;accent-color:var(--gold)"
+          <input type="range" min="0" max="10" value="${todayLog?.[m.id] ?? 5}" step="1"
+            class="hf-slider"
             oninput="document.getElementById('sv-${m.id}').textContent=this.value">
         </div>`,
         )
@@ -1035,9 +1101,10 @@ const HF_PLAYER = (() => {
             (log.energy +
               log.mood +
               log.sleep +
-              (10 - log.soreness) +
-              log.hydration) /
-              5,
+              log.soreness +
+              log.hydration +
+              log.nutrition) /
+              6,
           );
           return avg >= 8
             ? "var(--green)"
@@ -1061,8 +1128,9 @@ const HF_PLAYER = (() => {
               <th title="Energy"><i class="ti ti-bolt"></i></th>
               <th title="Mood"><i class="ti ti-mood-smile"></i></th>
               <th title="Sleep"><i class="ti ti-moon"></i></th>
-              <th title="Soreness"><i class="ti ti-activity"></i></th>
+              <th title="Training Readiness"><i class="ti ti-activity"></i></th>
               <th title="Hydration"><i class="ti ti-droplet"></i></th>
+              <th title="Nutrition"><i class="ti ti-apple"></i></th>
               <th>Notes</th>
             </tr>
           </thead>
@@ -1078,8 +1146,9 @@ const HF_PLAYER = (() => {
                   <td>${l.energy || "-"}</td>
                   <td>${l.mood || "-"}</td>
                   <td>${l.sleep || "-"}</td>
-                  <td>${l.soreness || "-"}</td>
-                  <td>${l.hydration || "-"}</td>
+                  <td>${l.soreness ?? "-"}</td>
+                  <td>${l.hydration ?? "-"}</td>
+                  <td>${l.nutrition ?? "-"}</td>
                   <td style="color:var(--text2);font-size:11px">${l.notes && l.notes !== "null" ? l.notes : "None"}</td>
                 </tr>`;
               })
@@ -1100,8 +1169,8 @@ const HF_PLAYER = (() => {
     const todayLog = window._todayHealthLog;
     if (!todayLog) return;
 
-    ["energy", "mood", "sleep", "soreness", "hydration"].forEach((k) => {
-      const val = todayLog[k] || 5;
+    ["energy", "mood", "sleep", "soreness", "hydration", "nutrition"].forEach((k) => {
+      const val = todayLog[k] ?? 5;
       const slider = document.querySelector(`input[oninput*="sv-${k}"]`);
       const display = document.getElementById(`sv-${k}`);
       if (slider) slider.value = val;
@@ -1121,14 +1190,17 @@ const HF_PLAYER = (() => {
     const session = HF_DB.getSession();
 
     const data = {
-      energy: parseInt(document.getElementById("sv-energy")?.textContent || 5),
-      mood: parseInt(document.getElementById("sv-mood")?.textContent || 5),
-      sleep: parseInt(document.getElementById("sv-sleep")?.textContent || 5),
+      energy: parseInt(document.getElementById("sv-energy")?.textContent ?? 5),
+      mood: parseInt(document.getElementById("sv-mood")?.textContent ?? 5),
+      sleep: parseInt(document.getElementById("sv-sleep")?.textContent ?? 5),
       soreness: parseInt(
-        document.getElementById("sv-soreness")?.textContent || 5,
+        document.getElementById("sv-soreness")?.textContent ?? 5,
       ),
       hydration: parseInt(
-        document.getElementById("sv-hydration")?.textContent || 5,
+        document.getElementById("sv-hydration")?.textContent ?? 5,
+      ),
+      nutrition: parseInt(
+        document.getElementById("sv-nutrition")?.textContent ?? 5,
       ),
       notes: document.getElementById("health-notes")?.value.trim() || null,
     };
