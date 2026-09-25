@@ -45,6 +45,21 @@ const HF_PLAYER = (() => {
       ]);
     const sessionsThisMonth = tracker?.sessionsThisMonth || 0;
 
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("PlayerDashboard", mc, {
+        session: s,
+        overall,
+        newUser,
+        loginStreak,
+        unreadCount,
+        sessionsThisMonth,
+        agentConvos,
+      });
+      return;
+    }
+
     setMain(`
     <div class="welcome-banner">
       <div style="display:flex;align-items:center;gap:var(--sp-lg);">
@@ -175,6 +190,20 @@ const HF_PLAYER = (() => {
     const overall = HF_UTILS.calcRating(r);
     const unrated = overall === null;
 
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("PlayerProfile", mc, {
+        session: s,
+        ms,
+        jerseyNumber,
+        onEdit: () => editProfile(),
+        onSettings: () => HF_ROUTER.navTo("profile#settings"),
+        onLeaveTeam: () => leaveTeam(),
+      });
+      return;
+    }
+
     setMain(`
     <!-- ── PROFILE HEADER ── -->
     <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
@@ -220,9 +249,12 @@ const HF_PLAYER = (() => {
         <div style="display:flex;align-items:center;gap:var(--sp-sm);">
           <div class="card-dot"></div>Player details
         </div>
-        <div style="display:flex;gap:6px;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
           <button class="btn btn-outline btn-sm" onclick="HF_PLAYER.editProfile()">
             <i class="ti ti-edit"></i> Edit
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('profile#settings')">
+            <i class="ti ti-settings"></i> Settings
           </button>
           ${
             p.club && p.status !== "unattached"
@@ -254,6 +286,10 @@ const HF_PLAYER = (() => {
     <div class="card">
       <div class="card-title"><div class="card-dot"></div>Match stats</div>
       <div id="player-match-stats">Loading...</div>
+    </div>
+
+    <div class="card">
+      ${HF_SETTINGS.renderSettingsSection(s)}
     </div>
 
     <div class="card">
@@ -339,6 +375,17 @@ const HF_PLAYER = (() => {
   const editProfile = async (editing = true) => {
     const session = HF_DB.getSession();
     const p = session.profile || {};
+
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("PlayerEditProfile", mc, {
+        session,
+        onSave: () => saveProfile(),
+        onCancel: () => HF_ROUTER.navTo("profile"),
+      });
+      return;
+    }
 
     setMain(`
       <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
@@ -488,6 +535,19 @@ const HF_PLAYER = (() => {
       ? [...sessions].reverse().map((s) => s.overall)
       : [];
 
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("PlayerStats", mc, {
+        session: s,
+        overall,
+        sessions,
+        hasStats,
+        trendData,
+      });
+      return;
+    }
+
     setMain(`
     <div class="card">
       <div class="card-title" style="flex-direction:column;align-items:flex-start;gap:2px;">
@@ -607,6 +667,12 @@ const HF_PLAYER = (() => {
 
     // Gate: player must be on a team
     if (!p.club || p.status === "unattached") {
+      if (window._stopConfetti) window._stopConfetti();
+      const mcGate = document.getElementById("main-content");
+      if (mcGate && window.HF_REACT) {
+        window.HF_REACT.mount("PlayerTraining", mcGate, { session: s, hasTeam: false });
+        return;
+      }
       setMain(`
       <div class="card">
         <div style="text-align:center;padding:40px 24px;color:var(--text2)">
@@ -772,6 +838,22 @@ const HF_PLAYER = (() => {
     <div style="padding:var(--sp-md);background:var(--bg2);border-left:3px solid var(--border);margin-bottom:var(--sp-lg);font-size:13px;color:var(--text2);">
       ${isSelectedToday ? "No session planned for today by your coach." : `No session planned for ${selectedDateLabel}.`}
     </div>`;
+
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("PlayerTraining", mc, {
+        session: s,
+        hasTeam: true,
+        schedule,
+        logs,
+        todayISO,
+        todayDayIndex: today,
+        onToggleComplete: (type, date, completed) =>
+          toggleSessionComplete(type, date, completed),
+      });
+      return;
+    }
 
     setMain(`
     <div class="card">
@@ -1026,6 +1108,18 @@ const HF_PLAYER = (() => {
     const { data: todayLog } = await HF_DB.getTodayHealthLog(s.userId);
     window._todayHealthLog = todayLog; // cache it
     const { data: logs } = await HF_DB.getHealthLogs(s.userId);
+
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("PlayerHealth", mc, {
+        session: s,
+        todayLog,
+        logs,
+        onLogCheckin: () => logHealthCheckin(),
+      });
+      return;
+    }
 
     const metrics = [
       {
@@ -1581,6 +1675,16 @@ const HF_PLAYER = (() => {
     const unlockedIds = new Set(unlocked.map((a) => a.id));
     window._unlockedIds = [...unlockedIds];
 
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("PlayerAchievements", mc, {
+        session: s,
+        unlockedIds: [...unlockedIds],
+      });
+      return;
+    }
+
     const unlockedMap = {};
     unlocked.forEach((a) => (unlockedMap[a.id] = a));
 
@@ -1944,6 +2048,12 @@ const HF_PLAYER = (() => {
 
   // ── HIGHLIGHTS ───────────────────────────────────────────────
   const highlights = (s) => {
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("PlayerHighlights", mc, { session: s });
+      return;
+    }
     setMain(`
     <div class="card">
       <div class="card-title"><div class="card-dot"></div>My highlights</div>
@@ -1981,6 +2091,20 @@ const HF_PLAYER = (() => {
       ...m,
       senderName: senderNames[m.from_id] || "HappyFeet",
     }));
+
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("PlayerMessages", mc, {
+        session: s,
+        invites,
+        enriched,
+        enrichedArchived,
+        onRespondInvite: (inviteId, playerId, accept, squadName, coachId) =>
+          respondInvite(inviteId, playerId, accept, squadName, coachId),
+      });
+      return;
+    }
 
     setMain(`
     ${
@@ -2120,6 +2244,13 @@ const HF_PLAYER = (() => {
 
     const allChecked = prayers.every((p) => checked[p.id]);
 
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("PlayerFaith", mc, { session: s, checked });
+      return;
+    }
+
     setMain(`
     <div class="faith-hero">
       <i class="ti ti-cross" style="font-size:32px;margin-bottom:10px;display:block;color:var(--faith)"></i>
@@ -2228,6 +2359,19 @@ const HF_PLAYER = (() => {
           return { ...c, trialRequest: req };
         }),
     );
+
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("PlayerFindMyTeam", mc, {
+        session: s,
+        coaches: coachesWithStatus,
+        onRequestTrial: (c) => requestTrial(c.id, c.name),
+        onMessageCoach: (c) => messageCoach(c.id, c.name),
+      });
+      return;
+    }
+
     setMain(`
     <div class="welcome-banner">
       <div>
