@@ -85,12 +85,36 @@
   margin-bottom: var(--sp-xl);
 }
 
+/* ── AUTH SHELL ── */
+.auth-screens {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--bg2);
+}
+.auth-theme-toggle {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 999;
+}
+
 /* ── AUTH LINK ── */
 .auth-link {
   text-align: center;
   font-size: var(--font-size-sm);
   color: var(--text2);
   margin-top: var(--sp-lg);
+}
+
+.auth-error {
+  color: var(--red);
+  background: rgba(200, 16, 46, 0.08);
+  border: 1px solid rgba(200, 16, 46, 0.2);
+  padding: var(--sp-sm) var(--sp-md);
+  border-radius: 0;
+  margin-bottom: var(--sp-md);
+  font-size: var(--font-size-sm);
 }
 .auth-link a {
   color: var(--gold);
@@ -99,6 +123,157 @@
 }
 .auth-link a:hover {
   text-decoration: underline;
+}
+
+.auth-panel {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-sm);
+  padding: var(--sp-md);
+  background: var(--bg2);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--r-sm);
+  margin-bottom: var(--sp-xl);
+  color: var(--text2);
+  font-size: var(--font-size-sm);
+  text-align: left;
+}
+.auth-panel i {
+  font-size: 18px;
+  color: var(--gold);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.section-header {
+  text-align: center;
+  padding: 16px 0;
+}
+.label-note {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--text3);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.auth-input,
+.input-disabled {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: var(--font);
+  background: var(--bg2);
+  border: 0.5px solid var(--border);
+  color: var(--text);
+  outline: none;
+}
+.auth-input:focus {
+  border-color: var(--gold);
+}
+.input-disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.region-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px;
+  background: var(--bg2);
+  border: 0.5px solid var(--border);
+  min-height: 44px;
+}
+.tag-pill,
+.region-tag {
+  font-family: var(--font);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  background: var(--bg3);
+  border: 0.5px solid var(--border);
+  color: var(--text2);
+  cursor: pointer;
+}
+.tag-pill:hover,
+.region-tag:hover {
+  background: var(--bg);
+  border-color: var(--text);
+}
+.tag-pill.selected,
+.region-tag.selected {
+  background: var(--gold);
+  color: #0f0f0d;
+  border-color: var(--gold);
+}
+.selected-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  border-radius: 4px;
+  background: var(--gold);
+  color: #0f0f0d;
+}
+.selected-tag .tag-close {
+  cursor: pointer;
+  padding-left: 6px;
+  font-size: 12px;
+  line-height: 1;
+}
+.small-text-link {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+.mb-sm {
+  margin-bottom: var(--sp-sm);
+}
+.mb-xl {
+  margin-bottom: var(--sp-xl);
+}
+.text-center {
+  text-align: center;
+}
+.mt-sm {
+  margin-top: var(--sp-sm);
+}
+.text-link {
+  border: 0;
+  background: transparent;
+  color: var(--text3);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+.text-link:hover,
+.text-link:focus {
+  color: var(--gold);
+}
+.text-primary {
+  color: var(--text);
+}
+.auth-icon-xl {
+  font-size: 48px;
+  color: var(--gold);
+  margin-bottom: 16px;
+  display: block;
+}
+.region-button-row {
+  padding: 0;
+  border: none;
+  min-height: auto;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 /* ── ROLE GRID ── */

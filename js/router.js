@@ -413,7 +413,7 @@ const HF_ROUTER = (() => {
         });
       }
 
-     if (session.role === "player" || session.role === "admin") {
+      if (session.role === "player" || session.role === "admin") {
         HF_DB.subscribeToUserStatus(session.userId, async (updatedUser) => {
           if (
             (updatedUser.password_version || 1) > (session.passwordVersion || 1)
@@ -428,8 +428,12 @@ const HF_ROUTER = (() => {
         HF_DB.getPlayerCurrentCoach(session.userId).then(({ data: invite }) => {
           if (invite?.coach_id) {
             HF_DB.subscribeToCoachTraining(invite.coach_id, () => {
-              HF_UTILS.toast("Your coach updated the training plan.", "success");
-              const view = document.querySelector(".nav-item.active")?.dataset.view;
+              HF_UTILS.toast(
+                "Your coach updated the training plan.",
+                "success",
+              );
+              const view =
+                document.querySelector(".nav-item.active")?.dataset.view;
               if (view === "training") {
                 window.HF_PLAYER?.training?.(HF_DB.getSession());
               }
@@ -441,11 +445,18 @@ const HF_ROUTER = (() => {
       if (session.role === "coach") {
         // subscribe to incoming match requests
         HF_DB.subscribeToMatchRequests(session.userId, async () => {
-          const { data: pending } = await HF_DB.getPendingMatchRequests(session.userId);
+          const { data: pending } = await HF_DB.getPendingMatchRequests(
+            session.userId,
+          );
           if (pending?.length > 0) {
-            HF_UTILS.toast(`New match request from ${pending[0].coach?.profile?.club || "a coach"}!`, "success");
-            const view = document.querySelector(".nav-item.active")?.dataset.view;
-            if (view === "training") window.HF_COACH?.training?.(HF_DB.getSession());
+            HF_UTILS.toast(
+              `New match request from ${pending[0].coach?.profile?.club || "a coach"}!`,
+              "success",
+            );
+            const view =
+              document.querySelector(".nav-item.active")?.dataset.view;
+            if (view === "training")
+              window.HF_COACH?.training?.(HF_DB.getSession());
           }
         });
       }
@@ -680,12 +691,14 @@ const HF_ROUTER = (() => {
       toast("Dashboard not found for this role.", "error");
       return;
     }
+    window.HF_REACT?.unmountAll();
     handler.render(view, session);
   };
 
   // ─── Navigate to a view ─────────────────────────────────────
-  const navTo = (view, el_) => {
+  const navTo = (view, el_, anchor) => {
     if (window._stopConfetti) window._stopConfetti();
+    const [routeView, routeAnchor] = (view || "").split("#");
     const session = HF_DB.getSession();
     if (!session) {
       HF_AUTH.logout();
@@ -758,12 +771,21 @@ const HF_ROUTER = (() => {
       .forEach((i) => i.classList.remove("active"));
     if (el_) el_.classList.add("active");
     else {
-      const match = document.querySelector(`.nav-item[data-view="${view}"]`);
+      const match = document.querySelector(
+        `.nav-item[data-view="${routeView}"]`,
+      );
       if (match) match.classList.add("active");
     }
 
     _closeMobileNav();
-    _routeTo(view, session);
+    _routeTo(routeView, session);
+    if (routeAnchor || anchor) {
+      setTimeout(() => {
+        const target = document.getElementById(routeAnchor || anchor);
+        if (target)
+          target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 80);
+    }
   };
 
   // ─── Mobile nav ─────────────────────────────────────────────

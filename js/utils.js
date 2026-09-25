@@ -48,6 +48,17 @@ const HF_UTILS = (() => {
   const qs = (sel, ctx = document) => ctx.querySelector(sel);
   const qsa = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
 
+  const normalizeContact = (value) =>
+    value ? value.toLowerCase().replace(/\s/g, "") : "";
+
+  const validateEmail = (email) =>
+    !!email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
+  const validatePhone = (value) => {
+    const digits = value.replace(/\D/g, "");
+    return digits.length >= 6 && digits.length <= 15;
+  };
+
   const show = (id) => {
     const e = el(id);
     if (e) e.style.display = "block";
@@ -62,17 +73,22 @@ const HF_UTILS = (() => {
     if (!el) return;
     el.textContent = msg;
     el.style.display = "block";
+    el.classList.add("show");
     if (timeout > 0) {
       setTimeout(() => {
         el.style.display = "none";
         el.textContent = "";
+        el.classList.remove("show");
       }, timeout);
     }
   };
 
   const hideError = (id) => {
     const e = el(id);
-    if (e) e.classList.remove("show");
+    if (!e) return;
+    e.style.display = "none";
+    e.textContent = "";
+    e.classList.remove("show");
   };
 
   const setHTML = (id, html) => {
@@ -566,6 +582,9 @@ const HF_UTILS = (() => {
     hide,
     showError,
     hideError,
+    normalizeContact,
+    validateEmail,
+    validatePhone,
     setHTML,
     setText,
     avatarHTML,

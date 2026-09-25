@@ -169,24 +169,33 @@ const HF_DB = (() => {
     return user ? _normaliseUser(user) : null;
   };
 
-  const findUserByContact = async (contact) => {
+  const findUserByContact = async (contactRaw) => {
+    const contact = HF_UTILS.normalizeContact(contactRaw);
     const { data, error } = await _client
       .from("users")
       .select(
-        "id, name, role, banned, ban_reason, kicked, kicked_until, login_attempts, locked_until",
+        "id, name, role, contact, contact_type, display_contact, local_phone, banned, ban_reason, kicked, kicked_until, login_attempts, locked_until",
       )
-      .eq("contact", contact)
+      .or(`contact.eq.${contact},local_phone.eq.${contact}`)
       .maybeSingle();
     if (error || !data) return null;
-    return data;
+    return {
+      ..._normaliseUser(data),
+      banned: data.banned,
+      banReason: data.ban_reason,
+      kicked: data.kicked,
+      kickedUntil: data.kicked_until,
+      lockedUntil: data.locked_until,
+      loginAttempts: data.login_attempts,
+    };
   };
 
-  const checkContactExists = async (contact) => {
-    const normalised = contact.toLowerCase().replace(/\s/g, "");
+  const checkContactExists = async (contactRaw) => {
+    const contact = HF_UTILS.normalizeContact(contactRaw);
     const { data } = await _client
       .from("users")
       .select("id")
-      .eq("contact", normalised)
+      .or(`contact.eq.${contact},local_phone.eq.${contact}`)
       .maybeSingle();
     return { data };
   };
@@ -204,6 +213,22 @@ const HF_DB = (() => {
     const update = { profile };
     if (name) update.name = name;
 
+    const { data: user, error } = await _client
+      .from("users")
+      .update(update)
+      .eq("id", userId)
+      .select()
+      .single();
+
+    if (error) return { error: error.message };
+    return { user: _normaliseUser(user) };
+  };
+
+  const updateUserAccount = async (userId, updates) => {
+    const update = { ...updates };
+    if (update.contact) {
+      update.contact = update.contact.toLowerCase().replace(/\s/g, "");
+    }
     const { data: user, error } = await _client
       .from("users")
       .update(update)
@@ -278,6 +303,12 @@ const HF_DB = (() => {
     profile: u.profile || {},
     squadStatus: u.squad_status,
     agencyStatus: u.agency_status,
+    banned: u.banned,
+    banReason: u.ban_reason,
+    kicked: u.kicked,
+    kickedUntil: u.kicked_until,
+    lockedUntil: u.locked_until,
+    loginAttempts: u.login_attempts,
     passwordVersion: u.password_version || 1,
     createdAt: u.created_at,
   });
@@ -368,23 +399,25 @@ const HF_DB = (() => {
     return { success: true };
   };
 
-  const getUserSecurityQuestion = async (contact) => {
+  const getUserSecurityQuestion = async (contactRaw) => {
+    const contact = HF_UTILS.normalizeContact(contactRaw);
     const { data, error } = await _client
       .from("users")
       .select("security_question")
-      .eq("contact", contact)
+      .or(`contact.eq.${contact},local_phone.eq.${contact}`)
       .maybeSingle();
     if (error || !data) return { data: null };
     return { data };
   };
 
-  const verifySecurityAnswer = async (contact, answer) => {
+  const verifySecurityAnswer = async (contactRaw, answer) => {
+    const contact = HF_UTILS.normalizeContact(contactRaw);
     const { data, error } = await _client
       .from("users")
       .select(
         "id, security_question, security_answer, security_attempts, locked_until",
       )
-      .eq("contact", contact)
+      .or(`contact.eq.${contact},local_phone.eq.${contact}`)
       .maybeSingle();
 
     if (error || !data) return { error: "User not found." };
@@ -2167,7 +2200,10 @@ const HF_DB = (() => {
   };
 
   const getTrainingCached = async (userId) => {
-    if (window._cachedTrainingData && window._cachedTrainingDataFor === userId) {
+    if (
+      window._cachedTrainingData &&
+      window._cachedTrainingDataFor === userId
+    ) {
       return window._cachedTrainingData;
     }
     const data = await getTraining(userId);
@@ -3219,7 +3255,7 @@ const HF_DB = (() => {
       .from("matches")
       .select("*, coach:users!matches_coach_id_fkey(id, name, profile)")
       .eq("opponent_coach_id", coachId)
-      .in("match_status", ["pending","confirmed","completed"])
+      .in("match_status", ["pending", "confirmed", "completed"])
       .order("date", { ascending: true });
     if (error) return { data: [] };
     return { data: data || [] };
@@ -3425,6 +3461,7 @@ const HF_DB = (() => {
     getUserSecurityQuestion,
     verifySecurityAnswer,
     resetPassword,
+    updateUserAccount,
 
     // ── USERS & ADMIN ───────────────────────────────────────────
     getAdminIds,

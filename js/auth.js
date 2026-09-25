@@ -15,11 +15,45 @@ const HF_AUTH = (() => {
   };
 
   // ─── Screens ───────────────────────────────────────────────
+  const _resetAuthErrors = () => {
+    [
+      "login-err",
+      "admin-err",
+      "signup-err",
+      "security-err",
+      "squad-err",
+      "agency-err",
+      "forgot-err",
+      "forgot-err-2",
+      "forgot-err-3",
+    ].forEach(hideError);
+  };
+
   const showScreen = (id) => {
     document
       .querySelectorAll(".auth-screen")
       .forEach((s) => s.classList.remove("active"));
+    _resetAuthErrors();
     document.getElementById(id)?.classList.add("active");
+
+    if (id === "screen-login") {
+      switchLoginTab(state.loginTab);
+    }
+
+    if (id === "screen-signup-role") {
+      state.signup = {};
+      state.securityQuestion = "";
+      state.securityAnswer = "";
+      state.signupTab = "email";
+      state.role = "";
+      document
+        .querySelectorAll(".role-card")
+        .forEach((c) => c.classList.remove("selected"));
+    }
+
+    if (id === "screen-signup-info") {
+      switchSignupTab(state.signupTab);
+    }
 
     // reset forgot password flow when navigating to it
     if (id === "screen-forgot") {
@@ -30,9 +64,6 @@ const HF_AUTH = (() => {
       document.getElementById("forgot-answer").value = "";
       document.getElementById("forgot-new-pass").value = "";
       document.getElementById("forgot-confirm-pass").value = "";
-      hideError("forgot-err");
-      hideError("forgot-err-2");
-      hideError("forgot-err-3");
       window._forgotContact = null;
       window._forgotUserId = null;
     }
@@ -90,13 +121,11 @@ const HF_AUTH = (() => {
       return;
     }
 
-    document.querySelectorAll(".step-row").forEach((row) => {
-      if (state.role === "coach") {
-        if (!row.querySelector(".step:nth-child(4)")) {
-          row.innerHTML += '<div class="step"></div>';
-        }
-      }
-    });
+    state.signup = {};
+    state.securityQuestion = "";
+    state.securityAnswer = "";
+    state.signupTab = "email";
+    hideError("signup-err");
 
     const titles = {
       player: "Player registration",
@@ -111,6 +140,7 @@ const HF_AUTH = (() => {
     el("signup-step2-title").textContent = titles[state.role];
     el("signup-step2-sub").textContent = subs[state.role];
     _injectRoleFields(state.role);
+    switchSignupTab("email");
     showScreen("screen-signup-info");
   };
 
@@ -225,24 +255,25 @@ const HF_AUTH = (() => {
       localPhone = "",
       displayContact = "";
     if (state.signupTab === "email") {
-      contact = el("su-email")?.value.trim().toLowerCase();
-      if (!contact || !contact.includes("@") || !contact.includes(".")) {
+      const rawEmail = el("su-email")?.value.trim().toLowerCase();
+      if (!HF_UTILS.validateEmail(rawEmail)) {
         showError("signup-err", "Please enter a valid email address.");
         return;
       }
+      contact = HF_UTILS.normalizeContact(rawEmail);
       contactType = "email";
-      displayContact = contact;
+      displayContact = rawEmail;
     } else {
       const code = el("su-country-code")?.value || "+233";
-      const num = el("su-phone")?.value.trim().replace(/\s/g, "");
-      if (!num || num.length < 6) {
+      const num = el("su-phone")?.value.trim();
+      if (!HF_UTILS.validatePhone(num)) {
         showError("signup-err", "Please enter a valid phone number.");
         return;
       }
-      contact = code + num;
-      localPhone = num;
+      contact = HF_UTILS.normalizeContact(code + num);
+      localPhone = num.replace(/\s/g, "");
       contactType = "phone";
-      displayContact = `${code} ${num}`;
+      displayContact = `${code} ${localPhone}`;
     }
 
     if (!pass || pass.length < 6) {
@@ -405,6 +436,15 @@ const HF_AUTH = (() => {
 
   // ─── Complete signup ────────────────────────────────────────
   const completeSignup = async () => {
+    if (!state.signup || !state.signup.contact) {
+      HF_UTILS.toast(
+        "Please complete signup details before continuing.",
+        "error",
+      );
+      showScreen("screen-signup-info");
+      return;
+    }
+
     if (window.HF_ROUTER) HF_ROUTER.resetSubscriptions();
 
     const result = await HF_DB.createUser(state.signup);
@@ -414,7 +454,6 @@ const HF_AUTH = (() => {
       return;
     }
 
-    // save security question using stored values from goToConfirm
     if (result.user && state.securityQuestion && state.securityAnswer) {
       await HF_DB.setSecurityQuestion(
         result.user.id,
@@ -428,14 +467,16 @@ const HF_AUTH = (() => {
     if (state.signup.role === "player") {
       await HF_DB.updateLoginStreak(session.userId);
     }
+
     state.newUserId = result.user.id;
+    state.securityQuestion = "";
+    state.securityAnswer = "";
 
     if (state.signup.role === "coach") {
       const clubInput = el("sq-team");
       if (clubInput) {
         clubInput.value = state.signup.profile.club || "";
-        clubInput.style.opacity = "0.6";
-        clubInput.style.cursor = "not-allowed";
+        clubInput.classList.add("input-disabled");
       }
       showScreen("screen-squad-verify");
     } else if (state.signup.role === "scout") {
@@ -454,19 +495,20 @@ const HF_AUTH = (() => {
     let contact = "";
 
     if (state.loginTab === "email") {
-      contact = el("login-email")?.value.trim().toLowerCase();
-      if (!contact) {
-        showError("login-err", "Please enter your email address.");
+      const rawEmail = el("login-email")?.value.trim();
+      if (!HF_UTILS.validateEmail(rawEmail)) {
+        showError("login-err", "Please enter a valid email address.");
         return;
       }
+      contact = HF_UTILS.normalizeContact(rawEmail);
     } else {
       const code = el("login-country-code")?.value || "+233";
-      const num = el("login-phone")?.value.trim().replace(/\s/g, "");
-      if (!num) {
-        showError("login-err", "Please enter your phone number.");
+      const num = el("login-phone")?.value.trim();
+      if (!HF_UTILS.validatePhone(num)) {
+        showError("login-err", "Please enter a valid phone number.");
         return;
       }
-      contact = code + num;
+      contact = HF_UTILS.normalizeContact(code + num);
     }
 
     if (!pass) {
@@ -784,29 +826,37 @@ const HF_AUTH = (() => {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    btn.classList.toggle("selected");
+    const value = btn.dataset.value;
+    if (!value) return;
 
-    if (btn.classList.contains("selected")) {
-      btn.style.display = "none";
-
-      const tag = document.createElement("span");
-      tag.style.cssText = `font-family:var(--font);font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;background:var(--gold);color:#0f0f0d;display:inline-flex;align-items:center;gap:4px;`;
-      tag.dataset.value = btn.dataset.value;
-      tag.innerHTML = `${btn.dataset.value} <span 
-      style="cursor:pointer;font-size:12px;font-weight:700;" 
-      onclick="
-        this.parentElement.remove();
-        const b = document.querySelector('[data-value=\\'${btn.dataset.value}\\']');
-        if(b){b.classList.remove('selected');b.style.display='';}
-      ">×</span>`;
-      container.appendChild(tag);
-    } else {
+    const existingTag = [...container.children].find(
+      (t) => t.dataset.value === value,
+    );
+    if (existingTag) {
+      existingTag.remove();
+      btn.classList.remove("selected");
       btn.style.display = "";
-      const existing = [...container.children].find(
-        (t) => t.dataset.value === btn.dataset.value,
-      );
-      if (existing) existing.remove();
+      return;
     }
+
+    btn.classList.add("selected");
+    btn.style.display = "none";
+
+    const tag = document.createElement("span");
+    tag.className = "selected-tag";
+    tag.dataset.value = value;
+    tag.innerHTML = `${value} <span class="tag-close" title="Remove">×</span>`;
+
+    const closeButton = tag.querySelector(".tag-close");
+    if (closeButton) {
+      closeButton.addEventListener("click", () => {
+        tag.remove();
+        btn.classList.remove("selected");
+        btn.style.display = "";
+      });
+    }
+
+    container.appendChild(tag);
   };
 
   const getSelectedTags = (containerId) => {
@@ -906,7 +956,9 @@ const HF_AUTH = (() => {
   };
 
   const forgotStep1 = async () => {
-    const contact = el("forgot-contact")?.value.trim().toLowerCase();
+    const contact = HF_UTILS.normalizeContact(
+      el("forgot-contact")?.value?.trim(),
+    );
 
     if (!contact) {
       showError("forgot-err", "Please enter your email or phone.");
