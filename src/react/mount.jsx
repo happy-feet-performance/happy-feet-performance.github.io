@@ -1,7 +1,9 @@
 import { createRoot } from "react-dom/client";
+import scoutComponents from "./components/scout/index.js";
 import adminComponents from "./components/admin/index.js";
 
 const registry = {
+  ...scoutComponents,
   ...adminComponents,
 };
 

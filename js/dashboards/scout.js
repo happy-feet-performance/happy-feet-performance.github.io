@@ -25,22 +25,33 @@ const HF_SCOUT = (() => {
 
   // ── DASHBOARD ──────────────────────────────────────────────
   const dashboard = async (s) => {
-    const p = s.profile || {};
     const agencyStatus = s.agencyStatus || "unregistered";
     const isVerified = agencyStatus === "verified";
+    const newUser = HF_UTILS.isNewUser(s);
+
+    const [{ data: agentConvos }, { data: prospects }] = await Promise.all([
+      HF_DB.getAgentConversations(s.userId),
+      isVerified
+        ? HF_DB.getScoutProspects(s.userId)
+        : Promise.resolve({ data: null }),
+    ]);
+
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("ScoutDashboard", mc, {
+        session: s,
+        agentConvos,
+        prospects,
+      });
+      if (newUser) setTimeout(() => HF_UTILS.launchConfetti(), 300);
+      return;
+    }
+
+    const p = s.profile || {};
     const isPending = agencyStatus === "pending";
     const isUnregistered = agencyStatus === "unregistered";
     const isRejected = agencyStatus === "rejected";
-    const newUser = HF_UTILS.isNewUser(s);
-    const { data: agentConvos } = await HF_DB.getAgentConversations(s.userId);
-
-    const [
-      { data: agentConvos },
-      { data: prospects },
-    ] = await Promise.all([
-      HF_DB.getAgentConversations(s.userId),
-      isVerified ? HF_DB.getScoutProspects(s.userId) : Promise.resolve({ data: null }),
-    ]);
 
     const trackedCount = prospects?.length || 0;
     const eliteCount = prospects?.filter((p) => p.flagged).length || 0;
@@ -229,6 +240,17 @@ const HF_SCOUT = (() => {
       s.profile = freshUser.profile;
       HF_DB.saveSession(s);
     }
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("ScoutProfile", mc, {
+        session: s,
+        onEdit: () => editProfile(),
+        onSettings: () => HF_ROUTER.navTo("profile#settings"),
+      });
+      return;
+    }
+
     const p = s.profile || {};
     const regionsDisplay = Array.isArray(p.regionsCovered)
       ? p.regionsCovered.join(", ")
@@ -260,9 +282,14 @@ const HF_SCOUT = (() => {
         <div style="display:flex;align-items:center;gap:var(--sp-sm);">
           <div class="card-dot"></div>Scout details
         </div>
-        <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.editProfile()">
-          <i class="ti ti-edit"></i> Edit
-        </button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="HF_SCOUT.editProfile()">
+            <i class="ti ti-edit"></i> Edit
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('profile#settings')">
+            <i class="ti ti-settings"></i> Settings
+          </button>
+        </div>
       </div>
       <div class="info-grid">
         <div class="info-cell"><div class="info-label">Organisation</div><div class="info-val">${p.org || "-"}</div></div>
@@ -276,12 +303,24 @@ const HF_SCOUT = (() => {
           </div>
         </div>
       </div>
+    </div>
+
+    <div class="card">
+      ${HF_SETTINGS.renderSettingsSection(s)}
     </div>`);
   };
 
   // ── PROFILE HELPERS ───────────────────────────────────────────
   const editProfile = () => {
     const session = HF_DB.getSession();
+
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("ScoutEditProfile", mc, { session });
+      return;
+    }
+
     const p = session.profile || {};
 
     setMain(`
@@ -502,6 +541,17 @@ const HF_SCOUT = (() => {
     const { data: savedProspects } = await HF_DB.getScoutProspects(s.userId);
     const savedIds = new Set(savedProspects?.map((p) => p.player_id) || []);
 
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("ScoutDiscover", mc, {
+        session: s,
+        players,
+        savedIds: [...savedIds],
+      });
+      return;
+    }
+
     setMain(`
       <div class="card">
         <div class="card-title"><div class="card-dot"></div>Discover talent</div>
@@ -547,6 +597,13 @@ const HF_SCOUT = (() => {
   // ── SAVED PROSPECTS ────────────────────────────────────────
   const prospects = async (s) => {
     const { data: saved } = await HF_DB.getScoutProspects(s.userId);
+
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("ScoutProspects", mc, { session: s, saved });
+      return;
+    }
 
     const stages = [
       {
@@ -636,9 +693,9 @@ const HF_SCOUT = (() => {
                   <div style="position:absolute;top:20px;left:50%;width:100%;height:2px;background:${count > 0 ? st.color : "var(--border)"};z-index:0;opacity:0.4;"></div>`
                     : ""
                 }
-                <div style="width:40px;height:40px;border-radius:50%;background:${count > 0 ? st.color : 'var(--bg2)'};border:2px solid ${count > 0 ? st.color : 'var(--border)'};display:flex;align-items:center;justify-content:center;z-index:1;position:relative;cursor:${count > 0 ? 'pointer' : 'default'};"
+                <div style="width:40px;height:40px;border-radius:50%;background:${count > 0 ? st.color : "var(--bg2)"};border:2px solid ${count > 0 ? st.color : "var(--border)"};display:flex;align-items:center;justify-content:center;z-index:1;position:relative;cursor:${count > 0 ? "pointer" : "default"};"
                   onclick="${count > 0 ? `document.getElementById('stage-${st.key}')?.scrollIntoView({behavior:'smooth'})` : ""}">
-                  <i class="ti ${st.icon}" style="color:${count > 0 ? '#fff' : 'var(--text3)'}"></i>
+                  <i class="ti ${st.icon}" style="color:${count > 0 ? "#fff" : "var(--text3)"}"></i>
                 </div>
                 <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:${count > 0 ? st.color : "var(--text3)"};margin-top:6px;text-align:center;">
                   ${st.label}
@@ -1000,6 +1057,13 @@ const HF_SCOUT = (() => {
     const { data: saved } = await HF_DB.getScoutProspects(s.userId);
     const shared = saved?.filter((p) => p.report_shared) || [];
 
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("ScoutReports", mc, { session: s, shared });
+      return;
+    }
+
     setMain(`
       <div class="card">
         <div class="card-title"><div class="card-dot"></div>Scout reports</div>
@@ -1032,6 +1096,13 @@ const HF_SCOUT = (() => {
   const placements = async (s) => {
     const { data: saved } = await HF_DB.getScoutProspects(s.userId);
     const placed = saved?.filter((p) => p.placed) || [];
+
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("ScoutPlacements", mc, { session: s, placed });
+      return;
+    }
 
     setMain(`
       <div class="card">
@@ -1087,6 +1158,17 @@ const HF_SCOUT = (() => {
       ...m,
       senderName: senderNames[m.from_id] || "HappyFeet",
     }));
+
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("ScoutMessages", mc, {
+        session: s,
+        enriched,
+        enrichedArchived,
+      });
+      return;
+    }
 
     setMain(`
       <div class="card">
@@ -1760,6 +1842,16 @@ const HF_SCOUT = (() => {
         return { ...c, networkRequest: req, isApproved: approvedIds.has(c.id) };
       }),
     );
+
+    if (window._stopConfetti) window._stopConfetti();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("ScoutFindMyTalent", mc, {
+        session: s,
+        coaches: coachesWithStatus,
+      });
+      return;
+    }
 
     setMain(`
     <div class="welcome-banner">
