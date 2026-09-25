@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { initials } from "../../../lib/utils.js";
+import { toast } from "../../../lib/dom.js";
 
 function overallOf(p) {
   return p.ratings ? Math.round((p.ratings.speed + p.ratings.tech + p.ratings.tact + p.ratings.phys) / 4) : null;
@@ -237,7 +239,7 @@ function ClubDetailPanel({ coachId, clubName, league, coachUser, readiness, squa
                   }}
                 >
                   <div className="avatar avatar-sm" style={{ background: "var(--green)", flexShrink: 0 }}>
-                    {window.HF_UTILS.initials(sp.player?.name || "?")}
+                    {initials(sp.player?.name || "?")}
                   </div>
                   <div style={{ minWidth: 0 }}>
                     <div
@@ -306,7 +308,7 @@ export default function FindMyTalent({ session: s, coaches }) {
     const session = window.HF_DB.getSession();
     const result = await window.HF_DB.requestClubNetwork(session.userId, coachId);
     if (result.error) {
-      window.HF_UTILS.toast(result.error, "error");
+      toast(result.error, "error");
       return;
     }
 
@@ -317,7 +319,7 @@ export default function FindMyTalent({ session: s, coaches }) {
       `${session.name} from ${session.profile?.org || "HappyFeet Scouting"} has requested to add your club to their scouting network. You can approve or decline from your squad page.`,
     );
 
-    window.HF_UTILS.toast(`Network request sent to ${coachName}!`, "success");
+    toast(`Network request sent to ${coachName}!`, "success");
     setList((prev) => prev.map((c) => (c.id === coachId ? { ...c, networkRequest: { status: "pending" } } : c)));
   };
 

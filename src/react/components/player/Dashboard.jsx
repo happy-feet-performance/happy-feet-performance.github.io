@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import { initials, timeAgo } from "../../../lib/utils.js";
+import { launchConfetti } from "../../../lib/dom.js";
 
 export default function PlayerDashboard({
   session: s,
@@ -13,7 +15,7 @@ export default function PlayerDashboard({
 
   useEffect(() => {
     if (newUser) {
-      const t = setTimeout(() => window.HF_UTILS.launchConfetti(), 300);
+      const t = setTimeout(() => launchConfetti(), 300);
       return () => clearTimeout(t);
     }
   }, [newUser]);
@@ -44,7 +46,7 @@ export default function PlayerDashboard({
                 onError={(e) => (e.target.style.display = "none")}
               />
             ) : (
-              window.HF_UTILS.initials(s.name)
+              initials(s.name)
             )}
           </div>
           <div>
@@ -199,7 +201,7 @@ export default function PlayerDashboard({
                 {c.response.length > 120 ? "..." : ""}
               </div>
               <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 4 }}>
-                {window.HF_UTILS.timeAgo(c.created_at)}
+                {timeAgo(c.created_at)}
               </div>
             </div>
           ))

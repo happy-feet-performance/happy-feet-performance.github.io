@@ -1,3 +1,5 @@
+import { initials } from "../../../lib/utils.js";
+
 export default function CoachEditProfile({ session }) {
   const p = session.profile || {};
 
@@ -35,7 +37,7 @@ export default function CoachEditProfile({ session }) {
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
             ) : (
-              window.HF_UTILS.initials(session.name)
+              initials(session.name)
             )}
           </div>
           <label
@@ -59,7 +61,7 @@ export default function CoachEditProfile({ session }) {
               id="avatar-input"
               accept="image/*"
               style={{ display: "none" }}
-              onChange={(e) => window.HF_UTILS.previewAvatar(e.target)}
+              onChange={(e) => window.HF_ROLE_UTILS.previewAvatar(e.target)}
             />
           </label>
         </div>

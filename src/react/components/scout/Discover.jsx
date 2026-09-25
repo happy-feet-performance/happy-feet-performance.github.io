@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { initials } from "../../../lib/utils.js";
+import { toast } from "../../../lib/dom.js";
 
 function overallOf(prof) {
   return prof.ratings
@@ -14,7 +16,7 @@ function PlayerRow({ p, isSaved, isOpen, onToggle, onSave, onViewProfile, onMess
     <>
       <div className="prospect-row" onClick={() => onToggle(p.id)} style={{ cursor: "pointer" }}>
         <div className="avatar avatar-md" style={{ background: "var(--green)" }}>
-          {window.HF_UTILS.initials(p.name)}
+          {initials(p.name)}
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{p.name}</div>
@@ -114,7 +116,7 @@ export default function Discover({ session: s, players, savedIds }) {
     const session = window.HF_DB.getSession();
     const result = await window.HF_DB.saveProspect(session.userId, playerId);
     if (result.error) {
-      window.HF_UTILS.toast(result.error, "error");
+      toast(result.error, "error");
       return;
     }
 
@@ -125,7 +127,7 @@ export default function Discover({ session: s, players, savedIds }) {
       `${session.name} from ${session.profile?.org || "HappyFeet Scouting"} has added you to their prospect list. Your profile is now being actively monitored. Keep up the great work!`,
     );
 
-    window.HF_UTILS.toast(`${playerName} saved as prospect!`, "success");
+    toast(`${playerName} saved as prospect!`, "success");
     setSaved((prev) => new Set(prev).add(playerId));
   };
 

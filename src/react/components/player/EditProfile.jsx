@@ -1,3 +1,5 @@
+import { initials } from "../../../lib/utils.js";
+
 const POSITIONS = ["GK", "CB", "LB", "RB", "DM", "CM", "CAM", "LW", "RW", "ST"];
 const TIERS = ["U10", "U12", "U14", "U16", "U18", "U21", "Professional"];
 
@@ -37,7 +39,7 @@ export default function PlayerEditProfile({ session: s, onSave, onCancel }) {
               {p.avatarUrl ? (
                 <img src={p.avatarUrl} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
-                window.HF_UTILS.initials(s.name)
+                initials(s.name)
               )}
             </div>
             <label

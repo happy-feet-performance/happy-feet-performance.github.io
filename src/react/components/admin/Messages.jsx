@@ -1,3 +1,5 @@
+import { messageListHTML } from "../../../lib/legacyHtml.js";
+
 export default function Messages({ messages, archived }) {
   const hasMessages = messages && messages.length > 0;
 
@@ -30,7 +32,7 @@ export default function Messages({ messages, archived }) {
           </div>
         ) : (
           <div
-            dangerouslySetInnerHTML={{ __html: window.HF_UTILS.messageListHTML(messages, "admin") }}
+            dangerouslySetInnerHTML={{ __html: messageListHTML(messages, "admin") }}
           />
         )}
       </div>

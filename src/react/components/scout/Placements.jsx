@@ -1,3 +1,5 @@
+import { timeAgo } from "../../../lib/utils.js";
+
 export default function Placements({ placed }) {
   const list = placed || [];
   return (
@@ -23,7 +25,7 @@ export default function Placements({ placed }) {
               style={{ padding: 12, background: "var(--bg2)", borderLeft: "2px solid var(--green)", marginBottom: 8 }}
             >
               <div style={{ fontSize: 13, fontWeight: 600 }}>{name}</div>
-              <div style={{ fontSize: 11, color: "var(--text2)" }}>Placed {window.HF_UTILS.timeAgo(sp.updated_at)}</div>
+              <div style={{ fontSize: 11, color: "var(--text2)" }}>Placed {timeAgo(sp.updated_at)}</div>
             </div>
           );
         })

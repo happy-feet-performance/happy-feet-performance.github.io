@@ -1,3 +1,7 @@
+import { initials, timeAgo } from "../../../lib/utils.js";
+import { toast } from "../../../lib/dom.js";
+import { Badge } from "../shared/index.js";
+
 export default function CoachDashboard({ session: s, readiness, agentConvos, newUser }) {
   const p = s.profile || {};
   const squadStatus = s.squadStatus || "unregistered";
@@ -64,7 +68,7 @@ export default function CoachDashboard({ session: s, readiness, agentConvos, new
                 onError={(e) => (e.target.style.display = "none")}
               />
             ) : (
-              window.HF_UTILS.initials(s.name)
+              initials(s.name)
             )}
           </div>
           <div>
@@ -75,9 +79,7 @@ export default function CoachDashboard({ session: s, readiness, agentConvos, new
               {p.spec || "Head coach"} · {p.licence || "-"} licence
             </div>
             <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
-              <span
-                dangerouslySetInnerHTML={{ __html: window.HF_UTILS.badgeHTML("Coach", "gold") }}
-              />
+              <Badge type="gold">Coach</Badge>
               <span style={{ fontSize: 11, color: "rgba(255,255,255,.4)" }}>{p.club || "-"}</span>
               <span
                 style={{
@@ -295,7 +297,7 @@ export default function CoachDashboard({ session: s, readiness, agentConvos, new
           onClick={() =>
             isVerified
               ? window.HF_ROUTER.navTo("squad")
-              : window.HF_UTILS.toast("Verify your squad first.", "error")
+              : toast("Verify your squad first.", "error")
           }
         >
           <div className="quick-action-icon">
@@ -311,7 +313,7 @@ export default function CoachDashboard({ session: s, readiness, agentConvos, new
           onClick={() =>
             isVerified
               ? window.HF_ROUTER.navTo("training")
-              : window.HF_UTILS.toast("Verify your squad first.", "error")
+              : toast("Verify your squad first.", "error")
           }
         >
           <div className="quick-action-icon">
@@ -325,7 +327,7 @@ export default function CoachDashboard({ session: s, readiness, agentConvos, new
           onClick={() =>
             isVerified
               ? window.HF_ROUTER.navTo("health")
-              : window.HF_UTILS.toast("Verify your squad first.", "error")
+              : toast("Verify your squad first.", "error")
           }
         >
           <div className="quick-action-icon">
@@ -399,7 +401,7 @@ export default function CoachDashboard({ session: s, readiness, agentConvos, new
                 {c.response.length > 120 ? "..." : ""}
               </div>
               <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 4 }}>
-                {window.HF_UTILS.timeAgo(c.created_at)}
+                {timeAgo(c.created_at)}
               </div>
             </div>
           ))

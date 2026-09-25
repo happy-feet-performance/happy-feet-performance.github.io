@@ -1,3 +1,6 @@
+import { timeAgo } from "../../../lib/utils.js";
+import { MiniCalendar, MiniChart } from "../shared/index.js";
+
 export default function PlayerStats({ session: s, overall, sessions, hasStats, trendData }) {
   return (
     <>
@@ -61,7 +64,7 @@ export default function PlayerStats({ session: s, overall, sessions, hasStats, t
           </div>
         ) : (
           <>
-            <div dangerouslySetInnerHTML={{ __html: window.HF_UTILS.miniChartHTML(trendData) }} />
+            <MiniChart values={trendData} />
             <div
               style={{
                 display: "flex",
@@ -83,11 +86,7 @@ export default function PlayerStats({ session: s, overall, sessions, hasStats, t
           <div className="card-title">
             <div className="card-dot"></div>Session calendar
           </div>
-          <div
-            dangerouslySetInnerHTML={{
-              __html: window.HF_UTILS.miniCalendarHTML(sessions, () => "var(--blue)"),
-            }}
-          />
+          <MiniCalendar logs={sessions} />
           <div style={{ display: "flex", gap: "var(--sp-md)", marginTop: "var(--sp-md)", fontSize: 11, color: "var(--text2)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <div style={{ width: 10, height: 10, background: "var(--blue)" }}></div>Check-in logged
@@ -139,7 +138,7 @@ export default function PlayerStats({ session: s, overall, sessions, hasStats, t
                           fontWeight: isToday ? 600 : 400,
                         }}
                       >
-                        {isToday ? "Today" : window.HF_UTILS.timeAgo(r.created_at)}
+                        {isToday ? "Today" : timeAgo(r.created_at)}
                       </td>
                       <td>{r.session_type}</td>
                       <td

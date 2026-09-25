@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { timeAgo } from "../../../lib/utils.js";
 
 // Sub-view rendered by HF_ADMIN.replyTicket() when an admin opens a
 // claimed/resolved ticket's message thread from the Tickets view.
@@ -50,7 +51,7 @@ export default function TicketThread({ ticketId, subject, session, messages }) {
                 }}
               >
                 <div style={{ fontSize: 10, color: "var(--text3)", marginBottom: 3 }}>
-                  {m.from_name} · {window.HF_UTILS.timeAgo(m.created_at)}
+                  {m.from_name} · {timeAgo(m.created_at)}
                 </div>
                 <div
                   style={{

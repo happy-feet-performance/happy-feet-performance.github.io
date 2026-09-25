@@ -1,6 +1,4 @@
 const HF_SETTINGS = (() => {
-  const { el, show, hide, toast } = HF_UTILS;
-
   const _confirm = async (message) => {
     return confirm(message);
   };

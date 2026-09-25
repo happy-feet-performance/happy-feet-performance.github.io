@@ -1,5 +1,6 @@
 const HF_SCOUT = (() => {
-  const { toast } = HF_UTILS;
+  // HF_UTILS is registered by src/lib/legacyBridge.js after this script loads.
+  const toast = (...args) => HF_UTILS.toast(...args);
 
   const setMain = (html) => {
     if (window._stopConfetti) window._stopConfetti();

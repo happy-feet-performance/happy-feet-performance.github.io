@@ -1,3 +1,5 @@
+import { messageListHTML } from "../../../lib/legacyHtml.js";
+
 export default function Messages({ enriched, enrichedArchived }) {
   const msgs = enriched || [];
 
@@ -27,7 +29,7 @@ export default function Messages({ enriched, enrichedArchived }) {
             <div style={{ fontSize: 13 }}>Messages from HappyFeet and players will appear here.</div>
           </div>
         ) : (
-          <div dangerouslySetInnerHTML={{ __html: window.HF_UTILS.messageListHTML(msgs, "scout") }} />
+          <div dangerouslySetInnerHTML={{ __html: messageListHTML(msgs, "scout") }} />
         )}
       </div>
 

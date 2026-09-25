@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { initials, timeAgo } from "../../../lib/utils.js";
 
 function TrialRequests({ trialRequests }) {
   if (!trialRequests || trialRequests.length === 0) return null;
@@ -40,7 +41,7 @@ function TrialRequests({ trialRequests }) {
             }}
           >
             <div className="avatar avatar-md" style={{ background: "var(--green)" }}>
-              {window.HF_UTILS.initials(req.player?.name || "?")}
+              {initials(req.player?.name || "?")}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
@@ -50,7 +51,7 @@ function TrialRequests({ trialRequests }) {
                 {rp.pos || "-"} · {rp.tier || "-"} · {rp.hometown || "-"}
               </div>
               <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>
-                {window.HF_UTILS.timeAgo(req.created_at)}
+                {timeAgo(req.created_at)}
               </div>
             </div>
             <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -118,7 +119,7 @@ function NetworkRequests({ networkRequests }) {
             }}
           >
             <div className="avatar avatar-md" style={{ background: "var(--blue)" }}>
-              {window.HF_UTILS.initials(req.scout?.name || "?")}
+              {initials(req.scout?.name || "?")}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
@@ -128,7 +129,7 @@ function NetworkRequests({ networkRequests }) {
                 {rp.org || "Scout"} · {rp.region || "-"}
               </div>
               <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>
-                {window.HF_UTILS.timeAgo(req.created_at)}
+                {timeAgo(req.created_at)}
               </div>
             </div>
             <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -196,7 +197,7 @@ function TrialPlayers({ trialPlayers }) {
             }}
           >
             <div className="avatar avatar-md" style={{ background: "var(--green)" }}>
-              {window.HF_UTILS.initials(req.player?.name || "?")}
+              {initials(req.player?.name || "?")}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
@@ -206,7 +207,7 @@ function TrialPlayers({ trialPlayers }) {
                 {rp.pos || "-"} · {rp.tier || "-"} · {rp.hometown || "-"}
               </div>
               <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>
-                On trial since {window.HF_UTILS.timeAgo(req.responded_at)}
+                On trial since {timeAgo(req.responded_at)}
               </div>
             </div>
             <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { timeAgo } from "../../../lib/utils.js";
 
 function TicketRow({ t, session }) {
   const roleColor =
@@ -61,7 +62,7 @@ function TicketRow({ t, session }) {
             </span>
           </div>
           <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 4 }}>
-            From: {t.from?.name || "-"} · {window.HF_UTILS.timeAgo(t.created_at)}
+            From: {t.from?.name || "-"} · {timeAgo(t.created_at)}
           </div>
           <div style={{ fontSize: 12, color: "var(--text2)", lineHeight: 1.5 }}>
             {t.body.slice(0, 150)}
@@ -70,7 +71,7 @@ function TicketRow({ t, session }) {
           {t.claimed_by && (
             <div style={{ fontSize: 11, color: "var(--gold)", marginTop: 4 }}>
               <i className="ti ti-user" style={{ marginRight: 4 }}></i>
-              Claimed by {t.claimer?.name || "Admin"} · {window.HF_UTILS.timeAgo(t.claimed_at)}
+              Claimed by {t.claimer?.name || "Admin"} · {timeAgo(t.claimed_at)}
             </div>
           )}
         </div>

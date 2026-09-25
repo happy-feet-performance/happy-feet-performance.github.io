@@ -1,3 +1,6 @@
+import { initials } from "../../../lib/utils.js";
+import { Badge } from "../shared/index.js";
+
 export default function ScoutProfile({ session, onEdit, onSettings }) {
   const p = session.profile || {};
   const regionsDisplay = Array.isArray(p.regionsCovered)
@@ -41,7 +44,7 @@ export default function ScoutProfile({ session, onEdit, onSettings }) {
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
             ) : (
-              window.HF_UTILS.initials(session.name)
+              initials(session.name)
             )}
           </div>
           <div>
@@ -60,10 +63,9 @@ export default function ScoutProfile({ session, onEdit, onSettings }) {
             <div style={{ fontSize: 13, color: "rgba(255,255,255,.55)", marginTop: 3 }}>
               {p.org || "-"}
             </div>
-            <div
-              style={{ marginTop: 8 }}
-              dangerouslySetInnerHTML={{ __html: window.HF_UTILS.badgeHTML("Scout", "blue") }}
-            />
+            <div style={{ marginTop: 8 }}>
+              <Badge type="blue">Scout</Badge>
+            </div>
           </div>
         </div>
       </div>

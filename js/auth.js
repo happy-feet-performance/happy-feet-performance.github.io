@@ -3,8 +3,12 @@
  */
 
 const HF_AUTH = (() => {
-  const { el, showError, hideError, toast, countryCodeSelect, COUNTRY_CODES } =
-    HF_UTILS;
+  // HF_UTILS is registered by src/lib/legacyBridge.js, which runs after this
+  // script loads, so look it up at call time.
+  const el = (id) => HF_UTILS.el(id);
+  const showError = (...args) => HF_UTILS.showError(...args);
+  const hideError = (id) => HF_UTILS.hideError(id);
+  const toast = (...args) => HF_UTILS.toast(...args);
 
   // ─── State ─────────────────────────────────────────────────
   let state = {

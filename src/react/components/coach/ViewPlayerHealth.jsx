@@ -1,3 +1,5 @@
+import { MiniCalendar } from "../shared/index.js";
+
 export default function CoachViewPlayerHealth({ playerName, logs, todayLog }) {
   return (
     <>
@@ -80,16 +82,15 @@ export default function CoachViewPlayerHealth({ playerName, logs, todayLog }) {
           <div className="card-title">
             <div className="card-dot"></div>Check-in calendar
           </div>
-          <div
-            dangerouslySetInnerHTML={{
-              __html: window.HF_UTILS.miniCalendarHTML(logs, (date) => {
-                const log = logs.find((l) => l.date === date);
-                if (!log) return "var(--green)";
-                const avg = Math.round(
-                  (log.energy + log.mood + log.sleep + (10 - log.soreness) + log.hydration) / 5,
-                );
-                return avg >= 8 ? "var(--green)" : avg >= 6 ? "var(--gold)" : "var(--red)";
-              }),
+          <MiniCalendar
+            logs={logs}
+            colorFn={(date) => {
+              const log = logs.find((l) => l.date === date);
+              if (!log) return "var(--green)";
+              const avg = Math.round(
+                (log.energy + log.mood + log.sleep + (10 - log.soreness) + log.hydration) / 5,
+              );
+              return avg >= 8 ? "var(--green)" : avg >= 6 ? "var(--gold)" : "var(--red)";
             }}
           />
           <div style={{ display: "flex", gap: "var(--sp-md)", marginTop: "var(--sp-md)", fontSize: 11, color: "var(--text2)" }}>

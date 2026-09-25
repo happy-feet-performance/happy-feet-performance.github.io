@@ -1,5 +1,6 @@
 const HF_ADMIN = (() => {
-  const { toast } = HF_UTILS;
+  // HF_UTILS is registered by src/lib/legacyBridge.js after this script loads.
+  const toast = (...args) => HF_UTILS.toast(...args);
 
   // ── RENDER DISPATCHER ───────────────────────────────────────
   const render = async (view, session) => {

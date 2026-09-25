@@ -1,3 +1,5 @@
+import { toast } from "../../../lib/dom.js";
+
 export default function PlayerHighlights({ session: s }) {
   return (
     <div className="card">
@@ -19,7 +21,7 @@ export default function PlayerHighlights({ session: s }) {
         </div>
         <button
           className="btn btn-primary"
-          onClick={() => window.HF_UTILS.toast("Video upload coming in the next version!", "success")}
+          onClick={() => toast("Video upload coming in the next version!", "success")}
         >
           <i className="ti ti-upload"></i> Upload video clip
         </button>

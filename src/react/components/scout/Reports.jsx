@@ -1,3 +1,6 @@
+import { timeAgo } from "../../../lib/utils.js";
+import { Badge } from "../shared/index.js";
+
 export default function Reports({ shared }) {
   return (
     <div className="card">
@@ -31,9 +34,9 @@ export default function Reports({ shared }) {
             >
               <div>
                 <div style={{ fontSize: 13, fontWeight: 600 }}>{name}</div>
-                <div style={{ fontSize: 11, color: "var(--text2)" }}>Shared {window.HF_UTILS.timeAgo(sp.updated_at)}</div>
+                <div style={{ fontSize: 11, color: "var(--text2)" }}>Shared {timeAgo(sp.updated_at)}</div>
               </div>
-              <span dangerouslySetInnerHTML={{ __html: window.HF_UTILS.badgeHTML("Shared", "gold") }} />
+              <Badge type="gold">Shared</Badge>
             </div>
           );
         })

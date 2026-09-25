@@ -1,3 +1,6 @@
+import { timeAgo } from "../../../lib/utils.js";
+import { messageListHTML } from "../../../lib/legacyHtml.js";
+
 export default function PlayerMessages({ session: s, invites, enriched, enrichedArchived, onRespondInvite }) {
   return (
     <>
@@ -20,7 +23,7 @@ export default function PlayerMessages({ session: s, invites, enriched, enriched
                 <i className="ti ti-users"></i> Invite to join {inv.squad_name}
               </div>
               <div style={{ fontSize: 12, color: "var(--text2)", marginBottom: 10 }}>
-                {window.HF_UTILS.timeAgo(inv.created_at)}
+                {timeAgo(inv.created_at)}
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button
@@ -67,7 +70,7 @@ export default function PlayerMessages({ session: s, invites, enriched, enriched
             <div style={{ fontSize: 13 }}>Messages will appear here.</div>
           </div>
         ) : (
-          <div dangerouslySetInnerHTML={{ __html: window.HF_UTILS.messageListHTML(enriched, "player") }} />
+          <div dangerouslySetInnerHTML={{ __html: messageListHTML(enriched, "player") }} />
         )}
       </div>
 

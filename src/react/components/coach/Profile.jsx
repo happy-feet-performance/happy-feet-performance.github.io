@@ -1,3 +1,5 @@
+import { Avatar, Badge, WdlRecord } from "../shared/index.js";
+
 export default function CoachProfile({ session: s, wdl, onEdit, onSettings }) {
   const p = s.profile || {};
 
@@ -15,11 +17,7 @@ export default function CoachProfile({ session: s, wdl, onEdit, onSettings }) {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-lg)" }}>
-          <span
-            dangerouslySetInnerHTML={{
-              __html: window.HF_UTILS.avatarHTML(s.name, p.avatarUrl, "xl", "var(--gold)"),
-            }}
-          />
+          <Avatar name={s.name} src={p.avatarUrl} size="xl" color="var(--gold)" />
           <div>
             <div
               style={{
@@ -36,10 +34,9 @@ export default function CoachProfile({ session: s, wdl, onEdit, onSettings }) {
             <div style={{ fontSize: 13, color: "rgba(255,255,255,.55)", marginTop: 3 }}>
               {p.spec || "Head coach"} · {p.club || "-"}
             </div>
-            <div
-              style={{ marginTop: 8 }}
-              dangerouslySetInnerHTML={{ __html: window.HF_UTILS.badgeHTML("Coach", "gold") }}
-            />
+            <div style={{ marginTop: 8 }}>
+              <Badge type="gold">Coach</Badge>
+            </div>
           </div>
         </div>
       </div>
@@ -94,7 +91,7 @@ export default function CoachProfile({ session: s, wdl, onEdit, onSettings }) {
           <div className="info-label" style={{ marginBottom: 8 }}>
             Match record
           </div>
-          <div dangerouslySetInnerHTML={{ __html: window.HF_UTILS.wdlHTML(wdl.W, wdl.D, wdl.L) }} />
+          <WdlRecord W={wdl.W} D={wdl.D} L={wdl.L} />
         </div>
       </div>
 

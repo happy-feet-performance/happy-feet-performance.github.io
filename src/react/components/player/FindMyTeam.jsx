@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { initials } from "../../../lib/utils.js";
 
 const LEAGUES = [
   "Ghana Premier League",
@@ -37,7 +38,7 @@ function CoachCard({ c, onRequestTrial, onMessageCoach }) {
               color: "#0f0f0d",
             }}
           >
-            {window.HF_UTILS.initials(c.name)}
+            {initials(c.name)}
           </div>
           <div>
             <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{c.name}</div>

@@ -1,4 +1,7 @@
 import { useEffect } from "react";
+import { initials, isNewUser, timeAgo } from "../../../lib/utils.js";
+import { launchConfetti, toast } from "../../../lib/dom.js";
+import { Badge } from "../shared/index.js";
 
 export default function Dashboard({ session: s, agentConvos, prospects }) {
   const p = s.profile || {};
@@ -7,7 +10,7 @@ export default function Dashboard({ session: s, agentConvos, prospects }) {
   const isPending = agencyStatus === "pending";
   const isUnregistered = agencyStatus === "unregistered";
   const isRejected = agencyStatus === "rejected";
-  const newUser = window.HF_UTILS.isNewUser(s);
+  const newUser = isNewUser(s);
 
   const trackedCount = prospects?.length || 0;
   const eliteCount = prospects?.filter((pr) => pr.flagged).length || 0;
@@ -16,7 +19,7 @@ export default function Dashboard({ session: s, agentConvos, prospects }) {
 
   useEffect(() => {
     if (newUser) {
-      const t = setTimeout(() => window.HF_UTILS.launchConfetti(), 300);
+      const t = setTimeout(() => launchConfetti(), 300);
       return () => clearTimeout(t);
     }
   }, [newUser]);
@@ -68,7 +71,7 @@ export default function Dashboard({ session: s, agentConvos, prospects }) {
                 }}
               />
             ) : (
-              window.HF_UTILS.initials(s.name)
+              initials(s.name)
             )}
           </div>
           <div>
@@ -79,7 +82,7 @@ export default function Dashboard({ session: s, agentConvos, prospects }) {
               {p.org || "-"} · {p.region || "-"}
             </div>
             <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
-              <span dangerouslySetInnerHTML={{ __html: window.HF_UTILS.badgeHTML("Scout", "blue") }} />
+              <Badge type="blue">Scout</Badge>
               {agencyStatusBadge}
             </div>
           </div>
@@ -200,7 +203,7 @@ export default function Dashboard({ session: s, agentConvos, prospects }) {
           onClick={() =>
             isVerified
               ? window.HF_ROUTER.navTo("discover")
-              : window.HF_UTILS.toast("Verify your agency first.", "error")
+              : toast("Verify your agency first.", "error")
           }
         >
           <div className="quick-action-icon">
@@ -214,7 +217,7 @@ export default function Dashboard({ session: s, agentConvos, prospects }) {
           onClick={() =>
             isVerified
               ? window.HF_ROUTER.navTo("prospects")
-              : window.HF_UTILS.toast("Verify your agency first.", "error")
+              : toast("Verify your agency first.", "error")
           }
         >
           <div className="quick-action-icon">
@@ -267,7 +270,7 @@ export default function Dashboard({ session: s, agentConvos, prospects }) {
                 {c.response.length > 120 ? "..." : ""}
               </div>
               <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 4 }}>
-                {window.HF_UTILS.timeAgo(c.created_at)}
+                {timeAgo(c.created_at)}
               </div>
             </div>
           ))

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import VerificationRow from "./VerificationRow.jsx";
+import { timeAgo } from "../../../lib/utils.js";
+import { Badge } from "../shared/index.js";
 
 function Section({ title, count, color, startOpen = false, children }) {
   const [open, setOpen] = useState(startOpen);
@@ -47,10 +49,10 @@ function VerifiedRow({ v, nameKey }) {
         <div>
           <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{v[nameKey]}</div>
           <div style={{ fontSize: 11, color: "var(--text2)" }}>
-            Verified {v.reviewed_at ? window.HF_UTILS.timeAgo(v.reviewed_at) : "-"}
+            Verified {v.reviewed_at ? timeAgo(v.reviewed_at) : "-"}
           </div>
         </div>
-        <span dangerouslySetInnerHTML={{ __html: window.HF_UTILS.badgeHTML("Verified", "green") }} />
+        <Badge type="green">Verified</Badge>
       </div>
     </div>
   );
@@ -71,10 +73,10 @@ function RejectedRow({ v, nameKey }) {
           <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{v[nameKey]}</div>
           <div style={{ fontSize: 11, color: "var(--red)" }}>Reason: {v.rejection_reason || "-"}</div>
           <div style={{ fontSize: 11, color: "var(--text3)" }}>
-            {window.HF_UTILS.timeAgo(v.submitted_at)}
+            {timeAgo(v.submitted_at)}
           </div>
         </div>
-        <span dangerouslySetInnerHTML={{ __html: window.HF_UTILS.badgeHTML("Rejected", "red") }} />
+        <Badge type="red">Rejected</Badge>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { initials } from "../../../lib/utils.js";
 
 function UserRow({ u, showActions = true }) {
   const roleColor =
@@ -23,7 +24,7 @@ function UserRow({ u, showActions = true }) {
       }}
     >
       <div className="avatar avatar-sm" style={{ background: roleColor }}>
-        {window.HF_UTILS.initials(u.name)}
+        {initials(u.name)}
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{u.name}</div>

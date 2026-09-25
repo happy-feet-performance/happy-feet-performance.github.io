@@ -1,3 +1,5 @@
+import { messageListHTML } from "../../../lib/legacyHtml.js";
+
 export default function CoachMessages({ session: s, enriched, enrichedArchived }) {
   const isAwaitingReview = s.squadStatus === "awaiting_coach_approval";
 
@@ -66,7 +68,7 @@ export default function CoachMessages({ session: s, enriched, enrichedArchived }
             <div style={{ fontSize: 13 }}>Messages from HappyFeet will appear here.</div>
           </div>
         ) : (
-          <div dangerouslySetInnerHTML={{ __html: window.HF_UTILS.messageListHTML(enriched, "coach") }} />
+          <div dangerouslySetInnerHTML={{ __html: messageListHTML(enriched, "coach") }} />
         )}
       </div>
 

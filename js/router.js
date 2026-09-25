@@ -11,7 +11,10 @@
  */
 
 const HF_ROUTER = (() => {
-  const { el, setHTML, setText, avatarColor, initials, toast } = HF_UTILS;
+  // HF_UTILS is registered by src/lib/legacyBridge.js, which runs after this
+  // script loads, so look it up at call time.
+  const el = (id) => HF_UTILS.el(id);
+  const toast = (...args) => HF_UTILS.toast(...args);
 
   // ─── Sidenav configs per role ───────────────────────────────
   const NAVS = {

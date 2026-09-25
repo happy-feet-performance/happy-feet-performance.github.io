@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { getDateForDayISO } from "../../../lib/utils.js";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const TYPE_COLORS = {
@@ -78,7 +79,7 @@ export default function PlayerTraining({
   });
 
   const weekStrip = DAYS.map((day, i) => {
-    const dateISO = window.HF_UTILS.getDateForDayISO(i);
+    const dateISO = getDateForDayISO(i);
     const isToday = i === todayDayIndex;
     const isSelected = dateISO === selectedDate;
     const sessionType = schedule[dateISO] || null;
@@ -398,7 +399,7 @@ export default function PlayerTraining({
             </div>
             <div style={{ display: "flex", gap: 4, justifyContent: "center", flexWrap: "wrap", marginTop: "var(--sp-md)" }}>
               {DAYS.map((day, i) => {
-                const dISO = window.HF_UTILS.getDateForDayISO(i);
+                const dISO = getDateForDayISO(i);
                 const dt = schedule[dISO] || null;
                 const dc = dt ? TYPE_COLORS[dt] || "var(--text3)" : null;
                 const isSelected = dISO === selectedDate;

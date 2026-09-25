@@ -1,3 +1,4 @@
+import "../lib/legacyBridge.js";
 import { createRoot } from "react-dom/client";
 import scoutComponents from "./components/scout/index.js";
 import playerComponents from "./components/player/index.js";

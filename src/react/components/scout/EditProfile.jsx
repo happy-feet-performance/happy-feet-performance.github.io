@@ -1,3 +1,5 @@
+import { initials } from "../../../lib/utils.js";
+
 export default function EditProfile({ session }) {
   const p = session.profile || {};
 
@@ -46,7 +48,7 @@ export default function EditProfile({ session }) {
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
             ) : (
-              window.HF_UTILS.initials(session.name)
+              initials(session.name)
             )}
           </div>
           <label

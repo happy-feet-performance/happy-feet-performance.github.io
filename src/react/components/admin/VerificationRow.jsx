@@ -1,3 +1,6 @@
+import { timeAgo } from "../../../lib/utils.js";
+import { Badge } from "../shared/index.js";
+
 const inputStyle = {
   padding: "8px 12px",
   background: "var(--bg2)",
@@ -47,7 +50,7 @@ export default function VerificationRow({ v, type, session }) {
             <div style={{ fontSize: 11, color: "var(--blue)", marginTop: 2 }}>{v.website}</div>
           )}
           <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 2 }}>
-            Submitted {window.HF_UTILS.timeAgo(v.submitted_at)}
+            Submitted {timeAgo(v.submitted_at)}
           </div>
           {isClaimed && (
             <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>
@@ -62,14 +65,9 @@ export default function VerificationRow({ v, type, session }) {
             </div>
           )}
         </div>
-        <span
-          dangerouslySetInnerHTML={{
-            __html: window.HF_UTILS.badgeHTML(
-              isClaimed ? "In review" : "Pending",
-              isClaimed ? "gold" : isSquad ? "gold" : "blue",
-            ),
-          }}
-        />
+        <Badge type={isClaimed ? "gold" : isSquad ? "gold" : "blue"}>
+          {isClaimed ? "In review" : "Pending"}
+        </Badge>
       </div>
 
       {isMine && isSquad && (

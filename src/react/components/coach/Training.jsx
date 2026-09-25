@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import { getDateForDayISO } from "../../../lib/utils.js";
+import { WdlRecord } from "../shared/index.js";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const TYPE_COLORS = {
@@ -95,7 +97,7 @@ function WeekView({ schedule, selectedDateISO, allSessions, incomingLockedDates 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, marginBottom: "var(--sp-lg)" }}>
       {DAYS.map((day, i) => {
-        const dateISO = window.HF_UTILS.getDateForDayISO(i);
+        const dateISO = getDateForDayISO(i);
         const t = schedule[dateISO] || null;
         const c = t ? TYPE_COLORS[t] : null;
         const displayC = c || (t === "Rest" ? TYPE_COLORS.Rest : null);
@@ -109,7 +111,7 @@ function WeekView({ schedule, selectedDateISO, allSessions, incomingLockedDates 
             style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, cursor: "pointer" }}
             onClick={() => {
               window._coachTrainingSelectedDay = i;
-              window._coachTrainingSelectedDate = window.HF_UTILS.getDateForDayISO(i);
+              window._coachTrainingSelectedDate = getDateForDayISO(i);
               window._matchSaved = false;
               window._editingMatchDetails = false;
               window._matchTab = null;
@@ -241,7 +243,7 @@ function DayView({ schedule, selectedDateISO, allSessions, selectedDay }) {
       </div>
       <div style={{ display: "flex", gap: 4, justifyContent: "center", flexWrap: "wrap", marginBottom: "var(--sp-lg)" }}>
         {DAYS.map((day, i) => {
-          const dISO = window.HF_UTILS.getDateForDayISO(i);
+          const dISO = getDateForDayISO(i);
           const dt = schedule[dISO] || null;
           const dc = dt ? TYPE_COLORS[dt] || "var(--text3)" : null;
           const isSelected = dISO === selectedDateISO;
@@ -796,7 +798,7 @@ function MatchForm({
               {phaseLabel}
             </span>
           </div>
-          {wdl.total > 0 && <div dangerouslySetInnerHTML={{ __html: window.HF_UTILS.wdlHTML(wdl.W, wdl.D, wdl.L) }} />}
+          {wdl.total > 0 && <WdlRecord W={wdl.W} D={wdl.D} L={wdl.L} />}
         </div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "var(--sp-xl)" }}>
@@ -1855,7 +1857,7 @@ export default function CoachTraining({
 }) {
   const view = window._coachTrainingView || "week";
   const selectedDay = window._coachTrainingSelectedDay ?? new Date().getDay();
-  const selectedDateISO = window._coachTrainingSelectedDate || window.HF_UTILS.getDateForDayISO(selectedDay);
+  const selectedDateISO = window._coachTrainingSelectedDate || getDateForDayISO(selectedDay);
   const selectedType = schedule[selectedDateISO] || null;
   const effectiveType = selectedType === "Rest" ? null : selectedType;
 

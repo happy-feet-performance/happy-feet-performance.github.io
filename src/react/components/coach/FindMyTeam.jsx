@@ -1,3 +1,5 @@
+import { initials } from "../../../lib/utils.js";
+
 export default function CoachFindMyTeam({
   session: s,
   players,
@@ -244,7 +246,7 @@ export default function CoachFindMyTeam({
                 }}
               >
                 <div className="avatar avatar-md" style={{ background: "var(--green)" }}>
-                  {window.HF_UTILS.initials(player.name || "?")}
+                  {initials(player.name || "?")}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{player.name || "-"}</div>

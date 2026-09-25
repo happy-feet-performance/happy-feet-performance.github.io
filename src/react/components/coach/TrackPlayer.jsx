@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { MiniCalendar, MiniChart } from "../shared/index.js";
 
 function RatingSlider({ label, initial }) {
   const key = label.toLowerCase();
@@ -101,7 +102,7 @@ export default function CoachTrackPlayer({ playerId, playerName, sessions, today
           <div className="card-title">
             <div className="card-dot"></div>Rating trend
           </div>
-          <div dangerouslySetInnerHTML={{ __html: window.HF_UTILS.miniChartHTML(trendData) }} />
+          <MiniChart values={trendData} />
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text2)", marginTop: 6 }}>
             <span>Oldest</span>
             <span>Latest</span>
@@ -227,7 +228,7 @@ export default function CoachTrackPlayer({ playerId, playerName, sessions, today
           <div className="card-title">
             <div className="card-dot"></div>Session calendar
           </div>
-          <div dangerouslySetInnerHTML={{ __html: window.HF_UTILS.miniCalendarHTML(sessions, () => "var(--blue)") }} />
+          <MiniCalendar logs={sessions} />
           <div style={{ display: "flex", gap: "var(--sp-md)", marginTop: "var(--sp-md)", fontSize: 11, color: "var(--text2)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <div style={{ width: 10, height: 10, background: "var(--blue)" }}></div>Session logged

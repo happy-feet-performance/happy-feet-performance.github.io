@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { initials } from "../../../lib/utils.js";
+import { toast } from "../../../lib/dom.js";
 
 const STAGES = [
   { key: "watching", label: "Watching", color: "var(--blue)", icon: "ti-eye" },
@@ -72,7 +74,7 @@ function SavedProspectRow({ sp, scoutId, isOpen, onToggle, onFlag, onUnflag, onU
             flexShrink: 0,
           }}
         >
-          {window.HF_UTILS.initials(name)}
+          {initials(name)}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 2 }}>{name}</div>
@@ -285,10 +287,10 @@ export default function Prospects({ session: s, saved }) {
     if (!window.confirm(`Remove ${name} from your prospects?`)) return;
     const result = await window.HF_DB.unsaveProspect(s.userId, sp.player_id);
     if (result.error) {
-      window.HF_UTILS.toast(result.error, "error");
+      toast(result.error, "error");
       return;
     }
-    window.HF_UTILS.toast(`${name} removed from prospects.`, "success");
+    toast(`${name} removed from prospects.`, "success");
     setList((prev) => prev.filter((x) => x.id !== sp.id));
   };
 
@@ -298,7 +300,7 @@ export default function Prospects({ session: s, saved }) {
       status: "flagged",
     });
     if (result.error) {
-      window.HF_UTILS.toast(result.error, "error");
+      toast(result.error, "error");
       return;
     }
 
@@ -309,7 +311,7 @@ export default function Prospects({ session: s, saved }) {
       `${s.name} from ${s.profile?.org || "HappyFeet Scouting"} has flagged you as an elite prospect. Your profile is being actively considered for placement opportunities.`,
     );
 
-    window.HF_UTILS.toast(`${name} flagged as elite prospect!`, "success");
+    toast(`${name} flagged as elite prospect!`, "success");
     setList((prev) => prev.map((x) => (x.id === sp.id ? { ...x, flagged: true, status: "flagged" } : x)));
   };
 
@@ -319,10 +321,10 @@ export default function Prospects({ session: s, saved }) {
       status: "watching",
     });
     if (result.error) {
-      window.HF_UTILS.toast(result.error, "error");
+      toast(result.error, "error");
       return;
     }
-    window.HF_UTILS.toast(`${name} unflagged.`, "success");
+    toast(`${name} unflagged.`, "success");
     setList((prev) => prev.map((x) => (x.id === sp.id ? { ...x, flagged: false, status: "watching" } : x)));
   };
 

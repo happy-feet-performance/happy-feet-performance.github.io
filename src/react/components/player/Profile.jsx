@@ -1,7 +1,10 @@
+import { calcRating, initials } from "../../../lib/utils.js";
+import { Badge, RatingBar } from "../shared/index.js";
+
 export default function PlayerProfile({ session: s, ms, jerseyNumber, onEdit, onSettings, onLeaveTeam }) {
   const p = s.profile || {};
   const r = p.ratings || {};
-  const overall = window.HF_UTILS.calcRating(r);
+  const overall = calcRating(r);
   const unrated = overall === null;
   const hasMatchStats = ms && ms.matches_played > 0;
 
@@ -41,7 +44,7 @@ export default function PlayerProfile({ session: s, ms, jerseyNumber, onEdit, on
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
             ) : (
-              window.HF_UTILS.initials(s.name)
+              initials(s.name)
             )}
           </div>
           <div>
@@ -61,7 +64,7 @@ export default function PlayerProfile({ session: s, ms, jerseyNumber, onEdit, on
               {p.pos || "-"} · {p.tier || "-"}
             </div>
             <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
-              <span dangerouslySetInnerHTML={{ __html: window.HF_UTILS.badgeHTML("Player", "green") }} />
+              <Badge type="green">Player</Badge>
               {p.status === "unattached" || !p.club ? (
                 <span
                   style={{
@@ -267,15 +270,12 @@ export default function PlayerProfile({ session: s, ms, jerseyNumber, onEdit, on
             <div style={{ fontSize: 13 }}>Ratings will update as your coach logs your session data.</div>
           </div>
         ) : (
-          <div
-            dangerouslySetInnerHTML={{
-              __html:
-                window.HF_UTILS.barHTML("Speed", r.speed || 0, "#c8102e") +
-                window.HF_UTILS.barHTML("Technical", r.tech || 0, "var(--gold)") +
-                window.HF_UTILS.barHTML("Tactical", r.tact || 0, "var(--blue)") +
-                window.HF_UTILS.barHTML("Physical", r.phys || 0, "var(--green)"),
-            }}
-          />
+          <div>
+            <RatingBar label="Speed" value={r.speed || 0} color="#c8102e" />
+            <RatingBar label="Technical" value={r.tech || 0} color="var(--gold)" />
+            <RatingBar label="Tactical" value={r.tact || 0} color="var(--blue)" />
+            <RatingBar label="Physical" value={r.phys || 0} color="var(--green)" />
+          </div>
         )}
       </div>
 
