@@ -45,6 +45,25 @@ const HF_ADMIN = (() => {
 
     HF_ROUTER.refreshSidenavBadge("verifications", pendingCount, "var(--gold)");
 
+    if (window._stopConfetti) window._stopConfetti();
+    document.getElementById("admin-verification-alert")?.remove();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("AdminDashboard", mc, {
+        session: s,
+        pending,
+        agencyPending,
+        pendingCount,
+        totalUsers,
+        verifiedAgencyCount:
+          allAgencyVerifications?.filter((v) => v.status === "verified").length ||
+          0,
+        verifiedSquadCount:
+          allVerifications?.filter((v) => v.status === "verified").length || 0,
+      });
+      return;
+    }
+
     setMain(`
       <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
         <div>
@@ -362,6 +381,18 @@ const HF_ADMIN = (() => {
       </div>
     </div>`;
 
+    if (window._stopConfetti) window._stopConfetti();
+    document.getElementById("admin-verification-alert")?.remove();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("AdminVerifications", mc, {
+        session: s,
+        kind: type,
+        list: all,
+      });
+      return;
+    }
+
     setMain(`
     <div style="font-family:var(--font);font-size:16px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);margin-bottom:var(--sp-lg);">
       ${isSquad ? "Squad" : "Agency"} Verifications
@@ -519,6 +550,20 @@ const HF_ADMIN = (() => {
       </div>
     </div>`;
 
+    if (window._stopConfetti) window._stopConfetti();
+    document.getElementById("admin-verification-alert")?.remove();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("AdminTickets", mc, {
+        session: s,
+        open,
+        mine,
+        others,
+        resolved,
+      });
+      return;
+    }
+
     setMain(`
     <div class="metrics-grid" style="grid-template-columns:repeat(4,1fr)">
       <div class="metric-card">
@@ -617,6 +662,14 @@ const HF_ADMIN = (() => {
         }
       </div>
     </div>`;
+
+    if (window._stopConfetti) window._stopConfetti();
+    document.getElementById("admin-verification-alert")?.remove();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("AdminUsers", mc, { session: s, users: allUsers });
+      return;
+    }
 
     setMain(`
     <div class="metrics-grid">
@@ -796,6 +849,18 @@ const HF_ADMIN = (() => {
       senderName: senderNames[m.from_id] || "HappyFeet",
     }));
 
+    if (window._stopConfetti) window._stopConfetti();
+    document.getElementById("admin-verification-alert")?.remove();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("AdminMessages", mc, {
+        session: s,
+        messages: enriched,
+        archived: enrichedArchived,
+      });
+      return;
+    }
+
     setMain(`
     <div class="card">
       <div class="card-title" style="justify-content:space-between;">
@@ -870,6 +935,19 @@ const HF_ADMIN = (() => {
     const { data: msgs } = await HF_DB.getTicketMessages(ticketId);
     const session = HF_DB.getSession();
 
+    if (window._stopConfetti) window._stopConfetti();
+    document.getElementById("admin-verification-alert")?.remove();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("AdminTicketThread", mc, {
+        ticketId,
+        subject,
+        session,
+        messages: msgs,
+      });
+      return;
+    }
+
     setMain(`
     <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);">
       <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('tickets')">
@@ -938,6 +1016,15 @@ const HF_ADMIN = (() => {
       "HF_ROUTER.navTo('tickets')",
     );
     if (!html) return;
+
+    if (window._stopConfetti) window._stopConfetti();
+    document.getElementById("admin-verification-alert")?.remove();
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("AdminTicketUserProfile", mc, { html });
+      return;
+    }
+
     setMain(html);
   };
 

@@ -1,6 +1,9 @@
 import { createRoot } from "react-dom/client";
+import adminComponents from "./components/admin/index.js";
 
-const registry = {};
+const registry = {
+  ...adminComponents,
+};
 
 let root = null;
 
