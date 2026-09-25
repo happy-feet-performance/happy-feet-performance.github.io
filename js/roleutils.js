@@ -440,7 +440,7 @@ const HF_ROLE_UTILS = (() => {
   const viewProfile = async (userId, backFn) => {
     const { data: user } = await HF_DB.getUserById(userId);
     if (!user) {
-      toast("User not found.", "error");
+      HF_UTILS.toast("User not found.", "error");
       return;
     }
 
@@ -520,7 +520,7 @@ const HF_ROLE_UTILS = (() => {
         <div>
           <div style="font-family:var(--font);font-size:22px;font-weight:700;color:#fff;">${user.name}</div>
           <div style="font-size:13px;color:rgba(255,255,255,.55);margin-top:2px;">${p.pos || p.spec || p.org || "-"}</div>
-          <div style="margin-top:8px;">${badgeHTML(role, role === "player" ? "green" : role === "coach" ? "gold" : "blue")}</div>
+          <div style="margin-top:8px;"><span class="badge badge-${role === "player" ? "green" : role === "coach" ? "gold" : "blue"}">${role}</span></div>
         </div>
       </div>
       ${
