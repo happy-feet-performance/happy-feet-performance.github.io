@@ -33,17 +33,17 @@ const HF_COACH = (() => {
   // ── DASHBOARD ───────────────────────────────────────────────
   const dashboard = async (s) => {
     // run all dashboard queries in parallel
-    const [
-      { data: freshStatus },
-      { data: readiness },
-      { data: agentConvos },
-    ] = await Promise.all([
-      HF_DB.getUserStatus(s.userId, "squad"),
-      HF_DB.getSquadReadiness(s.userId),
-      HF_DB.getAgentConversations(s.userId),
-    ]);
+    const [{ data: freshStatus }, { data: readiness }, { data: agentConvos }] =
+      await Promise.all([
+        HF_DB.getUserStatus(s.userId, "squad"),
+        HF_DB.getSquadReadiness(s.userId),
+        HF_DB.getAgentConversations(s.userId),
+      ]);
 
-    if (freshStatus?.squad_status && freshStatus.squad_status !== s.squadStatus) {
+    if (
+      freshStatus?.squad_status &&
+      freshStatus.squad_status !== s.squadStatus
+    ) {
       s.squadStatus = freshStatus.squad_status;
       HF_DB.saveSession(s);
     }
@@ -56,6 +56,18 @@ const HF_COACH = (() => {
     const isRejected = squadStatus === "rejected";
     const isAwaitingCoach = squadStatus === "awaiting_coach_approval";
     const newUser = HF_UTILS.isNewUser(s);
+
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("CoachDashboard", mc, {
+        session: s,
+        readiness,
+        agentConvos,
+        newUser,
+      });
+      if (newUser) setTimeout(() => HF_UTILS.launchConfetti(), 300);
+      return;
+    }
 
     const alertCount = isVerified && readiness ? readiness.alertCount : 0;
 
@@ -282,6 +294,17 @@ const HF_COACH = (() => {
     const p = s.profile || {};
     const wdl = await HF_DB.getCoachWDL(s.userId);
 
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("CoachProfile", mc, {
+        session: s,
+        wdl,
+        onEdit: () => editProfile(),
+        onSettings: () => HF_ROUTER.navTo("profile#settings"),
+      });
+      return;
+    }
+
     setMain(`
     <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-lg);">
       <div style="display:flex;align-items:center;gap:var(--sp-lg);">
@@ -299,9 +322,14 @@ const HF_COACH = (() => {
         <div style="display:flex;align-items:center;gap:var(--sp-sm);">
           <div class="card-dot"></div>Coaching details
         </div>
-        <button class="btn btn-outline btn-sm" onclick="HF_COACH.editProfile()">
-          <i class="ti ti-edit"></i> Edit
-        </button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="HF_COACH.editProfile()">
+            <i class="ti ti-edit"></i> Edit
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="HF_ROUTER.navTo('profile#settings')">
+            <i class="ti ti-settings"></i> Settings
+          </button>
+        </div>
       </div>
       <div class="info-grid">
         <div class="info-cell"><div class="info-label">Licence</div><div class="info-val">${p.licence || "-"}</div></div>
@@ -315,6 +343,10 @@ const HF_COACH = (() => {
         <div class="info-label" style="margin-bottom:8px;">Match record</div>
         <div id="coach-wdl">Loading...</div>
       </div>
+    </div>
+
+    <div class="card">
+      ${HF_SETTINGS.renderSettingsSection(s)}
     </div>`);
 
     const wdlEl = document.getElementById("coach-wdl");
@@ -325,6 +357,12 @@ const HF_COACH = (() => {
   const editProfile = () => {
     const session = HF_DB.getSession();
     const p = session.profile || {};
+
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("CoachEditProfile", mc, { session });
+      return;
+    }
 
     setMain(`
     <div style="background:#0f0f0d;padding:var(--sp-2xl);margin-bottom:var(--sp-lg);display:flex;align-items:flex-start;gap:var(--sp-lg);">
@@ -484,6 +522,24 @@ const HF_COACH = (() => {
     );
     const isVerified = s.squadStatus === "verified";
     const p = s.profile || {};
+
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("CoachSquad", mc, {
+        session: s,
+        squadPlayers,
+        trialRequests,
+        trialPlayers,
+        networkRequests,
+      });
+      if (isVerified) {
+        HF_DB.getCoachWDL(s.userId).then((wdl) => {
+          const wdlEl = document.getElementById("squad-wdl");
+          if (wdlEl) wdlEl.innerHTML = HF_UTILS.wdlHTML(wdl.W, wdl.D, wdl.L);
+        });
+      }
+      return;
+    }
 
     // shared sections for both verified and unverified
     const trialRequestsHTML =
@@ -785,6 +841,12 @@ const HF_COACH = (() => {
       return;
     }
 
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("CoachReviewAdminEdits", mc, { data });
+      return;
+    }
+
     setMain(`
     <div class="card">
       <div class="card-title"><div class="card-dot"></div>Review admin changes</div>
@@ -904,6 +966,12 @@ const HF_COACH = (() => {
     const p = session.profile || {};
     const squadStatus = session.squadStatus || "unregistered";
     const isFirstTime = squadStatus === "unregistered";
+
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("CoachResubmitSquad", mc, { session });
+      return;
+    }
 
     setMain(`
     <div class="auth-card" style="max-width:480px;margin:0 auto;">
@@ -1316,7 +1384,7 @@ const HF_COACH = (() => {
     };
 
     // Change when we're ready to work on matches functionality
-    const types = Object.keys(typeColors).filter(t => t !== "Match");
+    const types = Object.keys(typeColors).filter((t) => t !== "Match");
 
     const view = window._coachTrainingView || "week";
     const selectedDay = window._coachTrainingSelectedDay ?? new Date().getDay();
@@ -1657,6 +1725,24 @@ const HF_COACH = (() => {
           ? "Match day"
           : "Post-match";
 
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("CoachTraining", mc, {
+        session: s,
+        pendingRequests,
+        schedule,
+        allSessions,
+        squadPlayers,
+        verifiedTeams,
+        wdl,
+        opponentMatchRequest,
+        existingSession,
+        myStats,
+        incomingMatches: window._cachedIncomingMatches,
+      });
+      return;
+    }
+
     const matchFormHTML = `
     <div class="card" style="border-top:2px solid var(--faith);padding:0;overflow:hidden;">
 
@@ -1899,7 +1985,7 @@ const HF_COACH = (() => {
         </button>`
             : ""
         }
-        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('dashboard')">Cancel</button>
+        <button class="btn btn-outline" onclick="${existingSession?.matchId ? "HF_ROUTER.navTo('dashboard')" : `HF_COACH.clearDayType(${selectedDay},'${selectedDateISO}')`}">Cancel</button>
       </div>`
       }
 
@@ -2313,7 +2399,7 @@ const HF_COACH = (() => {
           Cancel
         </button>`
             : `
-        <button class="btn btn-outline" onclick="HF_ROUTER.navTo('dashboard')">Cancel</button>`
+        <button class="btn btn-outline" onclick="HF_COACH.clearDayType(${selectedDay},'${selectedDateISO}')">Cancel</button>`
         }
       </div>
     </div>`
@@ -2987,6 +3073,12 @@ const HF_COACH = (() => {
       s.userId,
     );
 
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("CoachTracking", mc, { squadPlayers, recentRatings });
+      return;
+    }
+
     if (!squadPlayers || squadPlayers.length === 0) {
       setMain(`
       <div class="card">
@@ -3109,6 +3201,18 @@ const HF_COACH = (() => {
       ? [...sessions].reverse().map((s) => s.overall)
       : [];
     let lastDate = null;
+
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("CoachTrackPlayer", mc, {
+        playerId,
+        playerName,
+        sessions,
+        todayRating,
+        playerTodayType,
+      });
+      return;
+    }
 
     setMain(`
     <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);">
@@ -3638,7 +3742,13 @@ const HF_COACH = (() => {
   const health = async (s) => {
     const { data: squadPlayers } = await HF_DB.getSquadPlayers(s.userId);
 
+    const mc = document.getElementById("main-content");
+
     if (!squadPlayers || squadPlayers.length === 0) {
+      if (mc && window.HF_REACT) {
+        window.HF_REACT.mount("CoachHealth", mc, { playerHealth: [] });
+        return;
+      }
       setMain(`
       <div class="card">
         <div style="text-align:center;padding:32px;color:var(--text2)">
@@ -3658,6 +3768,11 @@ const HF_COACH = (() => {
         return { ...sp, todayLog: log, recentLogs: logs };
       }),
     );
+
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("CoachHealth", mc, { playerHealth });
+      return;
+    }
 
     setMain(`
     <div class="card">
@@ -3781,6 +3896,12 @@ const HF_COACH = (() => {
   const viewPlayerHealth = async (playerId, playerName) => {
     const { data: logs } = await HF_DB.getPlayerHealthLogs(playerId, 14);
     const { data: todayLog } = await HF_DB.getTodayHealthLog(playerId);
+
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("CoachViewPlayerHealth", mc, { playerName, logs, todayLog });
+      return;
+    }
 
     setMain(`
     <div style="display:flex;align-items:center;gap:var(--sp-md);margin-bottom:var(--sp-lg);">
@@ -3933,6 +4054,16 @@ const HF_COACH = (() => {
 
     const isAwaitingReview = s.squadStatus === "awaiting_coach_approval";
 
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("CoachMessages", mc, {
+        session: s,
+        enriched,
+        enrichedArchived,
+      });
+      return;
+    }
+
     setMain(`
     ${
       isAwaitingReview
@@ -3990,7 +4121,7 @@ const HF_COACH = (() => {
   // ── FAITH ───────────────────────────────────────────────
   const faith = async (s) => {
     const todayKey = HF_DB.localDate();
-    const storageKey = `hf_faith_checklist_coach_${s.userId}_${todayKey}`;
+    const storageKey = `hf_faith_checklist_${s.userId}_${todayKey}`;
     const checked = JSON.parse(localStorage.getItem(storageKey) || "[]");
 
     const prayers = [
@@ -4017,6 +4148,12 @@ const HF_COACH = (() => {
     ];
 
     const allChecked = prayers.every((p) => checked.includes(p.id));
+
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      window.HF_REACT.mount("CoachFaith", mc, { checked });
+      return;
+    }
 
     setMain(`
     <div class="faith-hero">
@@ -4152,6 +4289,28 @@ const HF_COACH = (() => {
     const neededPositions = allPositions.filter(
       (pos) => !squadPositions.includes(pos),
     );
+
+    window._fmtAllPlayers = players;
+    window._fmtCoachId = s.userId;
+    window._fmtIsVerified = isVerified;
+    window._fmtIsOpenForRecruitment = isOpenForRecruitment;
+    window._fmtInvitedIds = invitedIds;
+    window._fmtDeclinedMap = declinedMap;
+
+    const mc = document.getElementById("main-content");
+    if (mc && window.HF_REACT) {
+      const playersListHTML = (players || [])
+        .map((p) => _playerCard(p, s.userId, isVerified, isOpenForRecruitment, invitedIds, declinedMap))
+        .join("");
+      window.HF_REACT.mount("CoachFindMyTeam", mc, {
+        session: s,
+        players,
+        neededPositions,
+        prospects,
+        playersListHTML,
+      });
+      return;
+    }
 
     setMain(`
     <div class="welcome-banner">
@@ -4355,12 +4514,6 @@ const HF_COACH = (() => {
         : ""
     }
   `);
-    window._fmtAllPlayers = players;
-    window._fmtCoachId = s.userId;
-    window._fmtIsVerified = isVerified;
-    window._fmtIsOpenForRecruitment = isOpenForRecruitment;
-    window._fmtInvitedIds = invitedIds;
-    window._fmtDeclinedMap = declinedMap;
   };
 
   // ── FIND MY TEAM HELPERS ───────────────────────────────────────────────
