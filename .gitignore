@@ -1,3 +1,11 @@
 js/config.js
 # Local Netlify folder
 .netlify
+
+# Build / tooling
+node_modules/
+dist/
+__pycache__/
+
+# One-off scripts
+cleanup_inline_styles.py
