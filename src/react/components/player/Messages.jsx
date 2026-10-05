@@ -1,5 +1,6 @@
 import { timeAgo } from "../../../lib/utils.js";
-import { messageListHTML } from "../../../lib/legacyHtml.js";
+import { composeMessage, contactAdmin } from "../../../lib/roleUtils.js";
+import { ArchivedMessages, MessageList } from "../common/index.js";
 
 export default function PlayerMessages({ session: s, invites, enriched, enrichedArchived, onRespondInvite }) {
   return (
@@ -50,10 +51,10 @@ export default function PlayerMessages({ session: s, invites, enriched, enriched
             <div className="card-dot"></div>Messages
           </div>
           <div style={{ display: "flex", gap: 6 }}>
-            <button className="btn btn-primary btn-sm" onClick={() => window.HF_ROLE_UTILS.composeMessage("player")}>
+            <button className="btn btn-primary btn-sm" onClick={() => composeMessage("player")}>
               <i className="ti ti-edit"></i> New message
             </button>
-            <button className="btn btn-outline btn-sm" onClick={() => window.HF_ROLE_UTILS.contactAdmin("player")}>
+            <button className="btn btn-outline btn-sm" onClick={() => contactAdmin("player")}>
               <i className="ti ti-headset"></i> Support
             </button>
           </div>
@@ -70,15 +71,11 @@ export default function PlayerMessages({ session: s, invites, enriched, enriched
             <div style={{ fontSize: 13 }}>Messages will appear here.</div>
           </div>
         ) : (
-          <div dangerouslySetInnerHTML={{ __html: messageListHTML(enriched, "player") }} />
+          <MessageList messages={enriched} role="player" />
         )}
       </div>
 
-      <div
-        dangerouslySetInnerHTML={{
-          __html: window.HF_ROLE_UTILS.archivedMessagesHTML(enrichedArchived, "player"),
-        }}
-      />
+      <ArchivedMessages messages={enrichedArchived} role="player" />
     </>
   );
 }

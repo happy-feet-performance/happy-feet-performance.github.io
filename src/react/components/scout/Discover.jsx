@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { initials } from "../../../lib/utils.js";
 import { toast } from "../../../lib/dom.js";
+import { messageUser, viewSenderProfile } from "../../../lib/roleUtils.js";
 
 function overallOf(prof) {
   return prof.ratings
@@ -131,12 +132,8 @@ export default function Discover({ session: s, players, savedIds }) {
     setSaved((prev) => new Set(prev).add(playerId));
   };
 
-  // NOTE: mirrors the legacy onclick exactly (HF_ROLE_UTILS.viewPlayerProfile is
-  // referenced by the original markup but is not actually defined anywhere in
-  // roleutils.js — a pre-existing bug, preserved here rather than silently fixed).
-  const viewProfile = (playerId) => window.HF_ROLE_UTILS.viewPlayerProfile(playerId);
-  const messagePlayer = (playerId, playerName) =>
-    window.HF_ROLE_UTILS.messageUser(playerId, playerName, "discover", "scout");
+  const viewProfile = (playerId) => viewSenderProfile(playerId, "scout", "discover");
+  const messagePlayer = (playerId, playerName) => messageUser(playerId, playerName, "discover", "scout");
 
   const filtered = useMemo(() => {
     return (players || []).filter((p) => {

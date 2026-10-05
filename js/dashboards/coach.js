@@ -1511,9 +1511,6 @@ const HF_COACH = (() => {
   const messageScout = (scoutId, scoutName) =>
     HF_ROLE_UTILS.messageUser(scoutId, scoutName, "findmyteam", "coach");
 
-  const sendScoutMessage = (scoutId, scoutName) =>
-    HF_ROLE_UTILS.sendMessage(scoutId, scoutName, "recruitment");
-
   // ── FAITH ───────────────────────────────────────────────
   const faith = async (s) => {
     const todayKey = HF_DB.localDate();
@@ -1922,7 +1919,6 @@ const HF_COACH = (() => {
     clearDayType,
     saveSession,
     messageScout,
-    sendScoutMessage,
     saveJerseyNumber,
     respondTrialRequest,
     acceptTrialRequest,

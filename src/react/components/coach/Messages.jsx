@@ -1,4 +1,5 @@
-import { messageListHTML } from "../../../lib/legacyHtml.js";
+import { composeMessage, contactAdmin } from "../../../lib/roleUtils.js";
+import { ArchivedMessages, MessageList } from "../common/index.js";
 
 export default function CoachMessages({ session: s, enriched, enrichedArchived }) {
   const isAwaitingReview = s.squadStatus === "awaiting_coach_approval";
@@ -44,13 +45,13 @@ export default function CoachMessages({ session: s, enriched, enrichedArchived }
           <div style={{ display: "flex", gap: 6 }}>
             <button
               className="btn btn-primary btn-sm"
-              onClick={() => window.HF_ROLE_UTILS.composeMessage("coach")}
+              onClick={() => composeMessage("coach")}
             >
               <i className="ti ti-edit"></i> New message
             </button>
             <button
               className="btn btn-outline btn-sm"
-              onClick={() => window.HF_ROLE_UTILS.contactAdmin("coach")}
+              onClick={() => contactAdmin("coach")}
             >
               <i className="ti ti-headset"></i> Support
             </button>
@@ -68,15 +69,11 @@ export default function CoachMessages({ session: s, enriched, enrichedArchived }
             <div style={{ fontSize: 13 }}>Messages from HappyFeet will appear here.</div>
           </div>
         ) : (
-          <div dangerouslySetInnerHTML={{ __html: messageListHTML(enriched, "coach") }} />
+          <MessageList messages={enriched} role="coach" />
         )}
       </div>
 
-      <div
-        dangerouslySetInnerHTML={{
-          __html: window.HF_ROLE_UTILS.archivedMessagesHTML(enrichedArchived, "coach"),
-        }}
-      />
+      <ArchivedMessages messages={enrichedArchived} role="coach" />
     </>
   );
 }

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { initials } from "../../../lib/utils.js";
 import { toast } from "../../../lib/dom.js";
+import { messageUser } from "../../../lib/roleUtils.js";
 
 function overallOf(p) {
   return p.ratings ? Math.round((p.ratings.speed + p.ratings.tech + p.ratings.tact + p.ratings.phys) / 4) : null;
@@ -302,7 +303,7 @@ export default function FindMyTalent({ session: s, coaches }) {
     });
   }, [list, filter, search]);
 
-  const messageCoach = (coachId, coachName) => window.HF_ROLE_UTILS.messageUser(coachId, coachName, "discover", "scout");
+  const messageCoach = (coachId, coachName) => messageUser(coachId, coachName, "discover", "scout");
 
   const requestNetwork = async (coachId, coachName) => {
     const session = window.HF_DB.getSession();

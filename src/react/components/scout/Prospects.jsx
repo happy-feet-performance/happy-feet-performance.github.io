@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { initials } from "../../../lib/utils.js";
 import { toast } from "../../../lib/dom.js";
+import { messageUser, viewSenderProfile } from "../../../lib/roleUtils.js";
 
 const STAGES = [
   { key: "watching", label: "Watching", color: "var(--blue)", icon: "ti-eye" },
@@ -169,7 +170,7 @@ function SavedProspectRow({ sp, scoutId, isOpen, onToggle, onFlag, onUnflag, onU
             className="btn btn-outline btn-sm"
             onClick={(e) => {
               e.stopPropagation();
-              window.HF_ROLE_UTILS.viewSenderProfile(sp.player_id, "scout", "prospects");
+              viewSenderProfile(sp.player_id, "scout", "prospects");
             }}
           >
             <i className="ti ti-user"></i> Profile
@@ -231,7 +232,7 @@ function SavedProspectRow({ sp, scoutId, isOpen, onToggle, onFlag, onUnflag, onU
             className="btn btn-outline btn-sm"
             onClick={(e) => {
               e.stopPropagation();
-              window.HF_ROLE_UTILS.messageUser(sp.player_id, name, "prospects", "scout");
+              messageUser(sp.player_id, name, "prospects", "scout");
             }}
           >
             <i className="ti ti-message"></i> Message

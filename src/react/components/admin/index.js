@@ -4,7 +4,6 @@ import Users from "./Users.jsx";
 import Messages from "./Messages.jsx";
 import Tickets from "./Tickets.jsx";
 import TicketThread from "./TicketThread.jsx";
-import TicketUserProfile from "./TicketUserProfile.jsx";
 
 export default {
   AdminDashboard: Dashboard,
@@ -13,5 +12,4 @@ export default {
   AdminMessages: Messages,
   AdminTickets: Tickets,
   AdminTicketThread: TicketThread,
-  AdminTicketUserProfile: TicketUserProfile,
 };

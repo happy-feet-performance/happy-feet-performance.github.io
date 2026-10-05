@@ -447,17 +447,10 @@ const HF_ADMIN = (() => {
     replyTicket(ticketId, subject);
   };
 
-  const viewTicketUser = async (userId) => {
-    const html = await HF_ROLE_UTILS.viewProfile(
-      userId,
-      "HF_ROUTER.navTo('tickets')",
-    );
-    if (!html) return;
-
+  const viewTicketUser = (userId) => {
     if (window._stopConfetti) window._stopConfetti();
     document.getElementById("admin-verification-alert")?.remove();
-    const mc = document.getElementById("main-content");
-    if (mc) window.HF_REACT.mount("AdminTicketUserProfile", mc, { html });
+    return HF_ROLE_UTILS.viewSenderProfile(userId, "admin", "tickets");
   };
 
   return {

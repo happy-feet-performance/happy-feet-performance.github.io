@@ -1,4 +1,5 @@
-import { messageListHTML } from "../../../lib/legacyHtml.js";
+import { composeMessage } from "../../../lib/roleUtils.js";
+import { ArchivedMessages, MessageList } from "../common/index.js";
 
 export default function Messages({ messages, archived }) {
   const hasMessages = messages && messages.length > 0;
@@ -13,7 +14,7 @@ export default function Messages({ messages, archived }) {
           <div style={{ display: "flex", gap: 6 }}>
             <button
               className="btn btn-primary btn-sm"
-              onClick={() => window.HF_ROLE_UTILS.composeMessage("admin")}
+              onClick={() => composeMessage("admin")}
             >
               <i className="ti ti-edit"></i> New message
             </button>
@@ -31,17 +32,11 @@ export default function Messages({ messages, archived }) {
             <div style={{ fontSize: 13 }}>Admin messages will appear here.</div>
           </div>
         ) : (
-          <div
-            dangerouslySetInnerHTML={{ __html: messageListHTML(messages, "admin") }}
-          />
+          <MessageList messages={messages} role="admin" />
         )}
       </div>
 
-      <div
-        dangerouslySetInnerHTML={{
-          __html: window.HF_ROLE_UTILS.archivedMessagesHTML(archived, "admin"),
-        }}
-      />
+      <ArchivedMessages messages={archived} role="admin" />
     </>
   );
 }

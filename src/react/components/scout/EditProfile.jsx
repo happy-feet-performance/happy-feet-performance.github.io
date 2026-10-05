@@ -1,4 +1,5 @@
 import { initials } from "../../../lib/utils.js";
+import { contactAdmin, previewAvatar } from "../../../lib/roleUtils.js";
 
 export default function EditProfile({ session }) {
   const p = session.profile || {};
@@ -72,7 +73,7 @@ export default function EditProfile({ session }) {
               id="avatar-input"
               accept="image/*"
               style={{ display: "none" }}
-              onChange={(e) => window.HF_ROLE_UTILS.previewAvatar(e.target)}
+              onChange={(e) => previewAvatar(e.target)}
             />
           </label>
         </div>
@@ -119,7 +120,7 @@ export default function EditProfile({ session }) {
             Your agency <strong style={{ color: "var(--green)" }}>{session.profile?.org || ""}</strong> is verified. To
             change your agency name please{" "}
             <span
-              onClick={() => window.HF_ROLE_UTILS.contactAdmin("scout")}
+              onClick={() => contactAdmin("scout")}
               style={{ color: "var(--gold)", cursor: "pointer", textDecoration: "underline" }}
             >
               contact an administrator

@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { initials, timeAgo } from "../../../lib/utils.js";
+import { messageUser } from "../../../lib/roleUtils.js";
 
 function TrialRequests({ trialRequests }) {
   if (!trialRequests || trialRequests.length === 0) return null;
@@ -492,7 +493,7 @@ export default function CoachSquad({
                               className="btn btn-outline btn-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                window.HF_ROLE_UTILS.messageUser(sp.player_id, safeName, "squad", "coach");
+                                messageUser(sp.player_id, safeName, "squad", "coach");
                               }}
                             >
                               <i className="ti ti-message"></i> Message

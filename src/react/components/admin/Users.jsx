@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { initials } from "../../../lib/utils.js";
+import { viewSenderProfile } from "../../../lib/roleUtils.js";
 
 function UserRow({ u, showActions = true }) {
   const roleColor =
@@ -39,7 +40,7 @@ function UserRow({ u, showActions = true }) {
         <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
           <button
             className="btn btn-outline btn-sm"
-            onClick={() => window.HF_ROLE_UTILS.viewSenderProfile(u.id, "admin", "users")}
+            onClick={() => viewSenderProfile(u.id, "admin", "users")}
           >
             <i className="ti ti-user"></i> Profile
           </button>

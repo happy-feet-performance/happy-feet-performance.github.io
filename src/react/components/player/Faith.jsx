@@ -1,3 +1,5 @@
+import { togglePrayer } from "../../../lib/roleUtils.js";
+
 const PRAYERS = [
   {
     id: "morning",
@@ -86,7 +88,7 @@ export default function PlayerFaith({ session: s, checked }) {
                 cursor: "pointer",
                 transition: "var(--trans)",
               }}
-              onClick={() => window.HF_ROLE_UTILS.togglePrayer(p.id, "player")}
+              onClick={() => togglePrayer(p.id, "player")}
             >
               <div
                 style={{

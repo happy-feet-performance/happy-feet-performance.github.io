@@ -890,9 +890,6 @@ const HF_PLAYER = (() => {
   const messageCoach = (coachId, coachName) =>
     HF_ROLE_UTILS.messageUser(coachId, coachName, "findmyteam", "player");
 
-  const sendCoachMessage = (coachId, coachName) =>
-    HF_ROLE_UTILS.sendMessage(coachId, coachName, "findmyteam");
-
   // ── FAITH ────────────────────────────────────────────────────
   const faith = async (s) => {
     const todayKey = HF_DB.localDate();
@@ -1053,7 +1050,6 @@ const HF_PLAYER = (() => {
     leaveTeam,
     requestTrial,
     messageCoach,
-    sendCoachMessage,
     showAchievementDetail,
     showAchievementTooltip,
     hideAchievementTooltip,

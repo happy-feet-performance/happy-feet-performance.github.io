@@ -1,4 +1,5 @@
 import { initials } from "../../../lib/utils.js";
+import { previewAvatar } from "../../../lib/roleUtils.js";
 
 const POSITIONS = ["GK", "CB", "LB", "RB", "DM", "CM", "CAM", "LW", "RW", "ST"];
 const TIERS = ["U10", "U12", "U14", "U16", "U18", "U21", "Professional"];
@@ -63,7 +64,7 @@ export default function PlayerEditProfile({ session: s, onSave, onCancel }) {
                 id="avatar-input"
                 accept="image/*"
                 style={{ display: "none" }}
-                onChange={(e) => window.HF_ROLE_UTILS.previewAvatar(e.target)}
+                onChange={(e) => previewAvatar(e.target)}
               />
             </label>
           </div>

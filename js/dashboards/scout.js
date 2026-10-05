@@ -376,10 +376,6 @@ const HF_SCOUT = (() => {
       });
   };
 
-  // ── MESSAGES HELPERS ───────────────────────────────────────
-  const sendMessage = (playerId, playerName) =>
-    HF_ROLE_UTILS.sendMessage(playerId, playerName, "discover");
-
   // ── REPORT ──────────────────────────────────────────────────
   const generateReport = async (scoutId, playerId, playerName) => {
     const { data: player } = await HF_DB.getUserById(playerId);
