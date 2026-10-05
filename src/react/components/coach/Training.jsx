@@ -1,5 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { getDateForDayISO } from "../../../lib/utils.js";
+import { toast } from "../../../lib/dom.js";
 import { WdlRecord } from "../shared/index.js";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -1268,6 +1269,121 @@ function MatchForm({
 }
 
 // ── NON-MATCH SESSION BUILDER ─────────────────────────────────
+const DRILL_TYPES = [
+  "Warm-up",
+  "Technical drill",
+  "Tactical shape",
+  "Small-sided game",
+  "Conditioning",
+  "Cooldown",
+  "Prayer & devotion",
+];
+
+const drillInputStyle = {
+  padding: "8px 12px",
+  background: "var(--bg)",
+  border: "0.5px solid var(--border)",
+  color: "var(--text)",
+  fontSize: 13,
+  width: "100%",
+  outline: "none",
+  fontFamily: "var(--font)",
+};
+
+// Drills for the session being edited. HF_COACH.saveSession() still reads
+// window._sessionDrills, so keep it in sync with local state.
+function DrillsEditor({ initialDrills }) {
+  const [drills, setDrills] = useState(() => (initialDrills ? [...initialDrills] : []));
+  const [name, setName] = useState("");
+  const [duration, setDuration] = useState("10");
+  const [type, setType] = useState(DRILL_TYPES[0]);
+
+  useEffect(() => {
+    window._sessionDrills = drills;
+  }, [drills]);
+
+  const addDrill = () => {
+    if (!name.trim()) return toast("Please enter a drill name.", "error");
+    setDrills((ds) => [...ds, { name: name.trim(), duration: parseInt(duration), type }]);
+    setName("");
+    setDuration("10");
+    toast("Drill added!", "success");
+  };
+
+  return (
+    <>
+      <div style={{ marginBottom: "var(--sp-md)" }}>
+        {drills.length ? (
+          drills.map((d, i) => (
+            <div
+              key={i}
+              style={{ display: "flex", alignItems: "center", gap: "var(--sp-sm)", padding: "8px var(--sp-md)", background: "var(--bg2)", borderLeft: "2px solid var(--gold)", marginBottom: 4 }}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{d.name}</div>
+                <div style={{ fontSize: 11, color: "var(--text2)" }}>
+                  {d.type} · {d.duration} min
+                </div>
+              </div>
+              <button className="btn btn-danger btn-sm" onClick={() => setDrills((ds) => ds.filter((_, j) => j !== i))}>
+                <i className="ti ti-x"></i>
+              </button>
+            </div>
+          ))
+        ) : (
+          <div style={{ textAlign: "center", padding: 24, background: "var(--bg2)", border: "0.5px dashed var(--border)", color: "var(--text3)", fontSize: 13 }}>
+            No drills yet! Add one below.
+          </div>
+        )}
+      </div>
+
+      <div style={{ background: "var(--bg2)", padding: "var(--sp-md)", borderLeft: "3px solid var(--border)", marginBottom: "var(--sp-lg)" }}>
+        <div
+          style={{
+            fontFamily: "var(--font)",
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: "var(--text2)",
+            marginBottom: "var(--sp-sm)",
+          }}
+        >
+          Add a drill
+        </div>
+        <div className="fg" style={{ marginBottom: "var(--sp-sm)" }}>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. 4v4 rondo: possession under pressure"
+            style={drillInputStyle}
+          />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--sp-sm)", marginBottom: "var(--sp-sm)" }}>
+          <input
+            type="number"
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
+            min="1"
+            max="60"
+            placeholder="Duration (min)"
+            style={drillInputStyle}
+          />
+          <select value={type} onChange={(e) => setType(e.target.value)} style={drillInputStyle}>
+            {DRILL_TYPES.map((t) => (
+              <option key={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+        <button className="btn btn-outline btn-sm" onClick={addDrill}>
+          <i className="ti ti-plus"></i> Add drill
+        </button>
+      </div>
+    </>
+  );
+}
+
 function SessionBuilder({ effectiveType, existingSession, selectedDay, selectedDateISO, sessionSaved, isEditingSession, selectedType }) {
   if (effectiveType && effectiveType !== "Match") {
     if (sessionSaved && !isEditingSession) {
@@ -1534,108 +1650,7 @@ function SessionBuilder({ effectiveType, existingSession, selectedDay, selectedD
         >
           Drills
         </div>
-        <div id="drills-list" style={{ marginBottom: "var(--sp-md)" }}>
-          {existingSession?.drills?.length ? (
-            existingSession.drills.map((d, i) => (
-              <div
-                key={i}
-                id={`drill-${i}`}
-                style={{ display: "flex", alignItems: "center", gap: "var(--sp-sm)", padding: "8px var(--sp-md)", background: "var(--bg2)", borderLeft: "2px solid var(--gold)", marginBottom: 4 }}
-              >
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{d.name}</div>
-                  <div style={{ fontSize: 11, color: "var(--text2)" }}>
-                    {d.type} · {d.duration} min
-                  </div>
-                </div>
-                <button className="btn btn-danger btn-sm" onClick={() => window.HF_ROLE_UTILS.removeDrill(i)}>
-                  <i className="ti ti-x"></i>
-                </button>
-              </div>
-            ))
-          ) : (
-            <div style={{ textAlign: "center", padding: 24, background: "var(--bg2)", border: "0.5px dashed var(--border)", color: "var(--text3)", fontSize: 13 }}>
-              No drills yet! Add one below.
-            </div>
-          )}
-        </div>
-
-        <div style={{ background: "var(--bg2)", padding: "var(--sp-md)", borderLeft: "3px solid var(--border)", marginBottom: "var(--sp-lg)" }}>
-          <div
-            style={{
-              fontFamily: "var(--font)",
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: "var(--text2)",
-              marginBottom: "var(--sp-sm)",
-            }}
-          >
-            Add a drill
-          </div>
-          <div className="fg" style={{ marginBottom: "var(--sp-sm)" }}>
-            <input
-              type="text"
-              id="drill-name"
-              placeholder="e.g. 4v4 rondo: possession under pressure"
-              style={{
-                padding: "8px 12px",
-                background: "var(--bg)",
-                border: "0.5px solid var(--border)",
-                color: "var(--text)",
-                fontSize: 13,
-                width: "100%",
-                outline: "none",
-                fontFamily: "var(--font)",
-              }}
-            />
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--sp-sm)", marginBottom: "var(--sp-sm)" }}>
-            <input
-              type="number"
-              id="drill-dur"
-              defaultValue={10}
-              min="1"
-              max="60"
-              placeholder="Duration (min)"
-              style={{
-                padding: "8px 12px",
-                background: "var(--bg)",
-                border: "0.5px solid var(--border)",
-                color: "var(--text)",
-                fontSize: 13,
-                width: "100%",
-                outline: "none",
-                fontFamily: "var(--font)",
-              }}
-            />
-            <select
-              id="drill-type"
-              style={{
-                padding: "8px 12px",
-                background: "var(--bg)",
-                border: "0.5px solid var(--border)",
-                color: "var(--text)",
-                fontSize: 13,
-                width: "100%",
-                outline: "none",
-                fontFamily: "var(--font)",
-              }}
-            >
-              <option>Warm-up</option>
-              <option>Technical drill</option>
-              <option>Tactical shape</option>
-              <option>Small-sided game</option>
-              <option>Conditioning</option>
-              <option>Cooldown</option>
-              <option>Prayer & devotion</option>
-            </select>
-          </div>
-          <button className="btn btn-outline btn-sm" onClick={() => window.HF_ROLE_UTILS.addDrill()}>
-            <i className="ti ti-plus"></i> Add drill
-          </button>
-        </div>
+        <DrillsEditor key={selectedDateISO} initialDrills={existingSession?.drills} />
 
         <div style={{ display: "flex", gap: 8 }}>
           <button className="btn btn-primary" onClick={() => window.HF_COACH.saveSession(selectedDay, selectedDateISO)}>
@@ -1904,7 +1919,7 @@ export default function CoachTraining({
           : "New";
   const phaseLabel = matchPhase === "pre" ? "Pre-match" : matchPhase === "day" ? "Match day" : "Post-match";
 
-  // mirrors the legacy post-setMain effects: load opponent squad list + seed drills cache
+  // mirrors the legacy post-setMain effect: load the opponent squad list
   useEffect(() => {
     if (existingSession?.matchId && existingSession?.matchStatus === "confirmed") {
       const squadEl = document.getElementById("opponent-squad-list");
@@ -1931,7 +1946,6 @@ export default function CoachTraining({
         });
       }
     }
-    window._sessionDrills = existingSession?.drills ? [...existingSession.drills] : [];
   }, [existingSession?.matchId, existingSession?.matchStatus]);
 
   return (
