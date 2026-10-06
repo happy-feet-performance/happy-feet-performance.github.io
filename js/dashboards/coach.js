@@ -136,9 +136,7 @@ const HF_COACH = (() => {
 
     session.profile = updatedProfile;
     HF_DB.saveSession(session);
-
-    const nameDisplay = document.getElementById("topbar-name-display");
-    if (nameDisplay) nameDisplay.textContent = name;
+    HF_ROUTER.buildSidenav(session);
 
     HF_UTILS.toast("Profile updated!", "success");
     HF_ROUTER.navTo("profile");

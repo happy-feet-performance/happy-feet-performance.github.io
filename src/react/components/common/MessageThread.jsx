@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { timeAgo } from "../../../lib/utils.js";
 import { launchEmojiConfetti } from "../../../lib/dom.js";
 import { isEmojiOnly, sendReply } from "../../../lib/roleUtils.js";
+import { onIncomingMessage } from "../../../lib/router.js";
 
 const EMOJIS = [
   "😀", "😂", "😍", "🔥", "👏", "💪", "⚽", "🏆", "🎯", "👊",
@@ -46,6 +47,22 @@ export default function MessageThread({ threadId, otherUserId, subject, messages
   useEffect(() => {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [messages]);
+
+  // Messages arriving in this thread are appended here instead of the router
+  // re-rendering the Messages list.
+  useEffect(
+    () =>
+      onIncomingMessage((msg) => {
+        if (msg.thread_id !== threadId) return false;
+        setMessages((ms) => {
+          if (ms.some((m) => m.id === msg.id)) return ms;
+          const senderName = ms.find((m) => m.from_id === msg.from_id)?.senderName || "HappyFeet";
+          return [...ms, { ...msg, senderName }];
+        });
+        return true;
+      }),
+    [threadId],
+  );
 
   const send = async () => {
     const body = reply.trim();

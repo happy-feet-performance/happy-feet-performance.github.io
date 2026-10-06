@@ -1030,65 +1030,10 @@
     </div>
 
     <!-- APP SHELL -->
-    <div id="app-shell">
-      <div class="topbar">
-        <button class="hamburger" onclick="HF_ROUTER.toggleMobileNav()">
-          ☰
-        </button>
-        <div
-          class="topbar-brand"
-          onclick="HF_ROUTER.navTo('dashboard')"
-        >
-          <div class="topbar-hex topbar-hex-img">
-            <img src="/hf-logo.jpeg" alt="HF" />
-          </div>
-          <div class="topbar-name"><em>Happy</em>Feet</div>
-        </div>
-        <div class="topbar-right">
-          <div
-            class="topbar-user-info"
-            onclick="HF_ROUTER.navTo('profile')"
-          >
-            <div class="topbar-meta">
-              Signed in as
-              <span id="topbar-role-pill" class="topbar-role-pill"></span>
-            </div>
-            <div id="topbar-name-display" class="topbar-user-name"></div>
-          </div>
-          <label class="theme-switch" title="Toggle dark mode">
-            <input
-              type="checkbox"
-              id="theme-toggle"
-              onchange="HF_THEME.toggle()"
-            />
-            <span class="theme-slider"></span>
-          </label>
-          <button
-            class="btn topbar-icon-btn"
-            onclick="HF_ROUTER.navTo('profile#settings')"
-            title="Settings"
-            aria-label="Open account settings"
-          >
-            <i class="ti ti-settings" aria-hidden="true"></i>
-          </button>
-          <button class="btn-logout" onclick="HF_AUTH.logout()">
-            Sign out
-          </button>
-        </div>
-      </div>
-      <div class="layout">
-        <nav class="sidenav" id="sidenav"></nav>
-        <div
-          class="sidenav-overlay"
-          id="nav-overlay"
-          onclick="HF_ROUTER.toggleMobileNav()"
-        ></div>
-        <main class="main" id="main-content"></main>
-      </div>
-    </div>
+    <!-- App shell (topbar, sidenav, #main-content): src/react/shell/AppShell.jsx -->
+    <div id="app-root"></div>
 
     <script src="js/config.js"></script>
-    <script src="js/router.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/dashboards/player.js"></script>
     <script src="js/dashboards/coach.js"></script>

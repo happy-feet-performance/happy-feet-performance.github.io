@@ -235,8 +235,7 @@ const HF_AUTH = (() => {
 
   // ─── Step 2 → Step 3 ───────────────────────────────────────
   const goStep3 = async () => {
-    document.getElementById("nav-overlay")?.classList.remove("open");
-    document.getElementById("sidenav")?.classList.remove("open");
+    HF_ROUTER.closeMobileNav();
     const name = el("su-name")?.value.trim();
     const pass = el("su-pass")?.value;
     if (!pass) {
@@ -650,9 +649,7 @@ const HF_AUTH = (() => {
       if (field) field.value = "";
     });
 
-    document.getElementById("app-shell").classList.remove("visible");
-    document.getElementById("auth-screens").style.display = "flex";
-    showScreen("screen-login");
+    HF_ROUTER.showLogin();
   };
 
   const checkPassword = (password) => {
