@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { initials, isNewUser, timeAgo } from "../../../lib/utils.js";
 import { launchConfetti, toast } from "../../../lib/dom.js";
 import { Badge, ScriptureStrip } from "../shared/index.js";
+import { resubmitAgency } from "../../../lib/scout.js";
+import { navTo } from "../../../lib/router.js";
 
 export default function Dashboard({ session: s, agentConvos, prospects }) {
   const p = s.profile || {};
@@ -142,7 +144,7 @@ export default function Dashboard({ session: s, agentConvos, prospects }) {
                 : "Register and verify your agency to unlock full scouting features."}
           </div>
           {(isUnregistered || isRejected) && (
-            <button className="btn btn-primary btn-sm" onClick={() => window.HF_SCOUT.resubmitAgency()}>
+            <button className="btn btn-primary btn-sm" onClick={() => resubmitAgency()}>
               <i className="ti ti-clipboard-check"></i> {isRejected ? "Resubmit agency" : "Register your agency"}
             </button>
           )}
@@ -150,7 +152,7 @@ export default function Dashboard({ session: s, agentConvos, prospects }) {
             <button
               className="btn btn-outline btn-sm"
               style={{ marginLeft: 8 }}
-              onClick={() => window.HF_ROUTER.navTo("messages")}
+              onClick={() => navTo("messages")}
             >
               <i className="ti ti-message"></i> View messages
             </button>
@@ -202,7 +204,7 @@ export default function Dashboard({ session: s, agentConvos, prospects }) {
           className="quick-action"
           onClick={() =>
             isVerified
-              ? window.HF_ROUTER.navTo("discover")
+              ? navTo("discover")
               : toast("Verify your agency first.", "error")
           }
         >
@@ -216,7 +218,7 @@ export default function Dashboard({ session: s, agentConvos, prospects }) {
           className="quick-action"
           onClick={() =>
             isVerified
-              ? window.HF_ROUTER.navTo("prospects")
+              ? navTo("prospects")
               : toast("Verify your agency first.", "error")
           }
         >

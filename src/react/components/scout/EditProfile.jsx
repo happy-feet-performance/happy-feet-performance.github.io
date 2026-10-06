@@ -1,8 +1,14 @@
+import { useState } from "react";
 import { initials } from "../../../lib/utils.js";
 import { contactAdmin, previewAvatar } from "../../../lib/roleUtils.js";
+import { navTo } from "../../../lib/router.js";
+import { saveProfile } from "../../../lib/scout.js";
 
 export default function EditProfile({ session }) {
   const p = session.profile || {};
+  const [name, setName] = useState(session.name || "");
+  const [org, setOrg] = useState(p.org || "");
+  const [exp, setExp] = useState(p.exp || "");
 
   const fieldInputStyle = {
     padding: "10px 14px",
@@ -89,21 +95,21 @@ export default function EditProfile({ session }) {
         </div>
         <div className="fg">
           <label className="required">Full name</label>
-          <input type="text" id="ep-name" defaultValue={session.name || ""} placeholder="Your full name" style={fieldInputStyle} />
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" style={fieldInputStyle} />
         </div>
         <div className="fg">
           <label className="required">Organisation / agency</label>
           <input
             type="text"
-            id="ep-org"
-            defaultValue={p.org || ""}
+            value={org}
+            onChange={(e) => setOrg(e.target.value)}
             placeholder="e.g. HappyFeet Scouting"
             style={fieldInputStyle}
           />
         </div>
         <div className="fg">
           <label className="required">Years experience</label>
-          <input type="number" id="ep-exp" defaultValue={p.exp || ""} min="0" max="50" style={fieldInputStyle} />
+          <input type="number" value={exp} onChange={(e) => setExp(e.target.value)} min="0" max="50" style={fieldInputStyle} />
         </div>
         {session.agencyStatus === "verified" ? (
           <div
@@ -143,10 +149,10 @@ export default function EditProfile({ session }) {
           </div>
         )}
         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-          <button className="btn btn-primary" onClick={() => window.HF_SCOUT.saveProfile()}>
+          <button className="btn btn-primary" onClick={() => saveProfile({ name, org, exp })}>
             <i className="ti ti-circle-check"></i> Save changes
           </button>
-          <button className="btn btn-outline" onClick={() => window.HF_ROUTER.navTo("profile")}>
+          <button className="btn btn-outline" onClick={() => navTo("profile")}>
             Cancel
           </button>
         </div>

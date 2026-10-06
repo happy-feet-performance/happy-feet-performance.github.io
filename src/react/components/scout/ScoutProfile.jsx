@@ -78,14 +78,7 @@ export default function ScoutProfile({ session, onEdit, onSettings }) {
           <div style={{ display: "flex", gap: 8 }}>
             <button
               className="btn btn-outline btn-sm"
-              onClick={() => {
-                const mc = document.getElementById("main-content");
-                if (mc && window.HF_REACT) {
-                  window.HF_REACT.mount("ScoutEditProfile", mc, { session });
-                } else {
-                  onEdit();
-                }
-              }}
+              onClick={onEdit}
             >
               <i className="ti ti-edit"></i> Edit
             </button>

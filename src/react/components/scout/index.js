@@ -1,21 +1,31 @@
-import ScoutProfile from "./ScoutProfile.jsx";
-import Dashboard from "./Dashboard.jsx";
-import Discover from "./Discover.jsx";
-import Prospects from "./Prospects.jsx";
-import Reports from "./Reports.jsx";
-import Placements from "./Placements.jsx";
-import Messages from "./Messages.jsx";
-import FindMyTalent from "./FindMyTalent.jsx";
 import EditProfile from "./EditProfile.jsx";
+import ResubmitAgency from "./ResubmitAgency.jsx";
+import { ShareReport } from "./ReportScreens.jsx";
+import {
+  DashboardView,
+  DiscoverView,
+  FindMyTalentView,
+  GenerateReportView,
+  MessagesView,
+  PlacementsView,
+  ProfileView,
+  ProspectsView,
+  ReportPageView,
+  ReportsView,
+} from "./views.jsx";
 
 export default {
-  ScoutProfile,
-  ScoutDashboard: Dashboard,
-  ScoutDiscover: Discover,
-  ScoutProspects: Prospects,
-  ScoutReports: Reports,
-  ScoutPlacements: Placements,
-  ScoutMessages: Messages,
-  ScoutFindMyTalent: FindMyTalent,
+  ScoutDashboard: DashboardView,
+  ScoutProfile: ProfileView,
   ScoutEditProfile: EditProfile,
+  ScoutDiscover: DiscoverView,
+  ScoutProspects: ProspectsView,
+  ScoutReports: ReportsView,
+  ScoutPlacements: PlacementsView,
+  ScoutMessages: MessagesView,
+  ScoutFindMyTalent: FindMyTalentView,
+  ScoutResubmitAgency: ResubmitAgency,
+  ScoutGenerateReport: GenerateReportView,
+  ScoutReport: ReportPageView,
+  ScoutShareReport: ShareReport,
 };

@@ -2,8 +2,8 @@
 // provides `reload` (via AdminReload) so actions deeper in the tree can
 // refresh the view after they change something.
 import { createContext, useContext } from "react";
-import { useAsync } from "../../hooks/useAsync.js";
 import { loadDashboard, loadMessages, loadTicketMessages, loadTickets, loadUsers, loadVerifications } from "../../../lib/admin.js";
+import { Loaded as LoadedData } from "../shared/index.js";
 import Dashboard from "./Dashboard.jsx";
 import Messages from "./Messages.jsx";
 import TicketThread from "./TicketThread.jsx";
@@ -14,13 +14,12 @@ import Verifications from "./Verifications.jsx";
 const AdminReload = createContext(() => {});
 export const useAdminReload = () => useContext(AdminReload);
 
-// Renders nothing until the first load finishes, like the old
-// fetch-then-render dashboards.
-function Loaded({ load, deps, children }) {
-  const { data, loading, reload } = useAsync(load, deps);
-  if (loading) return null;
-  return <AdminReload.Provider value={reload}>{children(data)}</AdminReload.Provider>;
-}
+// Shared Loaded, plus `reload` provided to rows deeper in the tree.
+const Loaded = ({ load, deps, children }) => (
+  <LoadedData load={load} deps={deps}>
+    {(data, reload) => <AdminReload.Provider value={reload}>{children(data)}</AdminReload.Provider>}
+  </LoadedData>
+);
 
 export const DashboardView = ({ session }) => (
   <Loaded load={loadDashboard}>{(data) => <Dashboard session={session} {...data} />}</Loaded>

@@ -3,6 +3,8 @@ import { initials } from "../../../lib/utils.js";
 import { toast } from "../../../lib/dom.js";
 import { messageUser, viewSenderProfile } from "../../../lib/roleUtils.js";
 import * as db from "../../../lib/db/index.js";
+import { generateReport, shareReportViaMessage, viewReport } from "../../../lib/scout.js";
+import { navTo } from "../../../lib/router.js";
 
 const STAGES = [
   { key: "watching", label: "Watching", color: "var(--blue)", icon: "ti-eye" },
@@ -181,7 +183,7 @@ function SavedProspectRow({ sp, scoutId, isOpen, onToggle, onFlag, onUnflag, onU
               className="btn btn-outline btn-sm"
               onClick={(e) => {
                 e.stopPropagation();
-                window.HF_SCOUT.generateReport(scoutId, sp.player_id, name);
+                generateReport(scoutId, sp.player_id, name);
               }}
             >
               <i className="ti ti-sparkles"></i> Generate report
@@ -191,7 +193,7 @@ function SavedProspectRow({ sp, scoutId, isOpen, onToggle, onFlag, onUnflag, onU
               className="btn btn-outline btn-sm"
               onClick={(e) => {
                 e.stopPropagation();
-                window.HF_SCOUT.viewReport(scoutId, sp.player_id, name);
+                viewReport(scoutId, sp.player_id, name);
               }}
             >
               <i className="ti ti-file-text"></i> View report
@@ -223,7 +225,7 @@ function SavedProspectRow({ sp, scoutId, isOpen, onToggle, onFlag, onUnflag, onU
               className="btn btn-outline btn-sm"
               onClick={(e) => {
                 e.stopPropagation();
-                window.HF_SCOUT.shareReportViaMessage(scoutId, sp.player_id, name);
+                shareReportViaMessage(scoutId, sp.player_id, name);
               }}
             >
               <i className="ti ti-send"></i> Share report
@@ -353,7 +355,7 @@ export default function Prospects({ session: s, saved }) {
             <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 24 }}>
               Save players from Discover talent to start building your pipeline.
             </div>
-            <button className="btn btn-primary btn-sm" onClick={() => window.HF_ROUTER.navTo("discover")}>
+            <button className="btn btn-primary btn-sm" onClick={() => navTo("discover")}>
               <i className="ti ti-search"></i> Discover talent
             </button>
           </div>

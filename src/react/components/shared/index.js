@@ -1,8 +1,10 @@
 export { default as AccountSettings } from "./AccountSettings.jsx";
 export { default as Avatar } from "./Avatar.jsx";
 export { default as Badge } from "./Badge.jsx";
+export { default as Loaded } from "./Loaded.jsx";
 export { default as MiniCalendar } from "./MiniCalendar.jsx";
 export { default as MiniChart } from "./MiniChart.jsx";
 export { default as RatingBar } from "./RatingBar.jsx";
 export { default as ScriptureStrip } from "./ScriptureStrip.jsx";
+export { default as TagPicker } from "./TagPicker.jsx";
 export { default as WdlRecord } from "./WdlRecord.jsx";

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useAppState } from "../../lib/appStore.js";
 import { enterApp, submitAgencyVerification, submitSquadVerification } from "../../lib/auth.js";
-import { AuthLogo, ErrorMessage, Screen, StepRow, TagPicker, useEnterKey, useTimedError } from "./parts.jsx";
+import { TagPicker } from "../components/shared/index.js";
+import { AuthLogo, ErrorMessage, Screen, StepRow, useEnterKey, useTimedError } from "./parts.jsx";
 
 // Remounted (via key) after each signup so they pick up the new prefill.
 export function SquadVerifyScreen({ active }) {
