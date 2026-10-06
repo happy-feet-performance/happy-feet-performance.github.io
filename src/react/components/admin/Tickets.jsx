@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { timeAgo } from "../../../lib/utils.js";
+import { claimTicket, reopenTicket, replyTicket, resolveTicket, viewTicketUser } from "../../../lib/admin.js";
+import { useAdminReload } from "./views.jsx";
 
 function TicketRow({ t, session }) {
+  const reload = useAdminReload();
+  const act = (action) => async () => (await action()) && reload();
   const roleColor =
     t.from?.role === "player"
       ? "var(--green)"
@@ -77,7 +81,7 @@ function TicketRow({ t, session }) {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
           {t.status === "open" && (
-            <button className="btn btn-primary btn-sm" onClick={() => window.HF_ADMIN.claimTicket(t.id)}>
+            <button className="btn btn-primary btn-sm" onClick={act(() => claimTicket(t.id))}>
               <i className="ti ti-hand-stop"></i> Claim
             </button>
           )}
@@ -86,7 +90,7 @@ function TicketRow({ t, session }) {
             <>
               <button
                 className="btn btn-primary btn-sm"
-                onClick={() => window.HF_ADMIN.replyTicket(t.id, t.subject)}
+                onClick={() => replyTicket(t.id, t.subject)}
               >
                 <i className="ti ti-message"></i>{" "}
                 {t.claimed_by === session.userId ? "Reply" : "View thread"}
@@ -94,7 +98,7 @@ function TicketRow({ t, session }) {
               {t.claimed_by === session.userId && (
                 <button
                   className="btn btn-outline btn-sm"
-                  onClick={() => window.HF_ADMIN.resolveTicket(t.id, t.from_id, t.subject)}
+                  onClick={act(() => resolveTicket(t.id, t.from_id, t.subject))}
                 >
                   <i className="ti ti-circle-check"></i> Resolve
                 </button>
@@ -106,13 +110,13 @@ function TicketRow({ t, session }) {
             <>
               <button
                 className="btn btn-outline btn-sm"
-                onClick={() => window.HF_ADMIN.replyTicket(t.id, t.subject)}
+                onClick={() => replyTicket(t.id, t.subject)}
               >
                 <i className="ti ti-message"></i> View
               </button>
               <button
                 className="btn btn-outline btn-sm"
-                onClick={() => window.HF_ADMIN.reopenTicket(t.id)}
+                onClick={act(() => reopenTicket(t.id))}
               >
                 <i className="ti ti-arrow-back-up"></i> Reopen
               </button>
@@ -121,7 +125,7 @@ function TicketRow({ t, session }) {
 
           <button
             className="btn btn-outline btn-sm"
-            onClick={() => window.HF_ADMIN.viewTicketUser(t.from_id)}
+            onClick={() => viewTicketUser(t.from_id)}
           >
             <i className="ti ti-user"></i> Profile
           </button>

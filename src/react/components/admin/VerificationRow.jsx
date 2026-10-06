@@ -1,5 +1,16 @@
+import { useState } from "react";
 import { timeAgo } from "../../../lib/utils.js";
+import {
+  approveAgency,
+  approveSquad,
+  claimAndReview,
+  rejectAgency,
+  rejectSquad,
+  saveEdits,
+  unclaimVerification,
+} from "../../../lib/admin.js";
 import { Badge } from "../shared/index.js";
+import { useAdminReload } from "./views.jsx";
 
 const inputStyle = {
   padding: "8px 12px",
@@ -24,6 +35,22 @@ export default function VerificationRow({ v, type, session }) {
   const userId = isSquad ? v.coach_id : v.scout_id;
   const isMine = v.claimed_by === session.userId;
   const isClaimed = v.claimed_by && !isMine;
+  const reload = useAdminReload();
+  // run an action, then refresh the view if it changed anything
+  const act = (action) => async () => (await action()) && reload();
+
+  const [editing, setEditing] = useState(false);
+  const [edits, setEdits] = useState({
+    teamName: v.team_name || "",
+    league: v.league || "",
+    year: v.founding_year || "",
+    ground: v.home_ground || "",
+    notes: "",
+  });
+  const editField = (key) => ({
+    value: edits[key],
+    onChange: (e) => setEdits((ed) => ({ ...ed, [key]: e.target.value })),
+  });
 
   return (
     <div
@@ -70,11 +97,9 @@ export default function VerificationRow({ v, type, session }) {
         </Badge>
       </div>
 
-      {isMine && isSquad && (
+      {isMine && isSquad && editing && (
         <div
-          id={`edit-form-${v.id}`}
           style={{
-            display: "none",
             marginBottom: 12,
             padding: 12,
             background: "var(--bg)",
@@ -95,57 +120,34 @@ export default function VerificationRow({ v, type, session }) {
           </div>
           <div className="fg">
             <label>Team name</label>
-            <input type="text" id={`edit-name-${v.id}`} defaultValue={v.team_name} style={inputStyle} />
+            <input type="text" {...editField("teamName")} style={inputStyle} />
           </div>
           <div className="fg">
             <label>League / division</label>
-            <input
-              type="text"
-              id={`edit-league-${v.id}`}
-              defaultValue={v.league || ""}
-              style={inputStyle}
-            />
+            <input type="text" {...editField("league")} style={inputStyle} />
           </div>
           <div className="form-row">
             <div className="fg">
               <label>Founding year</label>
-              <input
-                type="number"
-                id={`edit-year-${v.id}`}
-                defaultValue={v.founding_year || ""}
-                style={inputStyle}
-              />
+              <input type="number" {...editField("year")} style={inputStyle} />
             </div>
             <div className="fg">
               <label>Home ground</label>
-              <input
-                type="text"
-                id={`edit-ground-${v.id}`}
-                defaultValue={v.home_ground || ""}
-                style={inputStyle}
-              />
+              <input type="text" {...editField("ground")} style={inputStyle} />
             </div>
           </div>
           <div className="fg">
             <label>Admin notes to coach</label>
-            <input
-              type="text"
-              id={`edit-notes-${v.id}`}
-              placeholder="e.g. Team name corrected"
-              style={inputStyle}
-            />
+            <input type="text" {...editField("notes")} placeholder="e.g. Team name corrected" style={inputStyle} />
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
             <button
               className="btn btn-primary btn-sm"
-              onClick={() => window.HF_ADMIN.saveEdits(v.id, userId, name)}
+              onClick={act(() => saveEdits(v.id, userId, name, edits))}
             >
               <i className="ti ti-circle-check"></i> Save &amp; notify
             </button>
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={() => window.HF_ADMIN.toggleEditForm(v.id)}
-            >
+            <button className="btn btn-outline btn-sm" onClick={() => setEditing(false)}>
               Cancel
             </button>
           </div>
@@ -156,7 +158,7 @@ export default function VerificationRow({ v, type, session }) {
         {!isClaimed && !isMine && (
           <button
             className="btn btn-primary btn-sm"
-            onClick={() => window.HF_ADMIN.claimAndReview(v.id, type)}
+            onClick={act(() => claimAndReview(v.id, type))}
           >
             <i className="ti ti-eye"></i> Claim &amp; review
           </button>
@@ -165,35 +167,27 @@ export default function VerificationRow({ v, type, session }) {
           <>
             <button
               className="btn btn-primary btn-sm"
-              onClick={() =>
-                isSquad
-                  ? window.HF_ADMIN.approveSquad(v.id, userId, name)
-                  : window.HF_ADMIN.approveAgency(v.id, userId, name)
-              }
+              onClick={act(() => (isSquad ? approveSquad : approveAgency)(v.id, userId, name))}
             >
               <i className="ti ti-circle-check"></i> Approve
             </button>
             {isSquad && (
               <button
                 className="btn btn-outline btn-sm"
-                onClick={() => window.HF_ADMIN.toggleEditForm(v.id)}
+                onClick={() => setEditing((e) => !e)}
               >
                 <i className="ti ti-edit"></i> Edit
               </button>
             )}
             <button
               className="btn btn-danger btn-sm"
-              onClick={() =>
-                isSquad
-                  ? window.HF_ADMIN.rejectSquad(v.id, userId, name)
-                  : window.HF_ADMIN.rejectAgency(v.id, userId, name)
-              }
+              onClick={act(() => (isSquad ? rejectSquad : rejectAgency)(v.id, userId, name))}
             >
               <i className="ti ti-x"></i> Reject
             </button>
             <button
               className="btn btn-outline btn-sm"
-              onClick={() => window.HF_ADMIN.unclaimVerification(v.id, type)}
+              onClick={act(() => unclaimVerification(v.id, type))}
             >
               <i className="ti ti-x"></i> Release
             </button>

@@ -6,11 +6,7 @@
 // classic-script globals, so they're looked up at call time.
 import { toast, launchConfetti, launchEmojiConfetti } from "./dom.js";
 import * as db from "./db/index.js";
-
-const showView = (name, props) => {
-  const mc = document.getElementById("main-content");
-  if (mc) window.HF_REACT.mount(name, mc, props);
-};
+import { showView } from "./views.js";
 
 const roleHandler = (role) =>
   ({

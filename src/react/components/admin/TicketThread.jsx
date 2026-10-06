@@ -1,17 +1,24 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { timeAgo } from "../../../lib/utils.js";
+import { sendTicketReply } from "../../../lib/admin.js";
+import { navTo } from "../../../lib/router.js";
+import { useAdminReload } from "./views.jsx";
 
-// Sub-view rendered by HF_ADMIN.replyTicket() when an admin opens a
+// Sub-view opened by replyTicket() (src/lib/admin.js) when an admin opens a
 // claimed/resolved ticket's message thread from the Tickets view.
 export default function TicketThread({ ticketId, subject, session, messages }) {
   const threadRef = useRef(null);
+  const reload = useAdminReload();
+  const [reply, setReply] = useState("");
 
   useEffect(() => {
     if (threadRef.current) threadRef.current.scrollTop = threadRef.current.scrollHeight;
   }, [messages]);
 
-  const sendReply = () => {
-    window.HF_ADMIN.sendTicketReply(ticketId, subject);
+  const sendReply = async () => {
+    if (!(await sendTicketReply(ticketId, reply))) return;
+    setReply("");
+    reload();
   };
 
   return (
@@ -19,7 +26,7 @@ export default function TicketThread({ ticketId, subject, session, messages }) {
       <div
         style={{ display: "flex", alignItems: "center", gap: "var(--sp-md)", marginBottom: "var(--sp-lg)" }}
       >
-        <button className="btn btn-outline btn-sm" onClick={() => window.HF_ROUTER.navTo("tickets")}>
+        <button className="btn btn-outline btn-sm" onClick={() => navTo("tickets")}>
           <i className="ti ti-arrow-left"></i> Back
         </button>
         <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{subject}</div>
@@ -80,7 +87,8 @@ export default function TicketThread({ ticketId, subject, session, messages }) {
         >
           <input
             type="text"
-            id="ticket-reply-input"
+            value={reply}
+            onChange={(e) => setReply(e.target.value)}
             placeholder="Write a reply..."
             style={{
               flex: 1,

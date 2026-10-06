@@ -1,8 +1,12 @@
 import { useState } from "react";
 import { initials } from "../../../lib/utils.js";
 import { viewSenderProfile } from "../../../lib/roleUtils.js";
+import { banUser, kickUser, removeUser, unbanUser } from "../../../lib/admin.js";
+import { useAdminReload } from "./views.jsx";
 
 function UserRow({ u, showActions = true }) {
+  const reload = useAdminReload();
+  const act = (action) => async () => (await action()) && reload();
   const roleColor =
     u.role === "player"
       ? "var(--green)"
@@ -45,20 +49,20 @@ function UserRow({ u, showActions = true }) {
             <i className="ti ti-user"></i> Profile
           </button>
           {u.banned ? (
-            <button className="btn btn-outline btn-sm" onClick={() => window.HF_ADMIN.unbanUser(u.id)}>
+            <button className="btn btn-outline btn-sm" onClick={act(() => unbanUser(u.id))}>
               <i className="ti ti-lock-open"></i> Unban
             </button>
           ) : (
             <>
               <button
                 className="btn btn-outline btn-sm"
-                onClick={() => window.HF_ADMIN.kickUser(u.id, u.name)}
+                onClick={act(() => kickUser(u.id, u.name))}
               >
                 <i className="ti ti-logout"></i> Kick
               </button>
               <button
                 className="btn btn-danger btn-sm"
-                onClick={() => window.HF_ADMIN.banUser(u.id, u.name)}
+                onClick={act(() => banUser(u.id, u.name))}
               >
                 <i className="ti ti-ban"></i> Ban
               </button>
@@ -66,7 +70,7 @@ function UserRow({ u, showActions = true }) {
           )}
           <button
             className="btn btn-danger btn-sm"
-            onClick={() => window.HF_ADMIN.removeUser(u.id, u.name)}
+            onClick={act(() => removeUser(u.id, u.name))}
           >
             <i className="ti ti-trash"></i> Remove
           </button>
