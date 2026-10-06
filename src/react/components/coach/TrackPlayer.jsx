@@ -1,5 +1,6 @@
 import { Fragment } from "react";
 import { MiniCalendar, MiniChart } from "../shared/index.js";
+import * as db from "../../../lib/db/index.js";
 
 function RatingSlider({ label, initial }) {
   const key = label.toLowerCase();
@@ -263,7 +264,7 @@ export default function CoachTrackPlayer({ playerId, playerName, sessions, today
                     month: "long",
                     year: "numeric",
                   });
-                  const isToday = new Date(r.created_at).toISOString().split("T")[0] === window.HF_DB.localDate();
+                  const isToday = new Date(r.created_at).toISOString().split("T")[0] === db.localDate();
                   const showHeader = dateStr !== lastDate;
                   lastDate = dateStr;
                   return (

@@ -7,6 +7,7 @@ import {
   sendUserTicketReply,
 } from "../../../lib/roleUtils.js";
 import { TICKET_STATUS } from "./styles.js";
+import * as db from "../../../lib/db/index.js";
 
 function StatusNote({ color, bg, icon, children }) {
   return (
@@ -44,7 +45,7 @@ export default function TicketThread({ ticketId, subject, fromMessages, role, cu
         <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-md)" }}>
           <button
             className="btn btn-outline btn-sm"
-            onClick={() => myTickets(window.HF_DB.getSession(), fromMessages, role)}
+            onClick={() => myTickets(db.getSession(), fromMessages, role)}
           >
             <i className="ti ti-arrow-left"></i> My tickets
           </button>

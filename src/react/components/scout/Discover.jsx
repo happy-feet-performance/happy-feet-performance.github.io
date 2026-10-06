@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { initials } from "../../../lib/utils.js";
 import { toast } from "../../../lib/dom.js";
 import { messageUser, viewSenderProfile } from "../../../lib/roleUtils.js";
+import * as db from "../../../lib/db/index.js";
 
 function overallOf(prof) {
   return prof.ratings
@@ -114,14 +115,14 @@ export default function Discover({ session: s, players, savedIds }) {
   };
 
   const savePlayer = async (playerId, playerName) => {
-    const session = window.HF_DB.getSession();
-    const result = await window.HF_DB.saveProspect(session.userId, playerId);
+    const session = db.getSession();
+    const result = await db.saveProspect(session.userId, playerId);
     if (result.error) {
       toast(result.error, "error");
       return;
     }
 
-    await window.HF_DB._sendMessage(
+    await db._sendMessage(
       "system",
       playerId,
       "You are being scouted",

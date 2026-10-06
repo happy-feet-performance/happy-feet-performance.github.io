@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { initials } from "../../../lib/utils.js";
 import { toast } from "../../../lib/dom.js";
 import { messageUser } from "../../../lib/roleUtils.js";
+import * as db from "../../../lib/db/index.js";
 
 function overallOf(p) {
   return p.ratings ? Math.round((p.ratings.speed + p.ratings.tech + p.ratings.tact + p.ratings.phys) / 4) : null;
@@ -306,14 +307,14 @@ export default function FindMyTalent({ session: s, coaches }) {
   const messageCoach = (coachId, coachName) => messageUser(coachId, coachName, "discover", "scout");
 
   const requestNetwork = async (coachId, coachName) => {
-    const session = window.HF_DB.getSession();
-    const result = await window.HF_DB.requestClubNetwork(session.userId, coachId);
+    const session = db.getSession();
+    const result = await db.requestClubNetwork(session.userId, coachId);
     if (result.error) {
       toast(result.error, "error");
       return;
     }
 
-    await window.HF_DB._sendMessage(
+    await db._sendMessage(
       "system",
       coachId,
       "Scout network request",
@@ -333,9 +334,9 @@ export default function FindMyTalent({ session: s, coaches }) {
 
     if (!detailCache[c.id]) {
       const [{ data: squadPlayers }, { data: coachUser }, { data: readiness }] = await Promise.all([
-        window.HF_DB.getCoachSquadDetails(c.id),
-        window.HF_DB.getUserById(c.id),
-        window.HF_DB.getSquadReadiness(c.id),
+        db.getCoachSquadDetails(c.id),
+        db.getUserById(c.id),
+        db.getSquadReadiness(c.id),
       ]);
       setDetailCache((prev) => ({
         ...prev,

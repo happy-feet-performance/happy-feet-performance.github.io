@@ -1,5 +1,6 @@
 import { timeAgo } from "../../../lib/utils.js";
 import { MiniCalendar, MiniChart } from "../shared/index.js";
+import * as db from "../../../lib/db/index.js";
 
 export default function PlayerStats({ session: s, overall, sessions, hasStats, trendData }) {
   return (
@@ -129,7 +130,7 @@ export default function PlayerStats({ session: s, overall, sessions, hasStats, t
               </thead>
               <tbody>
                 {sessions.map((r) => {
-                  const isToday = r.created_at?.split("T")[0] === window.HF_DB.localDate();
+                  const isToday = r.created_at?.split("T")[0] === db.localDate();
                   return (
                     <tr key={r.id} style={isToday ? { background: "rgba(196,154,10,.05)" } : undefined}>
                       <td

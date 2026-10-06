@@ -2,8 +2,7 @@
 // delete the account.
 import { hashPassword, normalizeContact, validateEmail, validatePhone } from "./utils.js";
 import { toast } from "./dom.js";
-
-const db = () => window.HF_DB;
+import * as db from "./db/index.js";
 
 // Re-checks the signed-in user's current password. Returns true if correct.
 const confirmCurrentPassword = async (session, label) => {
@@ -12,7 +11,7 @@ const confirmCurrentPassword = async (session, label) => {
     toast("Password confirmation required.", "error");
     return false;
   }
-  const currentUser = await db().findUser(session.contact, await hashPassword(password));
+  const currentUser = await db.findUser(session.contact, await hashPassword(password));
   if (!currentUser || currentUser.id !== session.userId) {
     toast("Current password is incorrect.", "error");
     return false;
@@ -21,7 +20,7 @@ const confirmCurrentPassword = async (session, label) => {
 };
 
 export const saveSettings = async ({ email, phone, password, role }) => {
-  const session = db().getSession();
+  const session = db.getSession();
   if (!session) return;
 
   const changes = {};
@@ -43,7 +42,7 @@ export const saveSettings = async ({ email, phone, password, role }) => {
   }
 
   if (changes.contact) {
-    const { data: existing } = await db().checkContactExists(changes.contact);
+    const { data: existing } = await db.checkContactExists(changes.contact);
     if (existing && existing.id !== session.userId) {
       return toast(
         changes.contactType === "phone"
@@ -57,7 +56,7 @@ export const saveSettings = async ({ email, phone, password, role }) => {
   if (password) {
     if (password.length < 6) return toast("Password must be at least 6 characters.", "error");
     if (!(await confirmCurrentPassword(session, "Confirm your current password to change password:"))) return;
-    const result = await db().resetPassword(session.userId, await hashPassword(password));
+    const result = await db.resetPassword(session.userId, await hashPassword(password));
     if (result.error) return toast(result.error, "error");
   }
 
@@ -74,7 +73,7 @@ export const saveSettings = async ({ email, phone, password, role }) => {
     if (changes.displayContact) update.display_contact = changes.displayContact;
     if (changes.contactType) update.contact_type = changes.contactType;
     if (changes.role) update.role = changes.role;
-    const result = await db().updateUserAccount(session.userId, update);
+    const result = await db.updateUserAccount(session.userId, update);
     if (result.error) return toast(result.error, "error");
     if (result.user) {
       session.contact = result.user.contact;
@@ -84,20 +83,20 @@ export const saveSettings = async ({ email, phone, password, role }) => {
     }
   }
 
-  db().saveSession(session);
+  db.saveSession(session);
   toast("Settings updated successfully.", "success");
   window.HF_ROUTER.navTo("profile#settings");
 };
 
 export const deleteAccount = async () => {
-  const session = db().getSession();
+  const session = db.getSession();
   if (!session) return;
 
   if (!confirm("Delete your account? This action is permanent and cannot be undone.")) return;
   if (!(await confirmCurrentPassword(session, "Enter your current password to confirm deletion:"))) return;
   if (!confirm("Once deleted, your account cannot be recovered. Delete now?")) return;
 
-  const { error } = await db().removeUser(session.userId);
+  const { error } = await db.removeUser(session.userId);
   if (error) return toast(error.message, "error");
 
   toast("Your account has been deleted.", "success");

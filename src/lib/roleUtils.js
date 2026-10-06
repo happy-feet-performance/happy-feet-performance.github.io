@@ -2,11 +2,10 @@
 // prayers. View functions fetch their data and mount a component from
 // src/react/components/common; the rest are plain async actions.
 //
-// HF_DB, HF_ROUTER, HF_REACT and the role dashboards (HF_PLAYER, ...) are
-// still classic-script globals, so they're looked up at call time.
+// HF_ROUTER, HF_REACT and the role dashboards (HF_PLAYER, ...) are still
+// classic-script globals, so they're looked up at call time.
 import { toast, launchConfetti, launchEmojiConfetti } from "./dom.js";
-
-const db = () => window.HF_DB;
+import * as db from "./db/index.js";
 
 const showView = (name, props) => {
   const mc = document.getElementById("main-content");
@@ -22,7 +21,7 @@ const roleHandler = (role) =>
   })[role];
 
 const refreshUnreadBadge = async (userId) => {
-  const { data: msgs } = await db().getMessages(userId);
+  const { data: msgs } = await db.getMessages(userId);
   const unreadCount = msgs?.filter((m) => !m.read).length || 0;
   window.HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
   return msgs;
@@ -43,8 +42,8 @@ export const sendMessage = async (toId, toName, backView, subject, body) => {
   if (!subject) return toast("Please enter a subject.", "error");
   if (!body) return toast("Please enter a message.", "error");
 
-  const session = db().getSession();
-  const { error } = await db()._sendMessage(session.userId, toId, subject, body);
+  const session = db.getSession();
+  const { error } = await db._sendMessage(session.userId, toId, subject, body);
   if (error) return toast(error, "error");
 
   toast(`Message sent to ${toName}!`, "success");
@@ -52,8 +51,8 @@ export const sendMessage = async (toId, toName, backView, subject, body) => {
 };
 
 export const searchRecipients = async (query) => {
-  const session = db().getSession();
-  const { data } = await db().searchAllUsers(query, session.userId);
+  const session = db.getSession();
+  const { data } = await db.searchAllUsers(query, session.userId);
   return data || [];
 };
 
@@ -63,13 +62,13 @@ export const sendComposedMessage = async (recipients, subject, body) => {
   if (!subject) return toast("Please enter a subject.", "error");
   if (!body) return toast("Please enter a message.", "error");
 
-  const session = db().getSession();
+  const session = db.getSession();
   const threadId = crypto.randomUUID();
   for (const recipient of recipients) {
-    await db()._sendMessage(session.userId, recipient.id, subject, body, threadId);
+    await db._sendMessage(session.userId, recipient.id, subject, body, threadId);
   }
   if (recipients.length > 1) {
-    await db()._sendMessage(
+    await db._sendMessage(
       session.userId,
       session.userId,
       subject,
@@ -86,17 +85,17 @@ export const sendComposedMessage = async (recipients, subject, body) => {
 };
 
 export const viewThread = async (threadId, otherUserId, subject, role) => {
-  const session = db().getSession();
-  const { data: threadMsgs } = await db().getThread(threadId, session.userId);
+  const session = db.getSession();
+  const { data: threadMsgs } = await db.getThread(threadId, session.userId);
 
   // mark unread messages as read
   const unread =
     threadMsgs?.filter((m) => !m.read && m.to_id === session.userId) || [];
-  for (const m of unread) await db().markMessageRead(m.id);
+  for (const m of unread) await db.markMessageRead(m.id);
   await refreshUnreadBadge(session.userId);
 
   const senderIds = [...new Set((threadMsgs || []).map((m) => m.from_id))];
-  const senderNames = await db().getUserNamesByIds(senderIds);
+  const senderNames = await db.getUserNamesByIds(senderIds);
   const messages = (threadMsgs || []).map((m) => ({
     ...m,
     senderName: senderNames[m.from_id] || "HappyFeet",
@@ -123,8 +122,8 @@ export const sendReply = async (toId, subject, threadId, body) => {
     if (firstEmoji) launchEmojiConfetti(firstEmoji);
   }
 
-  const session = db().getSession();
-  const result = await db()._sendMessage(session.userId, toId, subject, body, threadId);
+  const session = db.getSession();
+  const result = await db._sendMessage(session.userId, toId, subject, body, threadId);
   if (result?.error) {
     toast(result.error, "error");
     return false;
@@ -133,24 +132,24 @@ export const sendReply = async (toId, subject, threadId, body) => {
 };
 
 export const archiveMessage = async (messageId, _el, role) => {
-  await db().archiveMessage(messageId);
+  await db.archiveMessage(messageId);
   toast("Message archived.", "success");
-  const session = db().getSession();
+  const session = db.getSession();
   roleHandler(role)?.messages?.(session);
   await refreshUnreadBadge(session.userId);
 };
 
 export const unarchiveMessage = async (messageId, role) => {
-  await db().unarchiveMessage(messageId);
+  await db.unarchiveMessage(messageId);
   toast("Message unarchived.", "success");
   window._archivedSectionOpen = true;
-  roleHandler(role)?.messages?.(db().getSession());
+  roleHandler(role)?.messages?.(db.getSession());
 };
 
 // System/admin messages open in a modal instead of a thread.
 export const readMessage = async (messageId, _el, role) => {
-  await db().markMessageRead(messageId);
-  const session = db().getSession();
+  await db.markMessageRead(messageId);
+  const session = db.getSession();
   const msgs = await refreshUnreadBadge(session.userId);
 
   const msg = msgs?.find((m) => m.id === messageId);
@@ -184,11 +183,11 @@ export const readMessage = async (messageId, _el, role) => {
 };
 
 export const reportToAdmin = async (fromId, senderName) => {
-  const session = db().getSession();
+  const session = db.getSession();
   const reason = prompt(`Report ${senderName} to admin?\n\nPlease describe the issue:`);
   if (!reason) return;
 
-  const result = await db().createTicket(
+  const result = await db.createTicket(
     session.userId,
     `Report: ${senderName}`,
     `${session.name} has reported ${senderName}.\n\nReason: ${reason}`,
@@ -201,7 +200,7 @@ export const reportToAdmin = async (fromId, senderName) => {
 // ── PROFILES ───────────────────────────────────────────────
 
 export const viewSenderProfile = async (userId, role, backView = "messages") => {
-  const { data: user } = await db().getUserById(userId);
+  const { data: user } = await db.getUserById(userId);
   if (!user) return toast("User not found.", "error");
   showView("UserProfile", { user, backView });
 };
@@ -209,11 +208,11 @@ export const viewSenderProfile = async (userId, role, backView = "messages") => 
 // ── SUPPORT TICKETS ────────────────────────────────────────
 
 export const myTickets = async (s, fromMessages = false, role) => {
-  const { data: tickets } = await db().getUserTickets(s.userId);
+  const { data: tickets } = await db.getUserTickets(s.userId);
   showView("MyTickets", { session: s, tickets: tickets || [], fromMessages, role });
 };
 
-export const contactAdmin = (role) => myTickets(db().getSession(), true, role);
+export const contactAdmin = (role) => myTickets(db.getSession(), true, role);
 
 export const newTicket = (s, fromMessages = false, role) =>
   showView("NewTicket", { fromMessages, role });
@@ -222,8 +221,8 @@ export const sendTicket = async (fromMessages, role, { category, subject, body }
   if (!subject) return toast("Please enter a subject.", "error");
   if (!body) return toast("Please enter a message.", "error");
 
-  const session = db().getSession();
-  const result = await db().createTicket(session.userId, subject, body, category);
+  const session = db.getSession();
+  const result = await db.createTicket(session.userId, subject, body, category);
   if (result.error) return toast(result.error, "error");
 
   toast("Ticket submitted! An admin will respond shortly.", "success");
@@ -231,10 +230,10 @@ export const sendTicket = async (fromMessages, role, { category, subject, body }
 };
 
 export const viewTicketThread = async (ticketId, subject, fromMessages = false, role) => {
-  const s = db().getSession();
+  const s = db.getSession();
   const [{ data: msgs }, { data: tickets }] = await Promise.all([
-    db().getTicketMessages(ticketId),
-    db().getUserTickets(s.userId),
+    db.getTicketMessages(ticketId),
+    db.getUserTickets(s.userId),
   ]);
   showView("TicketThread", {
     ticketId,
@@ -249,21 +248,21 @@ export const viewTicketThread = async (ticketId, subject, fromMessages = false, 
 
 export const sendUserTicketReply = async (ticketId, subject, fromMessages, role, body) => {
   if (!body) return;
-  const s = db().getSession();
-  const result = await db().addTicketMessage(ticketId, s.userId, body, false);
+  const s = db.getSession();
+  const result = await db.addTicketMessage(ticketId, s.userId, body, false);
   if (result.error) return toast(result.error, "error");
   viewTicketThread(ticketId, subject, fromMessages, role);
 };
 
 export const markTicketResolved = async (ticketId, subject, fromMessages, role) => {
-  const result = await db().resolveTicket(ticketId);
+  const result = await db.resolveTicket(ticketId);
   if (result.error) return toast(result.error, "error");
   toast("Ticket marked as resolved.", "success");
   viewTicketThread(ticketId, subject, fromMessages, role);
 };
 
 export const reopenUserTicket = async (ticketId, subject, fromMessages, role) => {
-  const result = await db().reopenTicket(ticketId);
+  const result = await db.reopenTicket(ticketId);
   if (result.error) return toast(result.error, "error");
   toast("Ticket reopened.", "success");
   viewTicketThread(ticketId, subject, fromMessages, role);
@@ -293,8 +292,8 @@ export const previewAvatar = (input) => {
 // ── PRAYERS ────────────────────────────────────────────────
 
 export const togglePrayer = (prayerId, role) => {
-  const session = db().getSession();
-  const today = db().localDate();
+  const session = db.getSession();
+  const today = db.localDate();
   const key = `hf_faith_checklist_${session.userId}_${today}`;
   const checklist = JSON.parse(localStorage.getItem(key) || "{}");
 
@@ -309,18 +308,18 @@ export const togglePrayer = (prayerId, role) => {
   if (allMorningDone) {
     const p = session.profile || {};
     const lastFaith = p.lastFaithDate;
-    const yesterday = db().localDateOffset(-1);
+    const yesterday = db.localDateOffset(-1);
     let newStreak = 1;
     if (lastFaith === yesterday) newStreak = (p.faithStreak || 0) + 1;
     else if (lastFaith === today) newStreak = p.faithStreak || 1;
     const updatedProfile = { ...p, faithStreak: newStreak, lastFaithDate: today };
-    db().updateUserProfile(session.userId, updatedProfile);
+    db.updateUserProfile(session.userId, updatedProfile);
     session.profile = updatedProfile;
-    db().saveSession(session);
+    db.saveSession(session);
   }
 
   // re-render immediately to show checked state
-  roleHandler(role)?.faith?.(db().getSession());
+  roleHandler(role)?.faith?.(db.getSession());
 
   // then confetti on top after render
   if (allMorningDone && allEveningDone) {

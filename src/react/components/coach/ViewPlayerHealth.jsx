@@ -1,4 +1,5 @@
 import { MiniCalendar } from "../shared/index.js";
+import * as db from "../../../lib/db/index.js";
 
 export default function CoachViewPlayerHealth({ playerName, logs, todayLog }) {
   return (
@@ -127,7 +128,7 @@ export default function CoachViewPlayerHealth({ playerName, logs, todayLog }) {
               </thead>
               <tbody>
                 {logs.map((l) => {
-                  const isToday = l.date === window.HF_DB.localDate();
+                  const isToday = l.date === db.localDate();
                   return (
                     <tr key={l.date} style={isToday ? { background: "rgba(196,154,10,.05)" } : {}}>
                       <td style={{ color: isToday ? "var(--gold)" : "var(--text2)", fontWeight: isToday ? 600 : 400 }}>

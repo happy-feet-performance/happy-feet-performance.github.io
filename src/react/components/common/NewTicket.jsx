@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { myTickets, sendTicket } from "../../../lib/roleUtils.js";
 import { fieldStyle } from "./styles.js";
+import * as db from "../../../lib/db/index.js";
 
 const CATEGORIES = [
   ["general", "General inquiry"],
@@ -15,7 +16,7 @@ export default function NewTicket({ fromMessages, role }) {
   const [category, setCategory] = useState("general");
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
-  const back = () => myTickets(window.HF_DB.getSession(), fromMessages, role);
+  const back = () => myTickets(db.getSession(), fromMessages, role);
 
   return (
     <>

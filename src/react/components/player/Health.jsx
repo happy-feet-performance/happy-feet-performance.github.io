@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MiniCalendar } from "../shared/index.js";
+import * as db from "../../../lib/db/index.js";
 
 const METRICS = [
   { id: "energy", label: "Energy", icon: "ti-bolt", desc: "Physical energy level" },
@@ -291,7 +292,7 @@ export default function PlayerHealth({ session: s, todayLog, logs, onLogCheckin 
                 </thead>
                 <tbody>
                   {logs.map((l, i) => {
-                    const isToday = l.date === window.HF_DB.localDate();
+                    const isToday = l.date === db.localDate();
                     return (
                       <tr key={l.id || i} style={isToday ? { background: "rgba(196,154,10,.05)" } : undefined}>
                         <td style={{ color: isToday ? "var(--gold)" : "var(--text2)", fontWeight: isToday ? 600 : 400 }}>

@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { initials } from "../../../lib/utils.js";
 import { toast } from "../../../lib/dom.js";
 import { messageUser, viewSenderProfile } from "../../../lib/roleUtils.js";
+import * as db from "../../../lib/db/index.js";
 
 const STAGES = [
   { key: "watching", label: "Watching", color: "var(--blue)", icon: "ti-eye" },
@@ -286,7 +287,7 @@ export default function Prospects({ session: s, saved }) {
 
   const handleUnsave = async (sp, name) => {
     if (!window.confirm(`Remove ${name} from your prospects?`)) return;
-    const result = await window.HF_DB.unsaveProspect(s.userId, sp.player_id);
+    const result = await db.unsaveProspect(s.userId, sp.player_id);
     if (result.error) {
       toast(result.error, "error");
       return;
@@ -296,7 +297,7 @@ export default function Prospects({ session: s, saved }) {
   };
 
   const handleFlag = async (sp, name) => {
-    const result = await window.HF_DB.updateProspectStatus(s.userId, sp.player_id, {
+    const result = await db.updateProspectStatus(s.userId, sp.player_id, {
       flagged: true,
       status: "flagged",
     });
@@ -305,7 +306,7 @@ export default function Prospects({ session: s, saved }) {
       return;
     }
 
-    await window.HF_DB._sendMessage(
+    await db._sendMessage(
       "system",
       sp.player_id,
       "You have been flagged as an elite prospect",
@@ -317,7 +318,7 @@ export default function Prospects({ session: s, saved }) {
   };
 
   const handleUnflag = async (sp, name) => {
-    const result = await window.HF_DB.updateProspectStatus(s.userId, sp.player_id, {
+    const result = await db.updateProspectStatus(s.userId, sp.player_id, {
       flagged: false,
       status: "watching",
     });

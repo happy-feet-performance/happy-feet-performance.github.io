@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getDateForDayISO } from "../../../lib/utils.js";
 import { toast } from "../../../lib/dom.js";
 import { WdlRecord } from "../shared/index.js";
+import * as db from "../../../lib/db/index.js";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const TYPE_COLORS = {
@@ -14,7 +15,7 @@ const TYPE_COLORS = {
 };
 const TYPES = Object.keys(TYPE_COLORS).filter((t) => t !== "Match");
 
-const reRender = () => window.HF_COACH.training(window.HF_DB.getSession());
+const reRender = () => window.HF_COACH.training(db.getSession());
 
 // ── PENDING MATCH REQUESTS (top of page) ──────────────────────
 function PendingRequestsCard({ pendingRequests, session }) {
@@ -1891,7 +1892,7 @@ export default function CoachTraining({
   const isEditingSession = window._editingSession === selectedDateISO;
 
   const clubName = s.profile?.club || "Your team";
-  const today = window.HF_DB.localDate();
+  const today = db.localDate();
   const isMatchDay = selectedDateISO === today;
   const isPostMatch = selectedDateISO < today;
   const matchPhase = isPostMatch ? "post" : isMatchDay ? "day" : "pre";
@@ -1924,7 +1925,7 @@ export default function CoachTraining({
     if (existingSession?.matchId && existingSession?.matchStatus === "confirmed") {
       const squadEl = document.getElementById("opponent-squad-list");
       if (squadEl) {
-        window.HF_DB.getOpponentSquad(existingSession.matchId, s.userId).then(({ data: opSquad }) => {
+        db.getOpponentSquad(existingSession.matchId, s.userId).then(({ data: opSquad }) => {
           if (!opSquad || opSquad.length === 0) {
             squadEl.innerHTML = `<div style="color:var(--text3);font-size:12px;">No lineup submitted yet.</div>`;
             return;
