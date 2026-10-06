@@ -679,7 +679,6 @@ const HF_SCOUT = (() => {
 
   const shareReportViaMessage = async (scoutId, playerId, playerName) => {
     const { data } = await HF_DB.getProspectReport(scoutId, playerId);
-    const { data: verifiedClubs } = await HF_DB.getVerifiedClubs();
     const session = HF_DB.getSession();
 
     if (!data?.report) {
