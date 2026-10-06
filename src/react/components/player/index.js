@@ -1,25 +1,27 @@
-import Dashboard from "./Dashboard.jsx";
-import Profile from "./Profile.jsx";
 import EditProfile from "./EditProfile.jsx";
-import Stats from "./Stats.jsx";
-import Training from "./Training.jsx";
-import Health from "./Health.jsx";
-import Achievements from "./Achievements.jsx";
 import Highlights from "./Highlights.jsx";
-import Messages from "./Messages.jsx";
-import Faith from "./Faith.jsx";
-import FindMyTeam from "./FindMyTeam.jsx";
+import {
+  AchievementsView,
+  DashboardView,
+  FaithView,
+  FindMyTeamView,
+  HealthView,
+  MessagesView,
+  ProfileView,
+  StatsView,
+  TrainingView,
+} from "./views.jsx";
 
 export default {
-  PlayerDashboard: Dashboard,
-  PlayerProfile: Profile,
+  PlayerDashboard: DashboardView,
+  PlayerProfile: ProfileView,
   PlayerEditProfile: EditProfile,
-  PlayerStats: Stats,
-  PlayerTraining: Training,
-  PlayerHealth: Health,
-  PlayerAchievements: Achievements,
+  PlayerStats: StatsView,
+  PlayerTraining: TrainingView,
+  PlayerHealth: HealthView,
+  PlayerAchievements: AchievementsView,
   PlayerHighlights: Highlights,
-  PlayerMessages: Messages,
-  PlayerFaith: Faith,
-  PlayerFindMyTeam: FindMyTeam,
+  PlayerMessages: MessagesView,
+  PlayerFaith: FaithView,
+  PlayerFindMyTeam: FindMyTeamView,
 };

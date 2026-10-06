@@ -60,7 +60,94 @@ const ACHIEVEMENTS = {
   },
 };
 
-function AchievementTree({ cat, catKey, unlockedIds, isOpen, onToggle }) {
+const ALL_ITEMS = Object.values(ACHIEVEMENTS).flatMap((c) => c.items.map((item) => ({ ...item, cat: c })));
+const labelOf = (id) => ALL_ITEMS.find((i) => i.id === id)?.label || id;
+
+// Shown under a category's tree when one of its achievements is clicked.
+function AchievementDetail({ item, cat }) {
+  const requires = item.requires || [];
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-md)" }}>
+      <i className={`ti ${item.icon}`} style={{ fontSize: 24, color: cat.color }}></i>
+      <div>
+        <div
+          style={{
+            fontFamily: "var(--font)",
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+            color: cat.color,
+          }}
+        >
+          {item.label}
+        </div>
+        <div style={{ fontSize: 12, color: "var(--text2)", marginTop: 2 }}>{item.desc}</div>
+        {requires.length > 0 && (
+          <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>Requires: {requires.map(labelOf).join(", ")}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Follows the cursor while hovering an achievement node.
+function AchievementTooltip({ id, x, y, unlockedIds }) {
+  const item = ALL_ITEMS.find((i) => i.id === id);
+  if (!item) return null;
+  const requires = item.requires || [];
+  const isUnlocked = unlockedIds.has(id);
+  const isLocked = !requires.every((r) => unlockedIds.has(r)) && !isUnlocked;
+  return (
+    <div
+      className="achievement-tooltip"
+      style={{ left: Math.min(x + 12, window.innerWidth - 240), top: Math.min(y + 12, window.innerHeight - 120) }}
+    >
+      <div
+        style={{
+          fontFamily: "var(--font)",
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: isLocked ? "var(--text3)" : item.cat.color,
+          marginBottom: 4,
+        }}
+      >
+        {isLocked ? "???" : item.label}
+      </div>
+      <div style={{ fontSize: 11, color: "var(--text2)" }}>
+        {isLocked ? "Complete prerequisites to unlock this achievement." : item.desc}
+      </div>
+      {requires.length > 0 && !isUnlocked && (
+        <div
+          style={{ fontSize: 10, color: "var(--text3)", marginTop: 6, borderTop: "0.5px solid var(--border)", paddingTop: 6 }}
+        >
+          Requires:{" "}
+          {requires.map((r, i) => (
+            <span key={r} style={{ color: unlockedIds.has(r) ? "var(--green)" : "var(--text3)" }}>
+              {i > 0 && " · "}
+              {unlockedIds.has(r) ? "✓" : "○"} {labelOf(r)}
+            </span>
+          ))}
+        </div>
+      )}
+      {isUnlocked ? (
+        <div style={{ fontSize: 10, color: "var(--green)", marginTop: 6 }}>
+          <i className="ti ti-circle-check"></i> Unlocked
+        </div>
+      ) : (
+        !isLocked && (
+          <div style={{ fontSize: 10, color: "var(--gold)", marginTop: 6 }}>
+            <i className="ti ti-clock"></i> In progress
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
+function AchievementTree({ cat, catKey, unlockedIds, isOpen, onToggle, selectedId, onSelect, onHover }) {
   const items = cat.items;
   const nodeSize = 72;
   const hGap = 120;
@@ -131,10 +218,11 @@ function AchievementTree({ cat, catKey, unlockedIds, isOpen, onToggle }) {
         key={item.id}
         transform={`translate(${pos.x}, ${pos.y})`}
         data-id={item.id}
-        onMouseEnter={(e) => window.HF_PLAYER.showAchievementTooltip(e, item.id)}
-        onMouseLeave={() => window.HF_PLAYER.hideAchievementTooltip()}
+        onMouseEnter={(e) => onHover({ id: item.id, x: e.clientX, y: e.clientY })}
+        onMouseMove={(e) => onHover({ id: item.id, x: e.clientX, y: e.clientY })}
+        onMouseLeave={() => onHover(null)}
         onClick={() => {
-          if (!isLocked) window.HF_PLAYER.showAchievementDetail(item.id);
+          if (!isLocked) onSelect(item.id);
         }}
         style={{ cursor: isLocked ? "default" : "pointer" }}
       >
@@ -220,10 +308,13 @@ function AchievementTree({ cat, catKey, unlockedIds, isOpen, onToggle }) {
             {nodes}
           </svg>
         </div>
-        <div
-          id={`achievement-detail-${catKey}`}
-          style={{ display: "none", marginTop: "var(--sp-md)", padding: "var(--sp-md)", background: "var(--bg2)", borderLeft: `2px solid ${cat.color}` }}
-        ></div>
+        {selectedId && (
+          <div
+            style={{ marginTop: "var(--sp-md)", padding: "var(--sp-md)", background: "var(--bg2)", borderLeft: `2px solid ${cat.color}` }}
+          >
+            <AchievementDetail item={items.find((i) => i.id === selectedId)} cat={cat} />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -231,6 +322,9 @@ function AchievementTree({ cat, catKey, unlockedIds, isOpen, onToggle }) {
 
 export default function PlayerAchievements({ session: s, unlockedIds: unlockedIdsArr }) {
   const [openCats, setOpenCats] = useState({});
+  // one achievement detail open at a time, across all categories
+  const [selected, setSelected] = useState(null);
+  const [tooltip, setTooltip] = useState(null);
   const unlockedIds = new Set(unlockedIdsArr);
 
   const totalCount = Object.values(ACHIEVEMENTS).reduce((sum, cat) => sum + cat.items.length, 0);
@@ -308,9 +402,14 @@ export default function PlayerAchievements({ session: s, unlockedIds: unlockedId
             unlockedIds={unlockedIds}
             isOpen={!!openCats[catKey]}
             onToggle={() => setOpenCats((prev) => ({ ...prev, [catKey]: !prev[catKey] }))}
+            selectedId={cat.items.some((i) => i.id === selected) ? selected : null}
+            onSelect={(id) => setSelected((cur) => (cur === id ? null : id))}
+            onHover={setTooltip}
           />
         );
       })}
+
+      {tooltip && <AchievementTooltip {...tooltip} unlockedIds={unlockedIds} />}
 
       <div style={{ display: "flex", gap: "var(--sp-lg)", flexWrap: "wrap", padding: "var(--sp-md)", background: "var(--bg2)", fontSize: 11, color: "var(--text2)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>

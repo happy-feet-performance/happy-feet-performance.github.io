@@ -23,6 +23,12 @@ const METRICS = [
 
 export default function PlayerHealth({ session: s, todayLog, logs, onLogCheckin }) {
   const [view, setView] = useState(todayLog ? "card" : "slider");
+  const [values, setValues] = useState(() => ({
+    ...Object.fromEntries(METRICS.filter((m) => m.id !== "hydration").map((m) => [m.id, todayLog?.[m.id] || 5])),
+    hydration: todayLog?.hydration ?? "",
+    notes: todayLog?.notes || "",
+  }));
+  const set = (key) => (e) => setValues((v) => ({ ...v, [key]: e.target.value }));
 
   const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 
@@ -135,16 +141,9 @@ export default function PlayerHealth({ session: s, todayLog, logs, onLogCheckin 
                     <i className={`ti ${m.icon}`} style={{ color: "var(--text2)" }}></i>
                     <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{m.label}</span>
                   </div>
-                  {m.id !== "hydration" ? (
-                    <span
-                      id={`sv-${m.id}`}
-                      style={{ fontFamily: "var(--font)", fontSize: 14, fontWeight: 700, color: "var(--gold)" }}
-                    >
-                      {todayLog?.[m.id] || 5}
-                    </span>
-                  ) : (
-                    <span id={`sv-${m.id}`} style={{ display: "none" }}>
-                      0
+                  {m.id !== "hydration" && (
+                    <span style={{ fontFamily: "var(--font)", fontSize: 14, fontWeight: 700, color: "var(--gold)" }}>
+                      {values[m.id]}
                     </span>
                   )}
                 </div>
@@ -155,9 +154,9 @@ export default function PlayerHealth({ session: s, todayLog, logs, onLogCheckin 
                       min={m.min || 0}
                       max={m.max || 10}
                       step={m.step || 1}
-                      defaultValue={todayLog?.[m.id] || ""}
+                      value={values[m.id]}
+                      onChange={set(m.id)}
                       placeholder={m.placeholder || ""}
-                      id={`sv-${m.id}-input`}
                       style={{
                         width: "100%",
                         padding: "10px 14px",
@@ -168,10 +167,6 @@ export default function PlayerHealth({ session: s, todayLog, logs, onLogCheckin 
                         outline: "none",
                         fontFamily: "var(--font)",
                       }}
-                      onInput={(e) => {
-                        const el = document.getElementById(`sv-${m.id}`);
-                        if (el) el.textContent = parseFloat(e.target.value) || 0;
-                      }}
                     />
                     <div style={{ fontSize: 11, color: "var(--text3)", marginTop: 4 }}>Litres</div>
                   </>
@@ -181,13 +176,10 @@ export default function PlayerHealth({ session: s, todayLog, logs, onLogCheckin 
                       type="range"
                       min={1}
                       max={10}
-                      defaultValue={todayLog?.[m.id] || 5}
+                      value={values[m.id]}
+                      onChange={set(m.id)}
                       step={1}
                       style={{ width: "100%", accentColor: "var(--gold)" }}
-                      onInput={(e) => {
-                        const el = document.getElementById(`sv-${m.id}`);
-                        if (el) el.textContent = e.target.value;
-                      }}
                     />
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "var(--text3)", marginTop: 4 }}>
                       <span>1: Low</span>
@@ -201,8 +193,8 @@ export default function PlayerHealth({ session: s, todayLog, logs, onLogCheckin 
               <label>Notes</label>
               <input
                 type="text"
-                id="health-notes"
-                defaultValue={todayLog?.notes || ""}
+                value={values.notes}
+                onChange={set("notes")}
                 placeholder="Any injuries, illness, or notes..."
                 style={{
                   padding: "10px 14px",
@@ -217,7 +209,16 @@ export default function PlayerHealth({ session: s, todayLog, logs, onLogCheckin 
               />
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-              <button className="btn btn-primary" onClick={onLogCheckin}>
+              <button
+                className="btn btn-primary"
+                onClick={() =>
+                  onLogCheckin({
+                    ...Object.fromEntries(METRICS.filter((m) => m.id !== "hydration").map((m) => [m.id, parseInt(values[m.id])])),
+                    hydration: values.hydration,
+                    notes: values.notes,
+                  })
+                }
+              >
                 <i className="ti ti-circle-check"></i> {todayLog ? "Update check-in" : "Log check-in"}
               </button>
               {todayLog && (

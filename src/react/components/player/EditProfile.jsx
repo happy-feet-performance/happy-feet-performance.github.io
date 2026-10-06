@@ -1,11 +1,16 @@
+import { useState } from "react";
 import { initials } from "../../../lib/utils.js";
 import { previewAvatar } from "../../../lib/roleUtils.js";
+import { saveProfile } from "../../../lib/player.js";
+import { navTo } from "../../../lib/router.js";
 
 const POSITIONS = ["GK", "CB", "LB", "RB", "DM", "CM", "CAM", "LW", "RW", "ST"];
 const TIERS = ["U10", "U12", "U14", "U16", "U18", "U21", "Professional"];
 
-export default function PlayerEditProfile({ session: s, onSave, onCancel }) {
+export default function PlayerEditProfile({ session: s }) {
   const p = s.profile || {};
+  const [values, setValues] = useState({ name: s.name || "", pos: p.pos || "", tier: p.tier || "", hometown: p.hometown || "" });
+  const field = (key) => ({ value: values[key], onChange: (e) => setValues((v) => ({ ...v, [key]: e.target.value })) });
 
   return (
     <>
@@ -99,8 +104,7 @@ export default function PlayerEditProfile({ session: s, onSave, onCancel }) {
           <label className="required">Full name</label>
           <input
             type="text"
-            id="ep-name"
-            defaultValue={s.name || ""}
+            {...field("name")}
             placeholder="Your full name"
             style={{
               padding: "10px 14px",
@@ -118,8 +122,7 @@ export default function PlayerEditProfile({ session: s, onSave, onCancel }) {
           <div className="fg">
             <label className="required">Position</label>
             <select
-              id="ep-pos"
-              defaultValue={p.pos || ""}
+              {...field("pos")}
               style={{
                 padding: "10px 14px",
                 background: "var(--bg2)",
@@ -142,8 +145,7 @@ export default function PlayerEditProfile({ session: s, onSave, onCancel }) {
           <div className="fg">
             <label>Age tier</label>
             <select
-              id="ep-tier"
-              defaultValue={p.tier || ""}
+              {...field("tier")}
               style={{
                 padding: "10px 14px",
                 background: "var(--bg2)",
@@ -167,8 +169,7 @@ export default function PlayerEditProfile({ session: s, onSave, onCancel }) {
           <label className="required">Hometown / region</label>
           <input
             type="text"
-            id="ep-hometown"
-            defaultValue={p.hometown || ""}
+            {...field("hometown")}
             placeholder="e.g. Kumasi, Ashanti"
             style={{
               padding: "10px 14px",
@@ -212,10 +213,10 @@ export default function PlayerEditProfile({ session: s, onSave, onCancel }) {
           </div>
         )}
         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-          <button className="btn btn-primary" onClick={onSave}>
+          <button className="btn btn-primary" onClick={() => saveProfile(values)}>
             <i className="ti ti-circle-check"></i> Save changes
           </button>
-          <button className="btn btn-outline" onClick={onCancel}>
+          <button className="btn btn-outline" onClick={() => navTo("profile")}>
             Cancel
           </button>
         </div>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { getDateForDayISO } from "../../../lib/utils.js";
+import { navTo } from "../../../lib/router.js";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const TYPE_COLORS = {
@@ -27,6 +28,8 @@ export default function PlayerTraining({
   const [selectedDate, setSelectedDate] = useState(
     window._playerTrainingSelectedDate || todayISO,
   );
+  // session notes typed per date, sent when marking the session complete
+  const [notes, setNotes] = useState({});
 
   if (!hasTeam) {
     return (
@@ -44,7 +47,7 @@ export default function PlayerTraining({
             <br />
             Your coach will broadcast sessions directly to you.
           </div>
-          <button className="btn btn-primary btn-sm" onClick={() => window.HF_ROUTER.navTo("findmyteam")}>
+          <button className="btn btn-primary btn-sm" onClick={() => navTo("findmyteam")}>
             <i className="ti ti-search"></i> Find a team
           </button>
         </div>
@@ -316,7 +319,8 @@ export default function PlayerTraining({
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                   <input
                     type="text"
-                    id={`session-notes-${selectedDate}`}
+                    value={notes[selectedDate] || ""}
+                    onChange={(e) => setNotes((n) => ({ ...n, [selectedDate]: e.target.value }))}
                     placeholder="Add session notes (optional)..."
                     style={{
                       flex: 1,
@@ -332,7 +336,7 @@ export default function PlayerTraining({
                   />
                   <button
                     className="btn btn-primary btn-sm"
-                    onClick={() => onToggleComplete(selectedDayType, selectedDate, true)}
+                    onClick={() => onToggleComplete(selectedDayType, selectedDate, true, notes[selectedDate] || "")}
                   >
                     <i className="ti ti-circle-check"></i> Mark completed
                   </button>

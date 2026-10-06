@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { initials, timeAgo } from "../../../lib/utils.js";
 import { launchConfetti } from "../../../lib/dom.js";
 import { ScriptureStrip } from "../shared/index.js";
+import { navTo } from "../../../lib/router.js";
 
 export default function PlayerDashboard({
   session: s,
@@ -103,7 +104,7 @@ export default function PlayerDashboard({
         <div
           className="metric-card"
           style={{ cursor: "pointer" }}
-          onClick={() => window.HF_ROUTER.navTo("messages")}
+          onClick={() => navTo("messages")}
         >
           <div className="metric-val" style={{ color: "var(--red)" }}>
             {unreadCount}
@@ -116,21 +117,21 @@ export default function PlayerDashboard({
       </div>
 
       <div className="quick-actions">
-        <button className="quick-action" onClick={() => window.HF_ROUTER.navTo("stats")}>
+        <button className="quick-action" onClick={() => navTo("stats")}>
           <div className="quick-action-icon">
             <i className="ti ti-chart-bar"></i>
           </div>
           <div className="quick-action-label">View my stats</div>
           <div className="quick-action-sub">Performance data</div>
         </button>
-        <button className="quick-action" onClick={() => window.HF_ROUTER.navTo("health")}>
+        <button className="quick-action" onClick={() => navTo("health")}>
           <div className="quick-action-icon">
             <i className="ti ti-stethoscope"></i>
           </div>
           <div className="quick-action-label">Log wellness</div>
           <div className="quick-action-sub">How are you today?</div>
         </button>
-        <button className="quick-action" onClick={() => window.HF_ROUTER.navTo("faith")}>
+        <button className="quick-action" onClick={() => navTo("faith")}>
           <div className="quick-action-icon">
             <i className="ti ti-cross"></i>
           </div>
