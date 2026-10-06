@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { initials, isNewUser, timeAgo } from "../../../lib/utils.js";
 import { launchConfetti, toast } from "../../../lib/dom.js";
-import { Badge } from "../shared/index.js";
+import { Badge, ScriptureStrip } from "../shared/index.js";
 
 export default function Dashboard({ session: s, agentConvos, prospects }) {
   const p = s.profile || {};
@@ -106,7 +106,7 @@ export default function Dashboard({ session: s, agentConvos, prospects }) {
         </div>
       </div>
 
-      <div dangerouslySetInnerHTML={{ __html: window.HF_SCRIPTURE.stripHTML() }} />
+      <ScriptureStrip />
 
       {(isUnregistered || isPending || isRejected) && (
         <div

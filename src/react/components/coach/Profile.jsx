@@ -1,4 +1,4 @@
-import { Avatar, Badge, WdlRecord } from "../shared/index.js";
+import { AccountSettings, Avatar, Badge, WdlRecord } from "../shared/index.js";
 
 export default function CoachProfile({ session: s, wdl, onEdit, onSettings }) {
   const p = s.profile || {};
@@ -95,10 +95,7 @@ export default function CoachProfile({ session: s, wdl, onEdit, onSettings }) {
         </div>
       </div>
 
-      <div
-        className="card"
-        dangerouslySetInnerHTML={{ __html: window.HF_SETTINGS.renderSettingsSection(s) }}
-      />
+      <AccountSettings session={s} />
     </>
   );
 }

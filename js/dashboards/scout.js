@@ -983,20 +983,6 @@ const HF_SCOUT = (() => {
     HF_UTILS.toast("PDF downloaded!", "success");
   };
 
-  // ── FAITH ──────────────────────────────────────────────────
-  const faith = (s) => {
-    setMain(`
-      <div class="faith-hero">
-        <i class="ti ti-cross" style="font-size:32px;margin-bottom:10px;display:block;color:var(--faith)"></i>
-        <div style="font-size:20px;font-weight:700;margin-bottom:6px">Faith & Purpose</div>
-        <div style="font-size:13px;opacity:.8">Your talent is God-given. Your discipline is your worship.</div>
-      </div>
-      <div class="faith-verse-card">
-        <div class="verse-text">${HF_SCRIPTURE.getToday().verse}</div>
-        <div class="verse-ref">${HF_SCRIPTURE.getToday().ref}</div>
-      </div>`);
-  };
-
   // ── FIND MY TALENT ───────────────────────────────────────────
   const findmytalent = async (s) => {
     const { data: coaches } = await HF_DB.getVerifiedCoaches();

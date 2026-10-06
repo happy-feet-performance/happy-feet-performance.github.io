@@ -1,4 +1,5 @@
 import { togglePrayer } from "../../../lib/roleUtils.js";
+import { getTodayScripture } from "../../../lib/scripture.js";
 
 const PRAYERS = [
   {
@@ -32,7 +33,7 @@ const SCRIPTURE_MOMENTS = [
 
 export default function PlayerFaith({ session: s, checked }) {
   const allChecked = PRAYERS.every((p) => checked[p.id]);
-  const verse = window.HF_SCRIPTURE.getToday();
+  const verse = getTodayScripture();
 
   return (
     <>

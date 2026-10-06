@@ -1,6 +1,6 @@
 import { initials, timeAgo } from "../../../lib/utils.js";
 import { toast } from "../../../lib/dom.js";
-import { Badge } from "../shared/index.js";
+import { Badge, ScriptureStrip } from "../shared/index.js";
 
 export default function CoachDashboard({ session: s, readiness, agentConvos, newUser }) {
   const p = s.profile || {};
@@ -116,7 +116,7 @@ export default function CoachDashboard({ session: s, readiness, agentConvos, new
         </div>
       </div>
 
-      <div dangerouslySetInnerHTML={{ __html: window.HF_SCRIPTURE.stripHTML() }} />
+      <ScriptureStrip />
 
       {showAlertBanner && (
         <div

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { initials, timeAgo } from "../../../lib/utils.js";
 import { launchConfetti } from "../../../lib/dom.js";
+import { ScriptureStrip } from "../shared/index.js";
 
 export default function PlayerDashboard({
   session: s,
@@ -69,7 +70,7 @@ export default function PlayerDashboard({
         </div>
       </div>
 
-      <div dangerouslySetInnerHTML={{ __html: window.HF_SCRIPTURE.stripHTML() }} />
+      <ScriptureStrip />
 
       <div className="metrics-grid">
         <div className="metric-card">

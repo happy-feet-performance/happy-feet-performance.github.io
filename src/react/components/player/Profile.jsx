@@ -1,5 +1,5 @@
 import { calcRating, initials } from "../../../lib/utils.js";
-import { Badge, RatingBar } from "../shared/index.js";
+import { AccountSettings, Badge, RatingBar } from "../shared/index.js";
 
 export default function PlayerProfile({ session: s, ms, jerseyNumber, onEdit, onSettings, onLeaveTeam }) {
   const p = s.profile || {};
@@ -251,7 +251,7 @@ export default function PlayerProfile({ session: s, ms, jerseyNumber, onEdit, on
         )}
       </div>
 
-      <div className="card" dangerouslySetInnerHTML={{ __html: window.HF_SETTINGS.renderSettingsSection(s) }} />
+      <AccountSettings session={s} />
 
       {/* ── ABILITY RATINGS ── */}
       <div className="card">

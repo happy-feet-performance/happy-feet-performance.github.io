@@ -1,4 +1,5 @@
 import { togglePrayer } from "../../../lib/roleUtils.js";
+import { getTodayScripture } from "../../../lib/scripture.js";
 
 const PRAYERS = [
   {
@@ -25,7 +26,7 @@ const PRAYERS = [
 
 export default function CoachFaith({ checked }) {
   const allChecked = PRAYERS.every((p) => checked.includes(p.id));
-  const today = window.HF_SCRIPTURE.getToday();
+  const today = getTodayScripture();
 
   const howTo = [
     ["ti-users", "Gather the squad", "Before every session, 5 to 10 minutes together."],

@@ -1,5 +1,5 @@
 import { initials } from "../../../lib/utils.js";
-import { Badge } from "../shared/index.js";
+import { AccountSettings, Badge } from "../shared/index.js";
 
 export default function ScoutProfile({ session, onEdit, onSettings }) {
   const p = session.profile || {};
@@ -127,10 +127,7 @@ export default function ScoutProfile({ session, onEdit, onSettings }) {
         </div>
       </div>
 
-      <div
-        className="card"
-        dangerouslySetInnerHTML={{ __html: window.HF_SETTINGS.renderSettingsSection(session) }}
-      />
+      <AccountSettings session={session} />
     </>
   );
 }
