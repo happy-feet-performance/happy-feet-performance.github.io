@@ -5,11 +5,12 @@
 // Route protection: every view switch checks the session; no session sends
 // the user to login.
 //
-// Still classic-script globals, looked up at call time: HF_AUTH, HF_AGENT,
-// HF_REACT and the role dashboards (HF_PLAYER, HF_COACH, HF_SCOUT, HF_ADMIN).
+// Still classic-script globals, looked up at call time: HF_AGENT, HF_REACT and
+// the role dashboards (HF_PLAYER, HF_COACH, HF_SCOUT, HF_ADMIN).
 import * as db from "./db/index.js";
 import { toast } from "./dom.js";
 import { getAppState, setAppState } from "./appStore.js";
+import { logout, showScreen } from "./auth.js";
 
 const roleHandler = (role) =>
   ({
@@ -55,9 +56,8 @@ export const onIncomingMessage = (listener) => {
 
 // ─── Switching between the auth screens and the app ───────
 export const showLogin = (message) => {
-  setAppState({ shellVisible: false, mobileNavOpen: false });
-  document.getElementById("auth-screens").style.display = "flex";
-  window.HF_AUTH.showScreen("screen-login");
+  setAppState({ shellVisible: false, mobileNavOpen: false, authVisible: true });
+  showScreen("screen-login");
   if (message) setTimeout(() => toast(message, "error"), 300);
 };
 
@@ -91,7 +91,7 @@ export const navTo = (view, _el, anchor) => {
   const [routeView, routeAnchor] = (view || "").split("#");
   const session = db.getSession();
   if (!session) {
-    window.HF_AUTH.logout();
+    logout();
     return;
   }
 
@@ -141,8 +141,7 @@ const unreadTicketReplies = (tickets) =>
   }).length || 0;
 
 export const launch = async (session) => {
-  document.getElementById("auth-screens").style.display = "none";
-  setAppState({ shellVisible: true, mobileNavOpen: false, session, activeView: "dashboard", badges: {} });
+  setAppState({ authVisible: false, shellVisible: true, mobileNavOpen: false, session, activeView: "dashboard", badges: {} });
 
   const isAdmin = session.role === "admin";
 

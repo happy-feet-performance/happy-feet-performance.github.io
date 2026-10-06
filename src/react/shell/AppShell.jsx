@@ -1,5 +1,6 @@
 import { useAppState } from "../../lib/appStore.js";
 import { navTo, toggleMobileNav } from "../../lib/router.js";
+import { logout } from "../../lib/auth.js";
 import { Avatar } from "../components/shared/index.js";
 import { navItemsFor } from "./navConfig.js";
 
@@ -45,7 +46,7 @@ function Topbar({ session }) {
         >
           <i className="ti ti-settings" aria-hidden="true"></i>
         </button>
-        <button className="btn-logout" onClick={() => window.HF_AUTH.logout()}>
+        <button className="btn-logout" onClick={logout}>
           Sign out
         </button>
       </div>

@@ -3,6 +3,7 @@
 import { hashPassword, normalizeContact, validateEmail, validatePhone } from "./utils.js";
 import { toast } from "./dom.js";
 import * as db from "./db/index.js";
+import { logout } from "./auth.js";
 
 // Re-checks the signed-in user's current password. Returns true if correct.
 const confirmCurrentPassword = async (session, label) => {
@@ -100,5 +101,5 @@ export const deleteAccount = async () => {
   if (error) return toast(error.message, "error");
 
   toast("Your account has been deleted.", "success");
-  window.HF_AUTH.logout();
+  logout();
 };
