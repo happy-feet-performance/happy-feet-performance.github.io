@@ -2,6 +2,7 @@ import { useState } from "react";
 import { timeAgo } from "../../../lib/utils.js";
 import { newTicket, viewTicketThread } from "../../../lib/roleUtils.js";
 import { TICKET_STATUS } from "./styles.js";
+import { navTo } from "../../../lib/router.js";
 
 const lastMessage = (t) => t.messages?.[t.messages.length - 1];
 
@@ -179,7 +180,7 @@ export default function MyTickets({ session, tickets, fromMessages, role }) {
         <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-md)" }}>
           <button
             className="btn btn-outline btn-sm"
-            onClick={() => window.HF_ROUTER.navTo(fromMessages ? "messages" : "dashboard")}
+            onClick={() => navTo(fromMessages ? "messages" : "dashboard")}
           >
             <i className="ti ti-arrow-left"></i> Back
           </button>

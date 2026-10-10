@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { initials } from "../../../lib/utils.js";
 import { searchRecipients, sendComposedMessage } from "../../../lib/roleUtils.js";
 import { fieldStyle, ROLE_COLORS } from "./styles.js";
+import { navTo } from "../../../lib/router.js";
 
 export default function ComposeMessage() {
   const [recipients, setRecipients] = useState([]);
@@ -150,7 +151,7 @@ export default function ComposeMessage() {
         <button className="btn btn-primary" onClick={() => sendComposedMessage(recipients, subject.trim(), body.trim())}>
           <i className="ti ti-send"></i> Send
         </button>
-        <button className="btn btn-outline" onClick={() => window.HF_ROUTER.navTo("messages")}>
+        <button className="btn btn-outline" onClick={() => navTo("messages")}>
           Cancel
         </button>
       </div>

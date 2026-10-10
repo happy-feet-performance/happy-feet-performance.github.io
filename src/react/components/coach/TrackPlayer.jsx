@@ -1,6 +1,8 @@
 import { Fragment } from "react";
 import { MiniCalendar, MiniChart } from "../shared/index.js";
 import * as db from "../../../lib/db/index.js";
+import { logSessionRating } from "../../../lib/coach.js";
+import { navTo } from "../../../lib/router.js";
 
 function RatingSlider({ label, initial }) {
   const key = label.toLowerCase();
@@ -56,7 +58,7 @@ export default function CoachTrackPlayer({ playerId, playerName, sessions, today
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-md)", marginBottom: "var(--sp-lg)" }}>
-        <button className="btn btn-outline btn-sm" onClick={() => window.HF_ROUTER.navTo("squad")}>
+        <button className="btn btn-outline btn-sm" onClick={() => navTo("squad")}>
           <i className="ti ti-arrow-left"></i> Back to squad
         </button>
         <div
@@ -218,7 +220,7 @@ export default function CoachTrackPlayer({ playerId, playerName, sessions, today
         <button
           className="btn btn-primary"
           style={{ marginTop: "var(--sp-md)", width: "100%" }}
-          onClick={() => window.HF_COACH.logSessionRating(playerId, playerName.replace(/'/g, "\\'"))}
+          onClick={() => logSessionRating(playerId, playerName.replace(/'/g, "\\'"))}
         >
           <i className="ti ti-circle-check"></i> {todayRating ? "Update rating" : "Save rating"}
         </button>

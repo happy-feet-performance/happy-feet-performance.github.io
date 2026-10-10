@@ -1,6 +1,8 @@
 import { initials, timeAgo } from "../../../lib/utils.js";
 import { toast } from "../../../lib/dom.js";
 import { Badge, ScriptureStrip } from "../shared/index.js";
+import { resubmitSquad, reviewAdminEdits } from "../../../lib/coach.js";
+import { navTo } from "../../../lib/router.js";
 
 export default function CoachDashboard({ session: s, readiness, agentConvos, newUser }) {
   const p = s.profile || {};
@@ -163,7 +165,7 @@ export default function CoachDashboard({ session: s, readiness, agentConvos, new
             {(isUnregistered || isRejected) && (
               <button
                 className="btn btn-primary btn-sm"
-                onClick={() => window.HF_COACH.resubmitSquad()}
+                onClick={() => resubmitSquad()}
               >
                 <i className="ti ti-clipboard-check"></i>
                 {isRejected ? " Resubmit squad" : " Register your squad"}
@@ -172,7 +174,7 @@ export default function CoachDashboard({ session: s, readiness, agentConvos, new
             {isAwaitingCoach && (
               <button
                 className="btn btn-primary btn-sm"
-                onClick={() => window.HF_COACH.reviewAdminEdits()}
+                onClick={() => reviewAdminEdits()}
               >
                 <i className="ti ti-eye"></i> Review changes
               </button>
@@ -180,7 +182,7 @@ export default function CoachDashboard({ session: s, readiness, agentConvos, new
             {(isRejected || isAwaitingCoach) && (
               <button
                 className="btn btn-outline btn-sm"
-                onClick={() => window.HF_ROUTER.navTo("messages")}
+                onClick={() => navTo("messages")}
               >
                 <i className="ti ti-message"></i> View messages
               </button>
@@ -296,7 +298,7 @@ export default function CoachDashboard({ session: s, readiness, agentConvos, new
           className="quick-action"
           onClick={() =>
             isVerified
-              ? window.HF_ROUTER.navTo("squad")
+              ? navTo("squad")
               : toast("Verify your squad first.", "error")
           }
         >
@@ -312,7 +314,7 @@ export default function CoachDashboard({ session: s, readiness, agentConvos, new
           className="quick-action"
           onClick={() =>
             isVerified
-              ? window.HF_ROUTER.navTo("training")
+              ? navTo("training")
               : toast("Verify your squad first.", "error")
           }
         >
@@ -326,7 +328,7 @@ export default function CoachDashboard({ session: s, readiness, agentConvos, new
           className="quick-action"
           onClick={() =>
             isVerified
-              ? window.HF_ROUTER.navTo("health")
+              ? navTo("health")
               : toast("Verify your squad first.", "error")
           }
         >

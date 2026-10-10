@@ -3,6 +3,7 @@ import { timeAgo } from "../../../lib/utils.js";
 import { launchEmojiConfetti } from "../../../lib/dom.js";
 import { isEmojiOnly, sendReply } from "../../../lib/roleUtils.js";
 import { onIncomingMessage } from "../../../lib/router.js";
+import { navTo } from "../../../lib/router.js";
 
 const EMOJIS = [
   "😀", "😂", "😍", "🔥", "👏", "💪", "⚽", "🏆", "🎯", "👊",
@@ -89,7 +90,7 @@ export default function MessageThread({ threadId, otherUserId, subject, messages
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-md)", marginBottom: "var(--sp-lg)" }}>
-        <button className="btn btn-outline btn-sm" onClick={() => window.HF_ROUTER.navTo("messages")}>
+        <button className="btn btn-outline btn-sm" onClick={() => navTo("messages")}>
           <i className="ti ti-arrow-left"></i> Back
         </button>
         <div

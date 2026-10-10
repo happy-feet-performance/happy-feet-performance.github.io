@@ -1,3 +1,6 @@
+import { checkExistingRating, logSessionRating } from "../../../lib/coach.js";
+import { navTo } from "../../../lib/router.js";
+
 function RatingSlider({ label }) {
   const key = label.toLowerCase();
   return (
@@ -42,7 +45,7 @@ export default function CoachTracking({ squadPlayers, recentRatings }) {
           <button
             className="btn btn-primary btn-sm"
             style={{ marginTop: 16 }}
-            onClick={() => window.HF_ROUTER.navTo("squad")}
+            onClick={() => navTo("squad")}
           >
             <i className="ti ti-users"></i> Go to squad
           </button>
@@ -60,7 +63,7 @@ export default function CoachTracking({ squadPlayers, recentRatings }) {
         <div className="form-row">
           <div className="fg">
             <label className="required">Player</label>
-            <select id="tr-player" onChange={() => window.HF_COACH.checkExistingRating()}>
+            <select id="tr-player" onChange={() => checkExistingRating()}>
               <option value="">Select player</option>
               {squadPlayers.map((sp) => (
                 <option key={sp.player_id} value={sp.player_id}>
@@ -71,7 +74,7 @@ export default function CoachTracking({ squadPlayers, recentRatings }) {
           </div>
           <div className="fg">
             <label className="required">Session type</label>
-            <select id="tr-type" onChange={() => window.HF_COACH.checkExistingRating()}>
+            <select id="tr-type" onChange={() => checkExistingRating()}>
               <option value="">Select type</option>
               <option>Technical</option>
               <option>Tactical</option>
@@ -106,7 +109,7 @@ export default function CoachTracking({ squadPlayers, recentRatings }) {
           id="tr-save-btn"
           className="btn btn-primary"
           style={{ marginTop: 8 }}
-          onClick={() => window.HF_COACH.logSessionRating()}
+          onClick={() => logSessionRating()}
         >
           <i className="ti ti-circle-check"></i> Save rating
         </button>

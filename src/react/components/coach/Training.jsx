@@ -3,6 +3,8 @@ import { getDateForDayISO } from "../../../lib/utils.js";
 import { toast } from "../../../lib/dom.js";
 import { WdlRecord } from "../shared/index.js";
 import * as db from "../../../lib/db/index.js";
+import { approveMatchRequest, clearDayType, declineMatchRequest, logMatchResult, notifySquadOfMatch, onOpponentChange, onVenueChange, saveLineup, saveMatchSession, saveOpponentLineup, savePostStats, saveSession, setDayType, training } from "../../../lib/coach.js";
+import { navTo } from "../../../lib/router.js";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const TYPE_COLORS = {
@@ -15,7 +17,8 @@ const TYPE_COLORS = {
 };
 const TYPES = Object.keys(TYPE_COLORS).filter((t) => t !== "Match");
 
-const reRender = () => window.HF_COACH.training(db.getSession());
+// Re-runs the training view (src/lib/coach.js), which remounts this component.
+const reRender = () => training(db.getSession());
 
 // ── PENDING MATCH REQUESTS (top of page) ──────────────────────
 function PendingRequestsCard({ pendingRequests, session }) {
@@ -71,7 +74,7 @@ function PendingRequestsCard({ pendingRequests, session }) {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={() =>
-                  window.HF_COACH.approveMatchRequest(
+                  approveMatchRequest(
                     req.id,
                     requestingClub,
                     session.userId === req.coach_id ? false : true,
@@ -82,7 +85,7 @@ function PendingRequestsCard({ pendingRequests, session }) {
               </button>
               <button
                 className="btn btn-danger btn-sm"
-                onClick={() => window.HF_COACH.declineMatchRequest(req.id, req.coach_id, requestingClub)}
+                onClick={() => declineMatchRequest(req.id, req.coach_id, requestingClub)}
               >
                 <i className="ti ti-x"></i> Decline
               </button>
@@ -441,7 +444,7 @@ function TypePicker({
               key={t}
               className={`btn btn-sm ${selectedType === t ? "btn-primary" : "btn-outline"}`}
               style={selectedType === t ? { background: TYPE_COLORS[t], borderColor: TYPE_COLORS[t], color: t === "Rest" ? "var(--text)" : "#fff" } : {}}
-              onClick={() => window.HF_COACH.setDayType(selectedDay, selectedDateISO, t)}
+              onClick={() => setDayType(selectedDay, selectedDateISO, t)}
             >
               {t}
             </button>
@@ -450,7 +453,7 @@ function TypePicker({
             <button
               className="btn btn-sm btn-outline"
               style={{ color: "var(--text3)" }}
-              onClick={() => window.HF_COACH.clearDayType(selectedDay, selectedDateISO)}
+              onClick={() => clearDayType(selectedDay, selectedDateISO)}
             >
               <i className="ti ti-x"></i> Clear
             </button>
@@ -956,7 +959,7 @@ function MatchForm({
                       id="match-opponent-select"
                       disabled={!!opponentRequestPending}
                       defaultValue={existingSession?.isUnverifiedOpponent ? "__other__" : existingSession?.opponent || ""}
-                      onChange={() => window.HF_COACH.onOpponentChange()}
+                      onChange={() => onOpponentChange()}
                       style={{
                         padding: "10px 14px",
                         background: "var(--bg2)",
@@ -1012,7 +1015,7 @@ function MatchForm({
                   <select
                     id="match-location"
                     defaultValue={existingSession?.venueType || ""}
-                    onChange={() => window.HF_COACH.onVenueChange()}
+                    onChange={() => onVenueChange()}
                     style={{
                       padding: "10px 14px",
                       background: "var(--bg2)",
@@ -1097,12 +1100,12 @@ function MatchForm({
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
                     className="btn btn-primary"
-                    onClick={() => window.HF_COACH.saveMatchSession(selectedDay, selectedDateISO)}
+                    onClick={() => saveMatchSession(selectedDay, selectedDateISO)}
                   >
                     <i className="ti ti-device-floppy"></i> {existingSession?.matchId ? "Update details" : "Save match details"}
                   </button>
                   {existingSession?.matchStatus === "confirmed" && (
-                    <button className="btn btn-outline" onClick={() => window.HF_COACH.notifySquadOfMatch(existingSession.matchId)}>
+                    <button className="btn btn-outline" onClick={() => notifySquadOfMatch(existingSession.matchId)}>
                       <i className="ti ti-send"></i> Notify my squad
                     </button>
                   )}
@@ -1110,8 +1113,8 @@ function MatchForm({
                     className="btn btn-outline"
                     onClick={() =>
                       existingSession?.matchId
-                        ? window.HF_ROUTER.navTo("dashboard")
-                        : window.HF_COACH.clearDayType(selectedDay, selectedDateISO)
+                        ? navTo("dashboard")
+                        : clearDayType(selectedDay, selectedDateISO)
                     }
                   >
                     Cancel
@@ -1149,7 +1152,7 @@ function MatchForm({
                             }
                           : {}
                       }
-                      onClick={() => window.HF_COACH.logMatchResult(existingSession.matchId, r, selectedDay, selectedDateISO)}
+                      onClick={() => logMatchResult(existingSession.matchId, r, selectedDay, selectedDateISO)}
                     >
                       {r === "W" ? "Win" : r === "D" ? "Draw" : "Loss"}
                     </button>
@@ -1200,7 +1203,7 @@ function MatchForm({
                       )}
                       <button
                         className={`btn btn-sm ${mySubmitted ? "btn-outline" : "btn-primary"}`}
-                        onClick={() => window.HF_COACH.saveLineup(existingSession.matchId)}
+                        onClick={() => saveLineup(existingSession.matchId)}
                       >
                         <i className={`ti ti-${mySubmitted ? "refresh" : "send"}`}></i>{" "}
                         {mySubmitted ? "Update lineup" : "Submit lineup to opponent"}
@@ -1225,7 +1228,7 @@ function MatchForm({
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--sp-md)", flexWrap: "wrap", gap: 8 }}>
               <div style={{ fontSize: 12, color: "var(--text2)" }}>Fill in player statistics after the match.</div>
               {existingSession?.matchId && (
-                <button className="btn btn-primary btn-sm" onClick={() => window.HF_COACH.savePostStats(existingSession.matchId)}>
+                <button className="btn btn-primary btn-sm" onClick={() => savePostStats(existingSession.matchId)}>
                   <i className="ti ti-circle-check"></i> Save stats
                 </button>
               )}
@@ -1654,7 +1657,7 @@ function SessionBuilder({ effectiveType, existingSession, selectedDay, selectedD
         <DrillsEditor key={selectedDateISO} initialDrills={existingSession?.drills} />
 
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-primary" onClick={() => window.HF_COACH.saveSession(selectedDay, selectedDateISO)}>
+          <button className="btn btn-primary" onClick={() => saveSession(selectedDay, selectedDateISO)}>
             <i className="ti ti-send"></i> {sessionSaved ? "Update and notify squad" : "Save and notify squad"}
           </button>
           {isEditingSession ? (
@@ -1670,7 +1673,7 @@ function SessionBuilder({ effectiveType, existingSession, selectedDay, selectedD
           ) : (
             <button
               className="btn btn-outline"
-              onClick={() => window.HF_COACH.clearDayType(selectedDay, selectedDateISO)}
+              onClick={() => clearDayType(selectedDay, selectedDateISO)}
             >
               Cancel
             </button>
@@ -1752,7 +1755,7 @@ function IncomingMatchCard({ opponentMatchRequest, squadPlayers, matchPhase }) {
             <button
               className="btn btn-primary btn-sm"
               onClick={() =>
-                window.HF_COACH.approveMatchRequest(
+                approveMatchRequest(
                   opponentMatchRequest.id,
                   opponentMatchRequest.coach?.profile?.club || opponentMatchRequest.coach?.name,
                   true,
@@ -1764,7 +1767,7 @@ function IncomingMatchCard({ opponentMatchRequest, squadPlayers, matchPhase }) {
             <button
               className="btn btn-danger btn-sm"
               onClick={() =>
-                window.HF_COACH.declineMatchRequest(
+                declineMatchRequest(
                   opponentMatchRequest.id,
                   opponentMatchRequest.coach_id,
                   (opponentMatchRequest.coach?.profile?.club || opponentMatchRequest.coach?.name || "").replace(/'/g, "\\'"),
@@ -1829,7 +1832,7 @@ function IncomingMatchCard({ opponentMatchRequest, squadPlayers, matchPhase }) {
                   )}
                   <button
                     className={`btn btn-sm ${opponentMatchRequest.opponent_lineup_submitted ? "btn-outline" : "btn-primary"}`}
-                    onClick={() => window.HF_COACH.saveOpponentLineup(opponentMatchRequest.id)}
+                    onClick={() => saveOpponentLineup(opponentMatchRequest.id)}
                   >
                     <i className={`ti ti-${opponentMatchRequest.opponent_lineup_submitted ? "refresh" : "send"}`}></i>{" "}
                     {opponentMatchRequest.opponent_lineup_submitted ? "Update lineup" : "Submit lineup"}
@@ -1858,7 +1861,7 @@ function IncomingMatchCard({ opponentMatchRequest, squadPlayers, matchPhase }) {
 }
 
 // ── MAIN TRAINING VIEW ────────────────────────────────────────
-export default function CoachTraining({
+function TrainingPlanner({
   session: s,
   pendingRequests,
   schedule,
@@ -2049,4 +2052,24 @@ export default function CoachTraining({
       <IncomingMatchCard opponentMatchRequest={opponentMatchRequest} squadPlayers={squadPlayers} matchPhase={matchPhase} />
     </>
   );
+}
+
+// Sessions are built for squad players, so there's nothing to plan until
+// the squad has players.
+export default function CoachTraining(props) {
+  if (!props.squadPlayers?.length) {
+    return (
+      <div className="card">
+        <div style={{ textAlign: "center", padding: 32, color: "var(--text2)" }}>
+          <i className="ti ti-clipboard-list" style={{ fontSize: 32, marginBottom: 10, display: "block", color: "var(--text3)" }}></i>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", marginBottom: 6 }}>No players yet</div>
+          <div style={{ fontSize: 13 }}>Invite players to your squad to start building sessions.</div>
+          <button className="btn btn-primary btn-sm" style={{ marginTop: 16 }} onClick={() => navTo("squad")}>
+            <i className="ti ti-users"></i> Go to squad
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return <TrainingPlanner {...props} />;
 }

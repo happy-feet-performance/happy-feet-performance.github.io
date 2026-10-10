@@ -1,6 +1,7 @@
 import { initials } from "../../../lib/utils.js";
 import { Badge } from "../shared/index.js";
 import { ROLE_COLORS } from "./styles.js";
+import { navTo } from "../../../lib/router.js";
 
 const RATING_LABELS = { speed: "Speed", tech: "Technical", tact: "Tactical", phys: "Physical" };
 const BADGE_TYPES = { player: "green", coach: "gold" };
@@ -91,7 +92,7 @@ export default function UserProfile({ user, backView }) {
   return (
     <>
       {backView && (
-        <button className="btn btn-outline" style={{ marginTop: 8 }} onClick={() => window.HF_ROUTER.navTo(backView)}>
+        <button className="btn btn-outline" style={{ marginTop: 8 }} onClick={() => navTo(backView)}>
           <i className="ti ti-arrow-left"></i> Back
         </button>
       )}

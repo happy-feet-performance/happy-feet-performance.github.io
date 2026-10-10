@@ -5,20 +5,15 @@
 // Route protection: every view switch checks the session; no session sends
 // the user to login.
 //
-// Still classic-script globals, looked up at call time: HF_AGENT, HF_REACT and
-// the role dashboards (HF_PLAYER, HF_COACH, HF_SCOUT, HF_ADMIN).
+// HF_AGENT (js/agent.js) and HF_REACT (src/react/mount.jsx) are globals,
+// looked up at call time.
 import * as db from "./db/index.js";
 import { toast } from "./dom.js";
 import { getAppState, setAppState } from "./appStore.js";
 import { logout, showScreen } from "./auth.js";
+import { roleModule } from "./roles.js";
 
-const roleHandler = (role) =>
-  ({
-    player: window.HF_PLAYER,
-    coach: window.HF_COACH,
-    scout: window.HF_SCOUT,
-    admin: window.HF_ADMIN,
-  })[role];
+const roleHandler = roleModule;
 
 export const currentView = () => getAppState().activeView;
 
@@ -187,8 +182,8 @@ export const launch = async (session) => {
       if (payload.eventType === "INSERT") toast("New support ticket received!", "success");
 
       const view = currentView();
-      if (view === "tickets") window.HF_ADMIN?.tickets?.(db.getSession());
-      if (view === "dashboard") window.HF_ADMIN?.render?.("dashboard", db.getSession());
+      if (view === "tickets") roleModule("admin").tickets?.(db.getSession());
+      if (view === "dashboard") roleModule("admin").render?.("dashboard", db.getSession());
     });
   }
 
@@ -246,7 +241,7 @@ const startRealtime = (session) => {
       toast("New squad verification submitted.", "success");
       setTimeout(() => {
         const view = currentView();
-        if (view === "dashboard" || view === "squad-verifications") window.HF_ADMIN?.render?.(view, db.getSession());
+        if (view === "dashboard" || view === "squad-verifications") roleModule("admin").render?.(view, db.getSession());
       }, 500);
     });
 
@@ -256,7 +251,7 @@ const startRealtime = (session) => {
       toast("New agency verification submitted.", "success");
       setTimeout(() => {
         const view = currentView();
-        if (view === "dashboard" || view === "agency-verifications") window.HF_ADMIN?.render?.(view, db.getSession());
+        if (view === "dashboard" || view === "agency-verifications") roleModule("admin").render?.(view, db.getSession());
       }, 500);
     });
   }
@@ -275,7 +270,7 @@ const startRealtime = (session) => {
       if (!invite?.coach_id) return;
       db.subscribeToCoachTraining(invite.coach_id, () => {
         toast("Your coach updated the training plan.", "success");
-        if (currentView() === "training") window.HF_PLAYER?.training?.(db.getSession());
+        if (currentView() === "training") roleModule("player").training?.(db.getSession());
       });
     });
   }
@@ -286,7 +281,7 @@ const startRealtime = (session) => {
       const { data: pending } = await db.getPendingMatchRequests(session.userId);
       if (pending?.length > 0) {
         toast(`New match request from ${pending[0].coach?.profile?.club || "a coach"}!`, "success");
-        if (currentView() === "training") window.HF_COACH?.training?.(db.getSession());
+        if (currentView() === "training") roleModule("coach").training?.(db.getSession());
       }
     });
 

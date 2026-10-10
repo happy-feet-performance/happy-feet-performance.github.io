@@ -1,5 +1,6 @@
 import { composeMessage, contactAdmin } from "../../../lib/roleUtils.js";
 import { ArchivedMessages, MessageList } from "../common/index.js";
+import { reviewAdminEdits } from "../../../lib/coach.js";
 
 export default function CoachMessages({ session: s, enriched, enrichedArchived }) {
   const isAwaitingReview = s.squadStatus === "awaiting_coach_approval";
@@ -31,7 +32,7 @@ export default function CoachMessages({ session: s, enriched, enrichedArchived }
           <div style={{ fontSize: 13, color: "var(--text2)", marginBottom: 12 }}>
             An admin has made changes to your squad registration. Review and respond below.
           </div>
-          <button className="btn btn-primary btn-sm" onClick={() => window.HF_COACH.reviewAdminEdits()}>
+          <button className="btn btn-primary btn-sm" onClick={() => reviewAdminEdits()}>
             <i className="ti ti-eye"></i> Review changes
           </button>
         </div>

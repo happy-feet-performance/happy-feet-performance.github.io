@@ -1,5 +1,7 @@
 import { initials } from "../../../lib/utils.js";
 import { contactAdmin, previewAvatar } from "../../../lib/roleUtils.js";
+import { saveProfile } from "../../../lib/coach.js";
+import { navTo } from "../../../lib/router.js";
 
 export default function CoachEditProfile({ session }) {
   const p = session.profile || {};
@@ -183,10 +185,10 @@ export default function CoachEditProfile({ session }) {
           </div>
         )}
         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-          <button className="btn btn-primary" onClick={() => window.HF_COACH.saveProfile()}>
+          <button className="btn btn-primary" onClick={() => saveProfile()}>
             <i className="ti ti-circle-check"></i> Save changes
           </button>
-          <button className="btn btn-outline" onClick={() => window.HF_ROUTER.navTo("profile")}>
+          <button className="btn btn-outline" onClick={() => navTo("profile")}>
             Cancel
           </button>
         </div>

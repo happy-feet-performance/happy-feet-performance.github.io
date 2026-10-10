@@ -1,3 +1,6 @@
+import { submitResubmission } from "../../../lib/coach.js";
+import { navTo } from "../../../lib/router.js";
+
 export default function CoachResubmitSquad({ session }) {
   const p = session.profile || {};
   const squadStatus = session.squadStatus || "unregistered";
@@ -91,10 +94,10 @@ export default function CoachResubmitSquad({ session }) {
         </div>
       </div>
       <div style={{ display: "flex", gap: 8, marginTop: "var(--sp-md)", alignItems: "center" }}>
-        <button className="btn btn-primary btn-sm" onClick={() => window.HF_COACH.submitResubmission()}>
+        <button className="btn btn-primary btn-sm" onClick={() => submitResubmission()}>
           <i className="ti ti-send"></i> {isFirstTime ? "Submit for verification" : "Resubmit for verification"}
         </button>
-        <button className="btn btn-outline btn-sm" onClick={() => window.HF_ROUTER.navTo("dashboard")}>
+        <button className="btn btn-outline btn-sm" onClick={() => navTo("dashboard")}>
           Cancel
         </button>
       </div>

@@ -1,11 +1,12 @@
 import { MiniCalendar } from "../shared/index.js";
 import * as db from "../../../lib/db/index.js";
+import { navTo } from "../../../lib/router.js";
 
 export default function CoachViewPlayerHealth({ playerName, logs, todayLog }) {
   return (
     <>
       <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-md)", marginBottom: "var(--sp-lg)" }}>
-        <button className="btn btn-outline btn-sm" onClick={() => window.HF_ROUTER.navTo("health")}>
+        <button className="btn btn-outline btn-sm" onClick={() => navTo("health")}>
           <i className="ti ti-arrow-left"></i> Back to squad wellness
         </button>
         <div

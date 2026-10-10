@@ -1,25 +1,18 @@
 // Actions shared by every role: messaging, profiles, support tickets,
 // prayers. View functions fetch their data and mount a component from
 // src/react/components/common; the rest are plain async actions.
-//
-// HF_ROUTER, HF_REACT and the role dashboards (HF_PLAYER, ...) are still
-// classic-script globals, so they're looked up at call time.
 import { toast, launchConfetti, launchEmojiConfetti } from "./dom.js";
 import * as db from "./db/index.js";
 import { showView } from "./views.js";
+import { navTo, refreshSidenavBadge } from "./router.js";
+import { roleModule } from "./roles.js";
 
-const roleHandler = (role) =>
-  ({
-    player: window.HF_PLAYER,
-    coach: window.HF_COACH,
-    scout: window.HF_SCOUT,
-    admin: window.HF_ADMIN,
-  })[role];
+const roleHandler = roleModule;
 
 const refreshUnreadBadge = async (userId) => {
   const { data: msgs } = await db.getMessages(userId);
   const unreadCount = msgs?.filter((m) => !m.read).length || 0;
-  window.HF_ROUTER.refreshSidenavBadge("messages", unreadCount, "var(--red)");
+  refreshSidenavBadge("messages", unreadCount, "var(--red)");
   return msgs;
 };
 
@@ -43,7 +36,7 @@ export const sendMessage = async (toId, toName, backView, subject, body) => {
   if (error) return toast(error, "error");
 
   toast(`Message sent to ${toName}!`, "success");
-  window.HF_ROUTER.navTo(backView);
+  navTo(backView);
 };
 
 export const searchRecipients = async (query) => {
@@ -77,7 +70,7 @@ export const sendComposedMessage = async (recipients, subject, body) => {
     `Message sent to ${recipients.length} recipient${recipients.length > 1 ? "s" : ""}!`,
     "success",
   );
-  window.HF_ROUTER.navTo("messages");
+  navTo("messages");
 };
 
 export const viewThread = async (threadId, otherUserId, subject, role) => {
@@ -168,7 +161,7 @@ export const readMessage = async (messageId, _el, role) => {
     ok.innerHTML = `<i class="ti ti-circle-check"></i> Got it`;
     ok.onclick = () => {
       overlay.remove();
-      window.HF_ROUTER.navTo("messages");
+      navTo("messages");
     };
     box.append(from, subject, body, ok);
     overlay.append(box);
@@ -326,27 +319,4 @@ export const togglePrayer = (prayerId, role) => {
   } else if (allMorningDone) {
     setTimeout(() => toast("Morning devotion complete! 🙏", "success"), 100);
   }
-};
-
-// ── FILTERING ──────────────────────────────────────────────
-
-// Legacy: filters coach Find My Team by rewriting the list's DOM. Remove
-// once that view keeps its filters in React state.
-export const filterPlayers = (allPlayersKey, cardFn, listId, filters) => {
-  const list = document.getElementById(listId);
-  if (!list || !window[allPlayersKey]) return;
-
-  const { pos, tier, search } = filters;
-  const filtered = window[allPlayersKey].filter((p) => {
-    const prof = p.profile || {};
-    const matchPos = !pos || prof.pos === pos;
-    const matchTier = !tier || prof.tier === tier;
-    const matchSearch = !search || p.name.toLowerCase().includes(search.toLowerCase());
-    return matchPos && matchTier && matchSearch;
-  });
-
-  list.innerHTML =
-    filtered.length === 0
-      ? `<div style="text-align:center;padding:24px;color:var(--text2);font-size:13px">No players match your filters.</div>`
-      : filtered.map((p) => cardFn(p)).join("");
 };

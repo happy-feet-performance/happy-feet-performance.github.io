@@ -1,3 +1,5 @@
+import { viewPlayerHealth } from "../../../lib/coach.js";
+
 export default function CoachHealth({ playerHealth }) {
   if (!playerHealth || playerHealth.length === 0) {
     return (
@@ -80,7 +82,7 @@ export default function CoachHealth({ playerHealth }) {
                     key={ph.player_id}
                     style={{ cursor: "pointer" }}
                     onClick={() =>
-                      window.HF_COACH.viewPlayerHealth(ph.player_id, name.replace(/'/g, "\\'"))
+                      viewPlayerHealth(ph.player_id, name.replace(/'/g, "\\'"))
                     }
                   >
                     <td style={{ fontWeight: 600 }}>{name}</td>

@@ -1,14 +1,122 @@
+import { useState } from "react";
 import { initials } from "../../../lib/utils.js";
+import { invitePlayer, messageScout, toggleRecruitment } from "../../../lib/coach.js";
+
+const POSITIONS = ["GK", "CB", "LB", "RB", "DM", "CM", "CAM", "LW", "RW", "ST"];
+const TIERS = ["U10", "U12", "U14", "U16", "U18", "U21", "Professional"];
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const filterStyle = {
+  padding: "7px 10px",
+  background: "var(--bg2)",
+  border: "0.5px solid var(--border)",
+  color: "var(--text)",
+  fontSize: 12,
+  fontFamily: "var(--font)",
+  outline: "none",
+};
+
+const tagStyle = {
+  fontSize: 10,
+  fontWeight: 700,
+  padding: "1px 6px",
+  background: "var(--bg)",
+  border: "0.5px solid var(--border)",
+  color: "var(--text2)",
+};
+
+// One unattached player. The invite button shows when the squad is verified
+// and open for recruitment; a declined invite can be resent after 24h.
+function PlayerCard({ p, canInvite, isInvited, declinedAt }) {
+  const prof = p.profile || {};
+  const r = prof.ratings;
+  const overall = r ? Math.round((r.speed + r.tech + r.tact + r.phys) / 4) : null;
+  const waiting = !!declinedAt && Date.now() - new Date(declinedAt).getTime() <= DAY_MS;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "var(--sp-md)",
+        padding: "var(--sp-md)",
+        background: "var(--bg2)",
+        borderLeft: `3px solid ${overall && overall >= 75 ? "var(--gold)" : "var(--border)"}`,
+        marginBottom: "var(--sp-sm)",
+      }}
+    >
+      <div className="avatar avatar-md" style={{ background: "var(--green)", flexShrink: 0 }}>
+        {initials(p.name)}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{p.name}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 2 }}>
+          {prof.pos && <span style={tagStyle}>{prof.pos}</span>}
+          {prof.tier && <span style={tagStyle}>{prof.tier}</span>}
+          {prof.hometown && <span style={{ fontSize: 10, color: "var(--text3)" }}>{prof.hometown}</span>}
+        </div>
+        {overall !== null ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+            <div style={{ flex: 1, height: 3, background: "var(--border)" }}>
+              <div
+                style={{
+                  height: "100%",
+                  width: `${overall}%`,
+                  background: overall >= 75 ? "var(--gold)" : overall >= 60 ? "var(--blue)" : "var(--text3)",
+                }}
+              ></div>
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 700, color: overall >= 75 ? "var(--gold)" : "var(--text2)" }}>
+              {overall}%
+            </span>
+          </div>
+        ) : (
+          <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 4 }}>Not yet rated</div>
+        )}
+      </div>
+      {canInvite && (
+        <button
+          className={`btn ${isInvited ? "btn-outline" : waiting ? "btn-danger" : "btn-primary"} btn-sm`}
+          style={{
+            flexShrink: 0,
+            width: 100,
+            justifyContent: "center",
+            whiteSpace: "nowrap",
+            ...(waiting || isInvited ? { cursor: "not-allowed" } : {}),
+          }}
+          disabled={waiting || isInvited}
+          onClick={() => invitePlayer(p.id, p.name)}
+        >
+          <i className={`ti ti-${isInvited || waiting ? "clock" : "send"}`}></i>{" "}
+          {isInvited ? "Invited" : waiting ? "24h wait" : "Invite"}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function CoachFindMyTeam({
   session: s,
   players,
   neededPositions,
   prospects,
-  playersListHTML,
+  invitedIds,
+  declinedAt,
 }) {
   const p = s.profile || {};
   const isVerified = s.squadStatus === "verified";
+  const [pos, setPos] = useState("");
+  const [tier, setTier] = useState("");
+  const [search, setSearch] = useState("");
+
+  const filtered = (players || []).filter((pl) => {
+    const prof = pl.profile || {};
+    return (
+      (!pos || prof.pos === pos) &&
+      (!tier || prof.tier === tier) &&
+      (!search || pl.name.toLowerCase().includes(search.toLowerCase()))
+    );
+  });
 
   return (
     <>
@@ -33,7 +141,7 @@ export default function CoachFindMyTeam({
                 type="checkbox"
                 id="recruitment-toggle"
                 defaultChecked={!!p.openForRecruitment}
-                onChange={(e) => window.HF_COACH.toggleRecruitment(e.target.checked)}
+                onChange={(e) => toggleRecruitment(e.target.checked)}
                 style={{ width: 16, height: 16, accentColor: "var(--gold)", cursor: "pointer", flexShrink: 0 }}
               />
             </label>
@@ -98,23 +206,22 @@ export default function CoachFindMyTeam({
             Positions not yet covered in your squad:
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {neededPositions.map((pos) => (
+            {neededPositions.map((needed) => (
               <span
-                key={pos}
-                id={`pos-btn-${pos}`}
+                key={needed}
                 style={{
                   fontSize: 11,
                   fontWeight: 700,
                   padding: "3px 10px",
-                  background: "rgba(196,154,10,.1)",
+                  background: pos === needed ? "var(--gold)" : "rgba(196,154,10,.1)",
                   border: "0.5px solid var(--gold)",
-                  color: "var(--gold)",
+                  color: pos === needed ? "#0f0f0d" : "var(--gold)",
                   cursor: "pointer",
                   transition: "all 0.15s ease",
                 }}
-                onClick={() => window.HF_COACH.selectNeededPosition(pos)}
+                onClick={() => setPos((cur) => (cur === needed ? "" : needed))}
               >
-                {pos}
+                {needed}
               </span>
             ))}
           </div>
@@ -131,72 +238,27 @@ export default function CoachFindMyTeam({
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, marginBottom: "var(--sp-lg)", flexWrap: "wrap" }}>
-          <select
-            id="fmt-pos"
-            onChange={() => window.HF_COACH.filterPlayers()}
-            style={{
-              padding: "7px 10px",
-              background: "var(--bg2)",
-              border: "0.5px solid var(--border)",
-              color: "var(--text)",
-              fontSize: 12,
-              fontFamily: "var(--font)",
-              outline: "none",
-            }}
-          >
+          <select value={pos} onChange={(e) => setPos(e.target.value)} style={filterStyle}>
             <option value="">All positions</option>
-            <option>GK</option>
-            <option>CB</option>
-            <option>LB</option>
-            <option>RB</option>
-            <option>DM</option>
-            <option>CM</option>
-            <option>CAM</option>
-            <option>LW</option>
-            <option>RW</option>
-            <option>ST</option>
+            {POSITIONS.map((o) => (
+              <option key={o}>{o}</option>
+            ))}
           </select>
-          <select
-            id="fmt-tier"
-            onChange={() => window.HF_COACH.filterPlayers()}
-            style={{
-              padding: "7px 10px",
-              background: "var(--bg2)",
-              border: "0.5px solid var(--border)",
-              color: "var(--text)",
-              fontSize: 12,
-              fontFamily: "var(--font)",
-              outline: "none",
-            }}
-          >
+          <select value={tier} onChange={(e) => setTier(e.target.value)} style={filterStyle}>
             <option value="">All tiers</option>
-            <option>U10</option>
-            <option>U12</option>
-            <option>U14</option>
-            <option>U16</option>
-            <option>U18</option>
-            <option>U21</option>
-            <option>Professional</option>
+            {TIERS.map((o) => (
+              <option key={o}>{o}</option>
+            ))}
           </select>
           <input
             type="text"
-            id="fmt-search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name..."
-            onInput={() => window.HF_COACH.filterPlayers()}
-            style={{
-              flex: 1,
-              minWidth: 120,
-              padding: "7px 10px",
-              background: "var(--bg2)",
-              border: "0.5px solid var(--border)",
-              color: "var(--text)",
-              fontSize: 12,
-              fontFamily: "var(--font)",
-              outline: "none",
-            }}
+            style={{ ...filterStyle, flex: 1, minWidth: 120 }}
           />
         </div>
-        <div id="fmt-players-list">
+        <div>
           {!players || players.length === 0 ? (
             <div style={{ textAlign: "center", padding: 32, color: "var(--text2)" }}>
               <i
@@ -208,8 +270,20 @@ export default function CoachFindMyTeam({
               </div>
               <div style={{ fontSize: 13 }}>Unattached players will appear here as they register.</div>
             </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 24, color: "var(--text2)", fontSize: 13 }}>
+              No players match your filters.
+            </div>
           ) : (
-            <div dangerouslySetInnerHTML={{ __html: playersListHTML }} />
+            filtered.map((pl) => (
+              <PlayerCard
+                key={pl.id}
+                p={pl}
+                canInvite={isVerified && !!p.openForRecruitment}
+                isInvited={invitedIds.includes(pl.id)}
+                declinedAt={declinedAt[pl.id]}
+              />
+            ))
           )}
         </div>
       </div>
@@ -229,8 +303,6 @@ export default function CoachFindMyTeam({
             const overall = rp.ratings
               ? Math.round((rp.ratings.speed + rp.ratings.tech + rp.ratings.tact + rp.ratings.phys) / 4)
               : null;
-            const safeName = (player.name || "").replace(/'/g, "\\'");
-            const safeScout = (scout.name || "").replace(/'/g, "\\'");
 
             return (
               <div
@@ -284,14 +356,14 @@ export default function CoachFindMyTeam({
                   {isVerified && (
                     <button
                       className="btn btn-primary btn-sm"
-                      onClick={() => window.HF_COACH.invitePlayer(player.id, safeName)}
+                      onClick={() => invitePlayer(player.id, player.name)}
                     >
                       <i className="ti ti-send"></i> Invite
                     </button>
                   )}
                   <button
                     className="btn btn-outline btn-sm"
-                    onClick={() => window.HF_COACH.messageScout(sp.scout_id, safeScout)}
+                    onClick={() => messageScout(sp.scout_id, scout.name)}
                   >
                     <i className="ti ti-message"></i> Scout
                   </button>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { sendMessage } from "../../../lib/roleUtils.js";
 import { fieldStyle } from "./styles.js";
+import { navTo } from "../../../lib/router.js";
 
 export default function MessageUser({ toId, toName, backView }) {
   const [subject, setSubject] = useState("");
@@ -38,7 +39,7 @@ export default function MessageUser({ toId, toName, backView }) {
         >
           <i className="ti ti-send"></i> Send message
         </button>
-        <button className="btn btn-outline" onClick={() => window.HF_ROUTER.navTo(backView)}>
+        <button className="btn btn-outline" onClick={() => navTo(backView)}>
           Cancel
         </button>
       </div>

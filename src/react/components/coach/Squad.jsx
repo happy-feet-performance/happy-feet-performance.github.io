@@ -1,6 +1,8 @@
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { initials, timeAgo } from "../../../lib/utils.js";
 import { messageUser } from "../../../lib/roleUtils.js";
+import { WdlRecord } from "../shared/index.js";
+import { acceptTrialRequest, approveNetworkRequest, approveTrialPlayer, confirmKickPlayer, declineNetworkRequest, declineTrialRequest, removeTrialPlayer, resubmitSquad, saveJerseyNumber, trackPlayer } from "../../../lib/coach.js";
 
 function TrialRequests({ trialRequests }) {
   if (!trialRequests || trialRequests.length === 0) return null;
@@ -27,7 +29,7 @@ function TrialRequests({ trialRequests }) {
       </div>
       {trialRequests.map((req) => {
         const rp = req.player?.profile || {};
-        const safeName = (req.player?.name || "").replace(/'/g, "\\'");
+        const safeName = req.player?.name || "";
         return (
           <div
             key={req.id}
@@ -59,7 +61,7 @@ function TrialRequests({ trialRequests }) {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={() =>
-                  window.HF_COACH.acceptTrialRequest(req.id, req.player_id, safeName)
+                  acceptTrialRequest(req.id, req.player_id, safeName)
                 }
               >
                 <i className="ti ti-circle-check"></i> Accept to trial
@@ -67,7 +69,7 @@ function TrialRequests({ trialRequests }) {
               <button
                 className="btn btn-danger btn-sm"
                 onClick={() =>
-                  window.HF_COACH.declineTrialRequest(req.id, req.player_id, safeName)
+                  declineTrialRequest(req.id, req.player_id, safeName)
                 }
               >
                 <i className="ti ti-x"></i> Decline
@@ -105,7 +107,7 @@ function NetworkRequests({ networkRequests }) {
       </div>
       {networkRequests.map((req) => {
         const rp = req.scout?.profile || {};
-        const safeName = (req.scout?.name || "").replace(/'/g, "\\'");
+        const safeName = req.scout?.name || "";
         return (
           <div
             key={req.id}
@@ -137,7 +139,7 @@ function NetworkRequests({ networkRequests }) {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={() =>
-                  window.HF_COACH.approveNetworkRequest(req.id, req.scout_id, safeName)
+                  approveNetworkRequest(req.id, req.scout_id, safeName)
                 }
               >
                 <i className="ti ti-circle-check"></i> Approve
@@ -145,7 +147,7 @@ function NetworkRequests({ networkRequests }) {
               <button
                 className="btn btn-danger btn-sm"
                 onClick={() =>
-                  window.HF_COACH.declineNetworkRequest(req.id, req.scout_id, safeName)
+                  declineNetworkRequest(req.id, req.scout_id, safeName)
                 }
               >
                 <i className="ti ti-x"></i> Decline
@@ -183,7 +185,7 @@ function TrialPlayers({ trialPlayers }) {
       </div>
       {trialPlayers.map((req) => {
         const rp = req.player?.profile || {};
-        const safeName = (req.player?.name || "").replace(/'/g, "\\'");
+        const safeName = req.player?.name || "";
         return (
           <div
             key={req.id}
@@ -215,7 +217,7 @@ function TrialPlayers({ trialPlayers }) {
               <button
                 className="btn btn-primary btn-sm"
                 onClick={() =>
-                  window.HF_COACH.approveTrialPlayer(req.id, req.player_id, safeName)
+                  approveTrialPlayer(req.id, req.player_id, safeName)
                 }
               >
                 <i className="ti ti-user-plus"></i> Add to squad
@@ -223,7 +225,7 @@ function TrialPlayers({ trialPlayers }) {
               <button
                 className="btn btn-danger btn-sm"
                 onClick={() =>
-                  window.HF_COACH.removeTrialPlayer(req.id, req.player_id, safeName)
+                  removeTrialPlayer(req.id, req.player_id, safeName)
                 }
               >
                 <i className="ti ti-x"></i> Remove
@@ -242,9 +244,12 @@ export default function CoachSquad({
   trialRequests,
   trialPlayers,
   networkRequests,
+  wdl,
 }) {
   const isVerified = s.squadStatus === "verified";
   const p = s.profile || {};
+  // the roster row whose actions (jersey, stats, message, remove) are open
+  const [openPlayerId, setOpenPlayerId] = useState(null);
 
   if (!isVerified) {
     return (
@@ -267,7 +272,7 @@ export default function CoachSquad({
             <button
               className="btn btn-primary btn-sm"
               style={{ marginTop: 16 }}
-              onClick={() => window.HF_COACH.resubmitSquad()}
+              onClick={() => resubmitSquad()}
             >
               <i className="ti ti-clipboard-check"></i> Register your squad
             </button>
@@ -296,57 +301,7 @@ export default function CoachSquad({
               {squadPlayers?.length || 0} players
             </span>
           </div>
-          <div id="squad-wdl"></div>
-        </div>
-
-        <div
-          id="invite-panel"
-          style={{
-            display: "none",
-            marginBottom: "var(--sp-lg)",
-            padding: "var(--sp-md)",
-            background: "var(--bg2)",
-            borderLeft: "2px solid var(--gold)",
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "var(--font)",
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: "var(--gold)",
-              marginBottom: 8,
-            }}
-          >
-            Invite a player
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <input
-              type="text"
-              id="player-search-input"
-              placeholder="Search by name or email..."
-              style={{
-                flex: 1,
-                padding: "8px 12px",
-                background: "var(--bg)",
-                border: "0.5px solid var(--border)",
-                color: "var(--text)",
-                fontSize: 13,
-                fontFamily: "var(--font)",
-                outline: "none",
-              }}
-              onInput={(e) => window.HF_COACH.searchPlayers(e.target.value)}
-            />
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={() => window.HF_COACH.showInvitePanel()}
-            >
-              <i className="ti ti-x"></i>
-            </button>
-          </div>
-          <div id="player-search-results" style={{ marginTop: 8 }}></div>
+          {wdl && <WdlRecord W={wdl.W} D={wdl.D} L={wdl.L} />}
         </div>
 
         {!hasPlayers ? (
@@ -378,7 +333,7 @@ export default function CoachSquad({
                 {squadPlayers.map((sp) => {
                   const rp = sp.player?.profile || {};
                   const name = sp.player?.name || "Unknown";
-                  const safeName = name.replace(/'/g, "\\'");
+                  const safeName = name;
                   const overall = rp.ratings
                     ? Math.round(
                         (rp.ratings.speed + rp.ratings.tech + rp.ratings.tact + rp.ratings.phys) / 4,
@@ -388,7 +343,7 @@ export default function CoachSquad({
                     <Fragment key={sp.player_id}>
                       <tr
                         style={{ cursor: "pointer", transition: "background 0.1s" }}
-                        onClick={() => window.HF_COACH.togglePlayerActions(sp.player_id)}
+                        onClick={() => setOpenPlayerId((id) => (id === sp.player_id ? null : sp.player_id))}
                       >
                         <td style={{ fontWeight: 700, color: "var(--gold)", fontSize: 13, fontFamily: "var(--font)" }}>
                           {sp.jersey_number ? "#" + sp.jersey_number : "-"}
@@ -414,16 +369,12 @@ export default function CoachSquad({
                         </td>
                         <td>
                           <i
-                            className="ti ti-chevron-down"
-                            id={`chevron-${sp.player_id}`}
-                            style={{ fontSize: 12, color: "var(--text3)" }}
+                            className={`ti ${openPlayerId === sp.player_id ? "ti-chevron-up" : "ti-chevron-down"}`}
+                            style={{ fontSize: 12, color: openPlayerId === sp.player_id ? "var(--gold)" : "var(--text3)" }}
                           ></i>
                         </td>
                       </tr>
-                      <tr
-                        id={`actions-${sp.player_id}`}
-                        style={{ display: "none", background: "var(--bg2)" }}
-                      >
+                      <tr style={{ display: openPlayerId === sp.player_id ? "table-row" : "none", background: "var(--bg2)" }}>
                         <td colSpan={7} style={{ padding: "var(--sp-md)" }}>
                           <div
                             style={{
@@ -471,7 +422,7 @@ export default function CoachSquad({
                                 className="btn btn-outline btn-sm"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  window.HF_COACH.saveJerseyNumber(sp.player_id, safeName);
+                                  saveJerseyNumber(sp.player_id, safeName);
                                 }}
                               >
                                 <i className="ti ti-circle-check"></i> Assign
@@ -484,7 +435,7 @@ export default function CoachSquad({
                               className="btn btn-outline btn-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                window.HF_COACH.trackPlayer(sp.player_id, safeName);
+                                trackPlayer(sp.player_id, safeName);
                               }}
                             >
                               <i className="ti ti-chart-line"></i> View stats
@@ -502,7 +453,7 @@ export default function CoachSquad({
                               className="btn btn-danger btn-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                window.HF_COACH.confirmKickPlayer(sp.player_id, safeName);
+                                confirmKickPlayer(sp.player_id, safeName);
                               }}
                             >
                               <i className="ti ti-logout"></i> Remove

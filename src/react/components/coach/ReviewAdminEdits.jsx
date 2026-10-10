@@ -1,3 +1,5 @@
+import { acceptAdminEdits, declineAdminEdits } from "../../../lib/coach.js";
+
 export default function CoachReviewAdminEdits({ data }) {
   return (
     <div className="card">
@@ -85,13 +87,13 @@ export default function CoachReviewAdminEdits({ data }) {
       <div style={{ display: "flex", gap: 8 }}>
         <button
           className="btn btn-primary"
-          onClick={() => window.HF_COACH.acceptAdminEdits(data.id)}
+          onClick={() => acceptAdminEdits(data.id)}
         >
           <i className="ti ti-circle-check"></i> Accept changes
         </button>
         <button
           className="btn btn-danger"
-          onClick={() => window.HF_COACH.declineAdminEdits(data.id)}
+          onClick={() => declineAdminEdits(data.id)}
         >
           <i className="ti ti-x"></i> Decline & resubmit
         </button>
