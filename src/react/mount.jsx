@@ -1,4 +1,3 @@
-import "../lib/legacyBridge.js";
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
 import { boot } from "../lib/router.js";

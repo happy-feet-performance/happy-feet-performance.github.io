@@ -1,4 +1,7 @@
-js/config.js
+# Local Supabase settings (see .env.example)
+.env.local
+.env.*.local
+
 # Local Netlify folder
 .netlify
 

@@ -7,14 +7,14 @@
 // /app without a session redirects to /login; the auth pages redirect a
 // signed-in user to their dashboard.
 //
-// HF_AGENT (js/agent.js) and HF_REACT (src/react/mount.jsx) are globals,
-// looked up at call time.
+// HF_REACT (src/react/mount.jsx) is a global, looked up at call time.
 import * as db from "./db/index.js";
 import { toast } from "./dom.js";
 import { getAppState, setAppState } from "./appStore.js";
 import { logout, showScreen } from "./auth.js";
 import { roleModule } from "./roles.js";
 import { currentPath, navigate, onPathChange } from "./location.js";
+import * as agent from "./agent.js";
 
 const roleHandler = roleModule;
 
@@ -75,7 +75,7 @@ export const resetSubscriptions = () => {
 export const _forceLogout = () => {
   db.clearSession();
   db.removeAllChannels();
-  window.HF_AGENT.hide();
+  agent.hide();
   subscriptionsActive = false;
   showLogin();
   setTimeout(() => toast("Your password was changed. Please log in again.", "error"), 5000);
@@ -215,7 +215,7 @@ const startSession = async (session) => {
     });
   }
 
-  window.HF_AGENT.show();
+  agent.show();
 
   // ── Realtime subscriptions (after 1s) ───────────────────────
   setTimeout(() => {

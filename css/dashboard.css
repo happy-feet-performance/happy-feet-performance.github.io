@@ -684,6 +684,67 @@
   }
 }
 
+/* agent reply layout (src/react/agent/AgentPanel.jsx) */
+.ai-reply-gap {
+  height: 6px;
+}
+.ai-reply-heading {
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+.ai-reply-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ai-reply-bullet {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  line-height: 1.5;
+}
+.ai-reply-bullet > span:first-child {
+  color: var(--gold);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.ai-reply-text {
+  line-height: 1.6;
+  margin: 2px 0;
+}
+.ai-reply-text.muted {
+  color: var(--text2);
+  font-size: 12px;
+}
+.ai-reply-followup {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: rgba(196, 154, 10, 0.08);
+  border-left: 2px solid var(--gold);
+}
+.ai-thinking {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.6;
+  font-style: italic;
+  font-size: 12px;
+}
+.ai-thinking .ai-msg-typing {
+  background: none;
+  padding: 0;
+  gap: 3px;
+}
+.ai-thinking .ai-msg-typing span {
+  width: 4px;
+  height: 4px;
+}
+
 /* Achievement tooltip */
 .achievement-tooltip {
   position: fixed;

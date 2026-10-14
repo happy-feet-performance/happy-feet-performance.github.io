@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import * as agent from "../../../lib/agent.js";
 import { initials, timeAgo } from "../../../lib/utils.js";
 import { launchConfetti } from "../../../lib/dom.js";
 import { ScriptureStrip } from "../shared/index.js";
@@ -160,7 +161,7 @@ export default function PlayerDashboard({
           <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-sm)" }}>
             <div className="card-dot"></div>Recent AI conversations
           </div>
-          <button className="btn btn-outline btn-sm" onClick={() => window.HF_AGENT.toggle()}>
+          <button className="btn btn-outline btn-sm" onClick={() => agent.toggle()}>
             <i className="ti ti-ball-football"></i> Ask AI
           </button>
         </div>
@@ -187,7 +188,7 @@ export default function PlayerDashboard({
                 cursor: "pointer",
               }}
               onClick={() =>
-                window.HF_AGENT.openConversation(
+                agent.openConversation(
                   c.session_id,
                   (c.message || "").replace(/`/g, "'").replace(/\n/g, " "),
                   (c.response || "").replace(/`/g, "'").replace(/\n/g, " "),

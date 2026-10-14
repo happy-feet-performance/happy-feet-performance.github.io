@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import * as agent from "../../../lib/agent.js";
 import { initials, isNewUser, timeAgo } from "../../../lib/utils.js";
 import { launchConfetti, toast } from "../../../lib/dom.js";
 import { Badge, ScriptureStrip } from "../shared/index.js";
@@ -235,7 +236,7 @@ export default function Dashboard({ session: s, agentConvos, prospects }) {
           <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-sm)" }}>
             <div className="card-dot"></div>Recent AI conversations
           </div>
-          <button className="btn btn-outline btn-sm" onClick={() => window.HF_AGENT.toggle()}>
+          <button className="btn btn-outline btn-sm" onClick={() => agent.toggle()}>
             <i className="ti ti-ball-football"></i> Ask AI
           </button>
         </div>
@@ -261,7 +262,7 @@ export default function Dashboard({ session: s, agentConvos, prospects }) {
                 marginBottom: "var(--sp-sm)",
                 cursor: "pointer",
               }}
-              onClick={() => window.HF_AGENT.openConversation(c.session_id, c.message || "", c.response || "")}
+              onClick={() => agent.openConversation(c.session_id, c.message || "", c.response || "")}
             >
               <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)", marginBottom: 4 }}>
                 <i className="ti ti-message" style={{ color: "var(--gold)", marginRight: 4 }}></i>

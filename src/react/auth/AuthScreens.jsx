@@ -19,7 +19,7 @@ export default function AuthScreens() {
     <div id="auth-screens" className="auth-screens" style={{ display: visible ? "flex" : "none" }}>
       <div id="auth-theme-toggle" className="auth-theme-toggle">
         <label className="theme-switch" title="Toggle dark mode">
-          {/* HF_THEME (js/theme.js) also syncs this checkbox by id */}
+          {/* HF_THEME (public/js/theme.js) also syncs this checkbox by id */}
           <input
             type="checkbox"
             id="theme-toggle-auth"

@@ -1,6 +1,4 @@
-// Supabase data layer. Re-exports the public API that used to be
-// window.HF_DB; src/lib/legacyBridge.js still exposes it under that name
-// for the classic scripts.
+// Supabase data layer: the public API, re-exported from its parts.
 export {
   _localDate as localDate,
   _localDateOffset as localDateOffset,

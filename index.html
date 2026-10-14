@@ -12,7 +12,6 @@
     <link rel="preconnect" href="https://cdn.jsdelivr.net" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <title>HappyFeet Performance Hub</title>
     <link rel="icon" href="/hf-logo-tp.png" type="image/png" />
     <link rel="apple-touch-icon" href="/hf-logo-tp.png" />
@@ -28,56 +27,12 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css"
     />
+    <!-- sets the theme before first paint (public/js/theme.js) -->
     <script src="/js/theme.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   </head>
   <body>
-    <!-- Home, auth and app pages: src/react/App.jsx -->
+    <!-- Home, auth and app pages and the AI agent: src/react/App.jsx -->
     <div id="app-root"></div>
-
-    <script src="/js/config.js"></script>
-    <script src="/js/agent.js"></script>
-
-    <!-- AI AGENT -->
-    <button
-      class="ai-agent-btn"
-      id="ai-agent-btn"
-      onclick="HF_AGENT.toggle()"
-    >
-      <i class="ti ti-ball-football ai-agent-btn-icon"></i>
-    </button>
-
-    <div class="ai-agent-panel" id="ai-agent-panel">
-      <div class="ai-agent-header">
-        <div class="ai-agent-header-row">
-          <div class="ai-agent-avatar">
-            <i class="ti ti-ball-football ai-agent-avatar-icon"></i>
-          </div>
-          <div>
-            <div class="ai-agent-header-title">DribbleBot</div>
-            <div class="ai-agent-header-subtitle">
-              Ask me anything football
-            </div>
-          </div>
-        </div>
-        <button class="ai-agent-close" onclick="HF_AGENT.toggle()">
-          <i class="ti ti-x"></i>
-        </button>
-      </div>
-      <div class="ai-agent-messages" id="ai-agent-messages"></div>
-      <div class="ai-agent-input-row">
-        <input
-          type="text"
-          id="ai-agent-input"
-          class="ai-agent-input"
-          placeholder="Ask about football..."
-          onkeydown="if (event.key === 'Enter') HF_AGENT.send();"
-        />
-        <button class="ai-agent-send-btn" onclick="HF_AGENT.send()">
-          <i class="ti ti-send ai-agent-send-icon"></i>
-        </button>
-      </div>
-    </div>
 
     <script type="module" src="/src/react/mount.jsx"></script>
   </body>

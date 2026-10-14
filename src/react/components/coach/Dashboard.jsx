@@ -1,4 +1,5 @@
 import { initials, timeAgo } from "../../../lib/utils.js";
+import * as agent from "../../../lib/agent.js";
 import { toast } from "../../../lib/dom.js";
 import { Badge, ScriptureStrip } from "../shared/index.js";
 import { resubmitSquad, reviewAdminEdits } from "../../../lib/coach.js";
@@ -358,7 +359,7 @@ export default function CoachDashboard({ session: s, readiness, agentConvos, new
           <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-sm)" }}>
             <div className="card-dot"></div>Recent AI conversations
           </div>
-          <button className="btn btn-outline btn-sm" onClick={() => window.HF_AGENT.toggle()}>
+          <button className="btn btn-outline btn-sm" onClick={() => agent.toggle()}>
             <i className="ti ti-ball-football"></i> Ask AI
           </button>
         </div>
@@ -387,7 +388,7 @@ export default function CoachDashboard({ session: s, readiness, agentConvos, new
                 cursor: "pointer",
               }}
               onClick={() =>
-                window.HF_AGENT.openConversation(
+                agent.openConversation(
                   c.session_id,
                   (c.message || "").replace(/`/g, "'").replace(/\n/g, " "),
                   (c.response || "").replace(/`/g, "'").replace(/\n/g, " "),

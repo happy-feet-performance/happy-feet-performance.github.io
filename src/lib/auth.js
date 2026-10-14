@@ -6,6 +6,7 @@ import { hashPassword, normalizeContact, validateEmail, validatePhone } from "./
 import { toast } from "./dom.js";
 import { getAppState, setAppState } from "./appStore.js";
 import { closeMobileNav, launch, resetSubscriptions, showLogin } from "./router.js";
+import * as agent from "./agent.js";
 
 // Signup data accumulated across the signup screens.
 let signup = {};
@@ -383,8 +384,8 @@ export const forgotReset = async (newPass, confirmPass) => {
 export const logout = () => {
   db.clearSession();
   resetSubscriptions();
-  window.HF_AGENT.hide();
-  window.HF_AGENT.reset();
+  agent.hide();
+  agent.reset();
   window._cachedVerifiedTeams = null;
   window._cachedWDL = null;
   window._deadlineChecked = false;

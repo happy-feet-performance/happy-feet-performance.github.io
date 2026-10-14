@@ -343,8 +343,8 @@ ${report.text.trim()}
   toast("Report downloaded!", "success");
 };
 
-export const downloadReportPDF = (playerName, report) => {
-  const { jsPDF } = window.jspdf;
+export const downloadReportPDF = async (playerName, report) => {
+  const { jsPDF } = await import("jspdf");
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const agency = db.getSession().profile?.org || "HappyFeet Scouting";
   const date = fileDate();

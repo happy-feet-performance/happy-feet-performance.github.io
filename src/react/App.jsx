@@ -3,11 +3,9 @@ import { linkTo } from "../lib/location.js";
 import HomePage from "./home/HomePage.jsx";
 import AuthScreens from "./auth/AuthScreens.jsx";
 import AppShell from "./shell/AppShell.jsx";
+import AgentPanel from "./agent/AgentPanel.jsx";
 
-// The page for the current URL; src/lib/router.js sets `page` from the path.
-export default function App() {
-  const page = useAppState((s) => s.page);
-
+function Page({ page }) {
   if (page === "home") return <HomePage />;
   if (page === "auth")
     return (
@@ -20,4 +18,16 @@ export default function App() {
     );
   if (page === "app") return <AppShell />;
   return null;
+}
+
+// The page for the current URL (src/lib/router.js sets `page` from the
+// path), plus the AI agent, which stays put across pages.
+export default function App() {
+  const page = useAppState((s) => s.page);
+  return (
+    <>
+      <Page page={page} />
+      <AgentPanel />
+    </>
+  );
 }

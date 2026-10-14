@@ -1,11 +1,16 @@
 // Supabase client, local session, generic per-user data rows, date helpers.
 //
-// supabase-js and HF_CONFIG are still loaded by classic <script> tags, which
-// run before any module, so they're available here at import time.
-export const _client = window.supabase.createClient(
-  window.HF_CONFIG.SUPABASE_URL,
-  window.HF_CONFIG.SUPABASE_ANON_KEY,
-);
+// The project URL and anon key are baked in at build time (see
+// vite.config.js): VITE_SUPABASE_* from .env.local locally, or the
+// SUPABASE_URL / SUPABASE_ANON_KEY variables on Netlify.
+import { createClient } from "@supabase/supabase-js";
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY)
+  throw new Error("Supabase isn't configured: set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (see .env.example).");
+
+export const _client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ─── Local session ─────────────────────────────────────────
 export const getSession = () => {

@@ -40,7 +40,7 @@ function Topbar({ session }) {
           <div className="topbar-user-name">{session?.name}</div>
         </div>
         <label className="theme-switch" title="Toggle dark mode">
-          {/* HF_THEME (js/theme.js) also syncs this checkbox by id */}
+          {/* HF_THEME (public/js/theme.js) also syncs this checkbox by id */}
           <input
             type="checkbox"
             id="theme-toggle"
