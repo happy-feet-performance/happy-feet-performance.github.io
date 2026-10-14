@@ -277,21 +277,4 @@ The AI agent only answers on the live site; locally it replies with a placeholde
 
 ---
 
-## v2 Roadmap (June)
-
-- Migrate to Supabase Auth + real bcrypt
-- React + Node Migration
-- Tighten RLS policies
-- Email/phone verification
-- Video highlight upload + player reel gallery
-- Multiple coaches per club (e.g. assistant coaches)
-- WhatsApp integration
-- Push notifications
-- Mobile app
-- Full test suite
-- Mobile responsiveness
-- Fix real-time thread messaging (still a bit broken)
-
----
-
 _HappyFeet Performance Hub is changing the narrative of African football._
