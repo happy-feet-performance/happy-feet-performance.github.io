@@ -4,9 +4,6 @@
 // mounts the component with it, and actions re-run the view function to
 // refresh. Training in particular keeps its window._cached* caches.
 //
-// TODO: several actions still read their inputs back from the rendered
-// form by DOM id (marked "reads form by id" below); these move to React
-// state in follow-up commits.
 import * as db from "./db/index.js";
 import { getDateForDayISO, isNewUser } from "./utils.js";
 import { launchConfetti, toast } from "./dom.js";
@@ -168,14 +165,10 @@ export const findmyteam = async (s) => {
 };
 
 // ─── Profile ───────────────────────────────────────────────
-export const saveProfile = async () => {
+export const saveProfile = async ({ name, licence, exp, spec }) => {
   const session = db.getSession();
   const p = session.profile || {};
-  // reads form by id
-  const name = document.getElementById("ep-name")?.value.trim();
-  const licence = document.getElementById("ep-licence")?.value;
-  const exp = document.getElementById("ep-exp")?.value;
-  const spec = document.getElementById("ep-spec")?.value;
+  name = name.trim();
 
   if (!name) return toast("Please enter your full name.", "error");
   if (!licence) return toast("Please select your coaching licence.", "error");
@@ -231,13 +224,12 @@ export const declineAdminEdits = async (verificationId) => {
   refreshSidenavBadge("verifications", 0, "var(--gold)");
 };
 
-export const submitResubmission = async () => {
+export const submitResubmission = async ({ teamName, league, year, ground }) => {
   const session = db.getSession();
-  // reads form by id
-  const teamName = document.getElementById("rs-team")?.value.trim();
-  const league = document.getElementById("rs-league")?.value.trim();
-  const year = document.getElementById("rs-year")?.value.trim();
-  const ground = document.getElementById("rs-ground")?.value.trim();
+  teamName = teamName.trim();
+  league = league.trim();
+  year = String(year).trim();
+  ground = ground.trim();
 
   if (!teamName) return toast("Please enter your team name.", "error");
   if (!league) return toast("Please enter your league or division.", "error");
@@ -281,10 +273,8 @@ export const confirmKickPlayer = async (playerId, playerName) => {
   squad(session);
 };
 
-export const saveJerseyNumber = async (playerId, playerName) => {
+export const saveJerseyNumber = async (playerId, playerName, value) => {
   const session = db.getSession();
-  // reads form by id
-  const value = document.getElementById(`jersey-input-${playerId}`)?.value;
   const number = value ? parseInt(value) : null;
   if (number !== null && (number < 1 || number > 99)) return toast("Jersey number must be between 1 and 99.", "error");
 
@@ -511,7 +501,6 @@ export const training = async (s) => {
     window._cachedVerifiedTeams = vt || [];
   }
   if (!window._cachedWDL) window._cachedWDL = await db.getCoachWDL(s.userId);
-  if (existingSession?.opponentGround) window._opponentGround = existingSession.opponentGround;
 
   // this coach's side of the match stats
   let isHomeCoach = true;
@@ -612,14 +601,10 @@ export const clearDayType = async (dayIndex, dateISO) => {
   training(session);
 };
 
-export const saveSession = async (dayIndex = null, dateISO = null) => {
+export const saveSession = async (dayIndex, dateISO, { name, category, intensity, duration, intent }) => {
   const session = db.getSession();
-  // reads form by id
-  const name = document.getElementById("session-name")?.value.trim();
-  const category = document.getElementById("session-category")?.value;
-  const intensity = document.getElementById("session-intensity")?.value;
-  const duration = document.getElementById("session-duration")?.value;
-  const intent = document.getElementById("session-intent")?.value.trim();
+  name = name.trim();
+  intent = intent.trim();
   if (!name) return toast("Please enter a session name.", "error");
 
   // kept in sync by DrillsEditor in Training.jsx
@@ -662,41 +647,23 @@ export const saveSession = async (dayIndex = null, dateISO = null) => {
 
 // ─── Matches ───────────────────────────────────────────────
 // Match features are still being finished; this is the existing flow.
-export const onOpponentChange = () => {
-  // reads form by id
-  const select = document.getElementById("match-opponent-select");
-  const otherWrap = document.getElementById("opponent-other-wrap");
-  if (otherWrap) otherWrap.style.display = select?.value === "__other__" ? "flex" : "none";
-
-  // cache the opponent's home ground for the venue dropdown
-  const ground = select?.options[select.selectedIndex]?.dataset?.ground || null;
-  window._opponentGround = ground;
-  const awayOption = document.querySelector('#match-location option[value="away"]');
-  if (awayOption) awayOption.textContent = `Away: ${ground || "Opponent's ground"}`;
-};
-
-export const onVenueChange = () => {
-  const select = document.getElementById("match-location");
-  const neutralWrap = document.getElementById("venue-neutral-wrap");
-  if (neutralWrap) neutralWrap.style.display = select?.value === "neutral" ? "block" : "none";
-};
-
-export const saveMatchSession = async (dayIndex, dateISO) => {
+// values: { opponent (team name or "__other__"), otherName, venue ("home" |
+// "away" | "neutral"), neutralVenue, intent, opponentGround }
+export const saveMatchSession = async (dayIndex, dateISO, values) => {
   const session = db.getSession();
-  // reads form by id
-  const select = document.getElementById("match-opponent-select");
-  const isOther = select?.value === "__other__";
-  const opponent = isOther ? document.getElementById("match-opponent-other")?.value.trim() : select?.value;
-  const venueType = document.getElementById("match-location")?.value;
+  const isOther = values.opponent === "__other__";
+  const opponent = isOther ? values.otherName.trim() : values.opponent;
+  const venueType = values.venue;
+  const opponentGround = values.opponentGround || null;
   const location =
     venueType === "home"
       ? session.profile?.homeGround || session.profile?.club || "Home ground"
       : venueType === "away"
-        ? window._opponentGround || "Away"
+        ? opponentGround || "Away"
         : venueType === "neutral"
-          ? document.getElementById("match-location-neutral")?.value.trim()
+          ? values.neutralVenue.trim()
           : "";
-  const intent = document.getElementById("session-intent")?.value.trim();
+  const intent = values.intent.trim();
   if (!opponent) return toast("Please select or enter an opponent.", "error");
 
   const existing = await db.getTrainingCached(session.userId);
@@ -719,7 +686,7 @@ export const saveMatchSession = async (dayIndex, dateISO) => {
     opponent,
     location,
     venueType,
-    opponentGround: window._opponentGround || null,
+    opponentGround,
     isUnverifiedOpponent: isOther,
     createdAt: new Date().toISOString(),
   });
@@ -809,40 +776,31 @@ export const declineMatchRequest = async (matchId, requestingCoachId, requesting
   training(session);
 };
 
-// Reads per-player inputs (data-pid / data-stat) from the lineup table.
-const readLineup = (selector) => {
-  const lineup = {};
-  document.querySelectorAll(`${selector}[data-pid]`).forEach((input) => {
-    const { pid, stat } = input.dataset;
-    (lineup[pid] ||= {})[stat] = input.value || null;
-  });
-  return lineup;
-};
-
-const submitLineupFrom = async (matchId, selector, notified) => {
+// lineup: { [playerId]: { role, sub_on_min, sub_off_min } } from the lineup table
+const submitLineupFrom = async (matchId, lineup, notified) => {
   const session = db.getSession();
-  // reads form by selector
-  const lineup = readLineup(selector);
   if (!Object.values(lineup).some((p) => p.role === "starter"))
     return toast("Please set at least one player as a starter.", "error");
-  if (fail(await db.submitLineup(matchId, session.userId, lineup))) return;
+  // blank minutes are stored as null
+  const cleaned = Object.fromEntries(
+    Object.entries(lineup).map(([pid, p]) => [pid, Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v === "" ? null : v]))]),
+  );
+  if (fail(await db.submitLineup(matchId, session.userId, cleaned))) return;
   toast(`Lineup submitted! ${notified} has been notified.`, "success");
   window._matchTab = "lineup";
   training(session);
 };
 
-export const saveLineup = (matchId) => submitLineupFrom(matchId, ".lineup-input", "Opponent");
-export const saveOpponentLineup = (matchId) => submitLineupFrom(matchId, ".opp-lineup-input", "Requesting coach");
+export const saveLineup = (matchId, lineup) => submitLineupFrom(matchId, lineup, "Opponent");
+export const saveOpponentLineup = (matchId, lineup) => submitLineupFrom(matchId, lineup, "Requesting coach");
 
-export const savePostStats = async (matchId) => {
+// stats: { [playerId]: { minutes, goals, ... } } from the stats table
+export const savePostStats = async (matchId, stats) => {
   const session = db.getSession();
-  // reads form by selector
-  const stats = {};
-  document.querySelectorAll(".post-stat-input[data-pid]").forEach((input) => {
-    const { pid, stat } = input.dataset;
-    (stats[pid] ||= {})[stat] = parseInt(input.value) || 0;
-  });
-  if (fail(await db.saveMatchPostStats(matchId, session.userId, stats))) return;
+  const numeric = Object.fromEntries(
+    Object.entries(stats).map(([pid, p]) => [pid, Object.fromEntries(Object.entries(p).map(([k, v]) => [k, parseInt(v) || 0]))]),
+  );
+  if (fail(await db.saveMatchPostStats(matchId, session.userId, numeric))) return;
   toast("Match stats saved!", "success");
   training(session);
 };
@@ -861,47 +819,32 @@ export const notifySquadOfMatch = async (matchId) => {
 };
 
 // ─── Tracking ──────────────────────────────────────────────
-export const logSessionRating = async (playerId = null, playerName = null) => {
+// ratings are the 1-10 slider values; stored as 10-100
+export const logSessionRating = async ({ playerId, playerName, sessionType, notes, ratings }, { fromPlayerPage = false } = {}) => {
   const session = db.getSession();
-  // reads form by id
-  const pid = playerId || document.getElementById("tr-player")?.value;
-  const pname = playerName || document.getElementById("tr-player")?.selectedOptions[0]?.text || "Player";
-  const sessionType = document.getElementById("tr-type")?.value;
-  const notes = document.getElementById("tr-notes")?.value.trim() || null;
-  if (!pid) return toast("Please select a player.", "error");
+  if (!playerId) return toast("Please select a player.", "error");
   if (!sessionType) return toast("Please select a session type.", "error");
 
-  const slider = (key) => parseInt(document.getElementById(`cv-${key}`)?.textContent || 7) * 10;
-  const ratings = { speed: slider("speed"), technical: slider("technical"), tactical: slider("tactical"), physical: slider("physical") };
+  const scaled = Object.fromEntries(["speed", "technical", "tactical", "physical"].map((k) => [k, (ratings[k] || 7) * 10]));
+  notes = notes.trim() || null;
 
-  const { data: existing } = await db.getTodaySessionRating(session.userId, pid);
+  const { data: existing } = await db.getTodaySessionRating(session.userId, playerId);
   let result;
   if (existing) {
-    const overall = Math.round((ratings.speed + ratings.technical + ratings.tactical + ratings.physical) / 4);
-    const { error } = await db._updateSessionRating(existing.id, sessionType, ratings, overall, notes);
+    const overall = Math.round((scaled.speed + scaled.technical + scaled.tactical + scaled.physical) / 4);
+    const { error } = await db._updateSessionRating(existing.id, sessionType, scaled, overall, notes);
     result = error ? { error } : { overall };
     if (!error) toast(`Session updated! Overall: ${overall}/100`, "success");
   } else {
-    result = await db.saveSessionRating(session.userId, pid, sessionType, ratings, notes);
+    result = await db.saveSessionRating(session.userId, playerId, sessionType, scaled, notes);
     if (!result.error) toast(`Session logged! Overall: ${result.overall}/100`, "success");
   }
   if (fail(result)) return;
 
-  if (playerId) trackPlayer(pid, pname);
-  else {
-    await checkExistingRating();
-    tracking(session);
-  }
+  if (fromPlayerPage) trackPlayer(playerId, playerName);
+  else tracking(session);
 };
 
-// Switches the tracking form's button between "Save" and "Update".
-export const checkExistingRating = async () => {
-  const session = db.getSession();
-  const playerId = document.getElementById("tr-player")?.value;
-  const btn = document.getElementById("tr-save-btn");
-  if (!btn) return;
-  const existing = playerId ? (await db.getTodaySessionRating(session.userId, playerId)).data : null;
-  btn.innerHTML = existing
-    ? '<i class="ti ti-refresh"></i> Update rating'
-    : '<i class="ti ti-circle-check"></i> Save rating';
-};
+// Whether this coach already rated the player today (Save then updates it).
+export const hasRatingToday = async (playerId) =>
+  !!(await db.getTodaySessionRating(db.getSession().userId, playerId)).data;

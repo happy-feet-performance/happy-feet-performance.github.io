@@ -3,7 +3,8 @@ import { getDateForDayISO } from "../../../lib/utils.js";
 import { toast } from "../../../lib/dom.js";
 import { WdlRecord } from "../shared/index.js";
 import * as db from "../../../lib/db/index.js";
-import { approveMatchRequest, clearDayType, declineMatchRequest, logMatchResult, notifySquadOfMatch, onOpponentChange, onVenueChange, saveLineup, saveMatchSession, saveOpponentLineup, savePostStats, saveSession, setDayType, training } from "../../../lib/coach.js";
+import { useAsync } from "../../hooks/useAsync.js";
+import { approveMatchRequest, clearDayType, declineMatchRequest, logMatchResult, notifySquadOfMatch, saveLineup, saveMatchSession, saveOpponentLineup, savePostStats, saveSession, setDayType, training } from "../../../lib/coach.js";
 import { navTo } from "../../../lib/router.js";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -465,20 +466,38 @@ function TypePicker({
 }
 
 // ── LINEUP TABLE (shared shape for own-side and opponent-side) ──
-function LineupTable({ squadPlayers, stats, locked, inputClass }) {
-  const onRoleChange = (e) => {
-    const r = e.target.closest("tr");
-    const on = r.querySelector('[data-stat="sub_on_min"]');
-    const off = r.querySelector('[data-stat="sub_off_min"]');
-    if (on && off) {
-      const isSub = e.target.value === "sub";
-      const isBench = e.target.value === "bench";
-      on.disabled = !isSub;
-      on.style.opacity = isSub ? "1" : "0.4";
-      off.disabled = isBench;
-      off.style.opacity = !isBench ? "1" : "0.4";
-    }
-  };
+// Lineup form values ({ [playerId]: { role, sub_on_min, sub_off_min } }) from saved stats.
+const initialLineup = (squadPlayers, stats) =>
+  Object.fromEntries(
+    squadPlayers.map((sp) => {
+      const e = stats[sp.player_id] || {};
+      return [sp.player_id, { role: e.role || "starter", sub_on_min: e.sub_on_min ?? "", sub_off_min: e.sub_off_min ?? "" }];
+    }),
+  );
+
+// The post-match stats each row collects, by position.
+const statFieldsFor = (pos) =>
+  pos === "GK"
+    ? ["minutes", "saves", "yellow_cards", "red_cards"]
+    : ["minutes", "goals", "assists", "shots", "saves", ...(["CB", "LB", "RB", "DM"].includes(pos) ? ["tackles"] : []), "yellow_cards", "red_cards"];
+
+// Stats form values for everyone not on the bench.
+const initialStats = (squadPlayers, myStats) =>
+  Object.fromEntries(
+    squadPlayers
+      .filter((sp) => (myStats[sp.player_id]?.role || "starter") !== "bench")
+      .map((sp) => {
+        const e = myStats[sp.player_id] || {};
+        const fields = statFieldsFor(sp.player?.profile?.pos || "CM");
+        return [sp.player_id, Object.fromEntries(fields.map((k) => [k, e[k] ?? (k === "minutes" ? 90 : 0)]))];
+      }),
+  );
+
+// Updates one player's field in a { [playerId]: {...} } form.
+const setPlayerField = (setter) => (pid, field, value) =>
+  setter((form) => ({ ...form, [pid]: { ...form[pid], [field]: value } }));
+
+function LineupTable({ squadPlayers, values, onChange, locked }) {
 
   return (
     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, tableLayout: "fixed" }}>
@@ -551,8 +570,9 @@ function LineupTable({ squadPlayers, stats, locked, inputClass }) {
       <tbody>
         {squadPlayers.map((sp) => {
           const pos = sp.player?.profile?.pos || "CM";
-          const e = stats[sp.player_id] || {};
-          const role = e.role || "starter";
+          const v = values[sp.player_id] || {};
+          const role = v.role || "starter";
+          const set = (field) => (ev) => onChange(sp.player_id, field, ev.target.value);
           return (
             <tr key={sp.player_id} style={{ borderBottom: "0.5px solid var(--border)" }}>
               <td style={{ padding: "6px 8px", fontWeight: 600, color: "var(--text)" }}>
@@ -561,12 +581,9 @@ function LineupTable({ squadPlayers, stats, locked, inputClass }) {
               </td>
               <td style={{ padding: "3px 4px" }}>
                 <select
-                  data-pid={sp.player_id}
-                  data-stat="role"
-                  className={inputClass}
                   disabled={locked}
-                  defaultValue={role}
-                  onChange={onRoleChange}
+                  value={role}
+                  onChange={set("role")}
                   style={{
                     width: "100%",
                     padding: "5px 4px",
@@ -589,11 +606,9 @@ function LineupTable({ squadPlayers, stats, locked, inputClass }) {
                   type="number"
                   min="0"
                   max="120"
-                  defaultValue={e.sub_on_min ?? ""}
-                  data-pid={sp.player_id}
-                  data-stat="sub_on_min"
+                  value={v.sub_on_min ?? ""}
+                  onChange={set("sub_on_min")}
                   placeholder="min"
-                  className={inputClass}
                   disabled={role !== "sub" || locked}
                   style={{
                     width: "100%",
@@ -615,11 +630,9 @@ function LineupTable({ squadPlayers, stats, locked, inputClass }) {
                   type="number"
                   min="0"
                   max="120"
-                  defaultValue={e.sub_off_min ?? ""}
-                  data-pid={sp.player_id}
-                  data-stat="sub_off_min"
+                  value={v.sub_off_min ?? ""}
+                  onChange={set("sub_off_min")}
                   placeholder="min"
-                  className={inputClass}
                   disabled={role === "bench" || locked}
                   style={{
                     width: "100%",
@@ -645,7 +658,7 @@ function LineupTable({ squadPlayers, stats, locked, inputClass }) {
 }
 
 // ── POST-MATCH STATS TABLE ────────────────────────────────────
-function StatsTable({ squadPlayers, myStats }) {
+function StatsTable({ squadPlayers, myStats, values, onChange }) {
   return (
     <div style={{ overflowX: "auto" }}>
       <table style={{ borderCollapse: "collapse", fontSize: 12, width: "100%" }}>
@@ -695,17 +708,12 @@ function StatsTable({ squadPlayers, myStats }) {
                 outline: "none",
                 boxSizing: "border-box",
               };
-              const inp = (stat, val, min = 0, max = 20) => (
-                <input
-                  type="number"
-                  min={min}
-                  max={max}
-                  defaultValue={val}
-                  data-pid={sp.player_id}
-                  data-stat={stat}
-                  className="post-stat-input"
-                  style={inputStyle}
-                />
+              const bind = (stat) => ({
+                value: values[sp.player_id]?.[stat] ?? "",
+                onChange: (ev) => onChange(sp.player_id, stat, ev.target.value),
+              });
+              const inp = (stat, min = 0, max = 20) => (
+                <input type="number" min={min} max={max} {...bind(stat)} style={inputStyle} />
               );
               const na = (
                 <input
@@ -715,15 +723,12 @@ function StatsTable({ squadPlayers, myStats }) {
                   style={{ ...inputStyle, background: "var(--bg3)", color: "var(--text3)", cursor: "default" }}
                 />
               );
-              const dim = (stat, val) => (
+              const dim = (stat) => (
                 <input
                   type="number"
                   min="0"
                   max="20"
-                  defaultValue={val}
-                  data-pid={sp.player_id}
-                  data-stat={stat}
-                  className="post-stat-input"
+                  {...bind(stat)}
                   title="Not typical for this position"
                   style={{ ...inputStyle, color: "var(--text3)", opacity: 0.35 }}
                 />
@@ -740,26 +745,26 @@ function StatsTable({ squadPlayers, myStats }) {
                     )}
                     {e.sub_off_min && <span style={{ fontSize: 9, color: "var(--red)", marginLeft: 2 }}>↓{e.sub_off_min}'</span>}
                   </td>
-                  <td style={{ padding: "3px 2px" }}>{inp("minutes", e.minutes ?? 90, 0, 120)}</td>
+                  <td style={{ padding: "3px 2px" }}>{inp("minutes", 0, 120)}</td>
                   {isGK ? (
                     <>
                       <td style={{ padding: "3px 2px" }}>{na}</td>
                       <td style={{ padding: "3px 2px" }}>{na}</td>
                       <td style={{ padding: "3px 2px" }}>{na}</td>
-                      <td style={{ padding: "3px 2px" }}>{inp("saves", e.saves ?? 0)}</td>
+                      <td style={{ padding: "3px 2px" }}>{inp("saves")}</td>
                       <td style={{ padding: "3px 2px" }}>{na}</td>
                     </>
                   ) : (
                     <>
-                      <td style={{ padding: "3px 2px" }}>{inp("goals", e.goals ?? 0)}</td>
-                      <td style={{ padding: "3px 2px" }}>{inp("assists", e.assists ?? 0)}</td>
-                      <td style={{ padding: "3px 2px" }}>{inp("shots", e.shots ?? 0)}</td>
-                      <td style={{ padding: "3px 2px" }}>{dim("saves", e.saves ?? 0)}</td>
-                      <td style={{ padding: "3px 2px" }}>{isDefMid ? inp("tackles", e.tackles ?? 0) : na}</td>
+                      <td style={{ padding: "3px 2px" }}>{inp("goals")}</td>
+                      <td style={{ padding: "3px 2px" }}>{inp("assists")}</td>
+                      <td style={{ padding: "3px 2px" }}>{inp("shots")}</td>
+                      <td style={{ padding: "3px 2px" }}>{dim("saves")}</td>
+                      <td style={{ padding: "3px 2px" }}>{isDefMid ? inp("tackles") : na}</td>
                     </>
                   )}
-                  <td style={{ padding: "3px 2px" }}>{inp("yellow_cards", e.yellow_cards ?? 0, 0, 2)}</td>
-                  <td style={{ padding: "3px 2px" }}>{inp("red_cards", e.red_cards ?? 0, 0, 1)}</td>
+                  <td style={{ padding: "3px 2px" }}>{inp("yellow_cards", 0, 2)}</td>
+                  <td style={{ padding: "3px 2px" }}>{inp("red_cards", 0, 1)}</td>
                 </tr>
               );
             })}
@@ -767,6 +772,49 @@ function StatsTable({ squadPlayers, myStats }) {
       </table>
     </div>
   );
+}
+
+// The opponent's submitted lineup, shown once a match is confirmed.
+function OpponentSquadList({ matchId, coachId }) {
+  const { data: squad, loading } = useAsync(async () => (await db.getOpponentSquad(matchId, coachId)).data || [], [matchId]);
+  if (loading) return <div style={{ fontSize: 13, color: "var(--text2)" }}>Loading...</div>;
+  if (!squad.length) return <div style={{ color: "var(--text3)", fontSize: 12 }}>No lineup submitted yet.</div>;
+  return squad.map((p) => {
+    const prof = p.player?.profile || {};
+    const r = prof.ratings;
+    const overall = r ? Math.round((r.speed + r.tech + r.tact + r.phys) / 4) : null;
+    return (
+      <div
+        key={p.player_id || p.player?.id}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "var(--sp-md)",
+          padding: "var(--sp-sm) var(--sp-md)",
+          background: "var(--bg2)",
+          borderLeft: "2px solid var(--faith)",
+          marginBottom: 4,
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "var(--font)",
+            fontSize: 10,
+            fontWeight: 700,
+            padding: "2px 6px",
+            background: "var(--faith-lt)",
+            color: "var(--faith)",
+          }}
+        >
+          {prof.pos || "?"}
+        </div>
+        <div style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{p.player?.name || "Unknown"}</div>
+        {overall !== null && (
+          <div style={{ fontFamily: "var(--font)", fontSize: 13, fontWeight: 700, color: "var(--gold)" }}>{overall}%</div>
+        )}
+      </div>
+    );
+  });
 }
 
 // ── MATCH FORM (fixture hero + tabs) ──────────────────────────
@@ -788,6 +836,19 @@ function MatchForm({
   squadPlayers,
   myStats,
 }) {
+  const [lineup, setLineup] = useState(() => initialLineup(squadPlayers, myStats));
+  const [postStats, setPostStats] = useState(() => initialStats(squadPlayers, myStats));
+  const [match, setMatch] = useState({
+    opponent: existingSession?.isUnverifiedOpponent ? "__other__" : existingSession?.opponent || "",
+    otherName: existingSession?.isUnverifiedOpponent ? existingSession.opponent : "",
+    venue: existingSession?.venueType || "",
+    neutralVenue: existingSession?.venueType === "neutral" ? existingSession.location : "",
+    intent: existingSession?.intent || "",
+  });
+  // home ground of the chosen opponent, for the Away venue
+  const opponentGround =
+    (verifiedTeams || []).find((t) => t.name === match.opponent)?.homeGround ||
+    (match.opponent === "__other__" ? null : existingSession?.opponentGround || null);
   return (
     <div className="card" style={{ borderTop: "2px solid var(--faith)", padding: 0, overflow: "hidden" }}>
       {/* FIXTURE HERO */}
@@ -956,10 +1017,9 @@ function MatchForm({
                   <div className="fg">
                     <label className="required">Opponent</label>
                     <select
-                      id="match-opponent-select"
+                      value={match.opponent} onChange={(e) => setMatch((f) => ({ ...f, opponent: e.target.value }))}
                       disabled={!!opponentRequestPending}
-                      defaultValue={existingSession?.isUnverifiedOpponent ? "__other__" : existingSession?.opponent || ""}
-                      onChange={() => onOpponentChange()}
+                      
                       style={{
                         padding: "10px 14px",
                         background: "var(--bg2)",
@@ -986,14 +1046,13 @@ function MatchForm({
                   </div>
                   <div
                     className="fg"
-                    id="opponent-other-wrap"
-                    style={{ display: existingSession?.isUnverifiedOpponent ? "flex" : "none", flexDirection: "column", gap: 5 }}
+                    style={{ display: match.opponent === "__other__" ? "flex" : "none", flexDirection: "column", gap: 5 }}
                   >
                     <label>Opponent name</label>
                     <input
                       type="text"
-                      id="match-opponent-other"
-                      defaultValue={existingSession?.isUnverifiedOpponent ? existingSession.opponent : ""}
+                      value={match.otherName} onChange={(e) => setMatch((f) => ({ ...f, otherName: e.target.value }))}
+                      
                       placeholder="Enter team name"
                       autoComplete="off"
                       style={{
@@ -1013,9 +1072,8 @@ function MatchForm({
                 <div className="fg" style={{ marginBottom: "var(--sp-md)" }}>
                   <label>Match venue</label>
                   <select
-                    id="match-location"
-                    defaultValue={existingSession?.venueType || ""}
-                    onChange={() => onVenueChange()}
+                    value={match.venue} onChange={(e) => setMatch((f) => ({ ...f, venue: e.target.value }))}
+                    
                     style={{
                       padding: "10px 14px",
                       background: "var(--bg2)",
@@ -1029,17 +1087,16 @@ function MatchForm({
                   >
                     <option value="">Select venue</option>
                     <option value="home">Home: {s.profile?.homeGround || s.profile?.club || "Your ground"}</option>
-                    <option value="away">Away: {existingSession?.opponentGround || "Opponent's ground"}</option>
+                    <option value="away">Away: {opponentGround || "Opponent's ground"}</option>
                     <option value="neutral">Neutral venue: requires admin approval</option>
                   </select>
                   <div
-                    id="venue-neutral-wrap"
-                    style={{ display: existingSession?.venueType === "neutral" ? "block" : "none", marginTop: "var(--sp-sm)" }}
+                    style={{ display: match.venue === "neutral" ? "block" : "none", marginTop: "var(--sp-sm)" }}
                   >
                     <input
                       type="text"
-                      id="match-location-neutral"
-                      defaultValue={existingSession?.venueType === "neutral" ? existingSession.location : ""}
+                      value={match.neutralVenue} onChange={(e) => setMatch((f) => ({ ...f, neutralVenue: e.target.value }))}
+                      
                       placeholder="e.g. Accra Sports Stadium"
                       autoComplete="off"
                       style={{
@@ -1064,8 +1121,8 @@ function MatchForm({
                   <label>Coach's note</label>
                   <input
                     type="text"
-                    id="session-intent"
-                    defaultValue={existingSession?.intent || ""}
+                    value={match.intent} onChange={(e) => setMatch((f) => ({ ...f, intent: e.target.value }))}
+                    
                     placeholder="e.g. Press high, win second balls"
                     style={{
                       padding: "10px 14px",
@@ -1100,7 +1157,7 @@ function MatchForm({
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
                     className="btn btn-primary"
-                    onClick={() => saveMatchSession(selectedDay, selectedDateISO)}
+                    onClick={() => saveMatchSession(selectedDay, selectedDateISO, { ...match, opponentGround })}
                   >
                     <i className="ti ti-device-floppy"></i> {existingSession?.matchId ? "Update details" : "Save match details"}
                   </button>
@@ -1203,7 +1260,7 @@ function MatchForm({
                       )}
                       <button
                         className={`btn btn-sm ${mySubmitted ? "btn-outline" : "btn-primary"}`}
-                        onClick={() => saveLineup(existingSession.matchId)}
+                        onClick={() => saveLineup(existingSession.matchId, lineup)}
                       >
                         <i className={`ti ti-${mySubmitted ? "refresh" : "send"}`}></i>{" "}
                         {mySubmitted ? "Update lineup" : "Submit lineup to opponent"}
@@ -1215,9 +1272,9 @@ function MatchForm({
 
             <LineupTable
               squadPlayers={squadPlayers}
-              stats={myStats}
+              values={lineup}
+              onChange={setPlayerField(setLineup)}
               locked={matchPhase === "post"}
-              inputClass="lineup-input"
             />
           </>
         )}
@@ -1228,13 +1285,13 @@ function MatchForm({
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--sp-md)", flexWrap: "wrap", gap: 8 }}>
               <div style={{ fontSize: 12, color: "var(--text2)" }}>Fill in player statistics after the match.</div>
               {existingSession?.matchId && (
-                <button className="btn btn-primary btn-sm" onClick={() => savePostStats(existingSession.matchId)}>
+                <button className="btn btn-primary btn-sm" onClick={() => savePostStats(existingSession.matchId, postStats)}>
                   <i className="ti ti-circle-check"></i> Save stats
                 </button>
               )}
             </div>
 
-            <StatsTable squadPlayers={squadPlayers} myStats={myStats} />
+            <StatsTable squadPlayers={squadPlayers} myStats={myStats} values={postStats} onChange={setPlayerField(setPostStats)} />
 
             {existingSession?.matchStatus === "confirmed" ? (
               <div style={{ marginTop: "var(--sp-lg)", paddingTop: "var(--sp-lg)", borderTop: "0.5px solid var(--border)" }}>
@@ -1251,9 +1308,7 @@ function MatchForm({
                 >
                   {existingSession.opponent} lineup
                 </div>
-                <div id="opponent-squad-list" style={{ fontSize: 13, color: "var(--text2)" }}>
-                  Loading...
-                </div>
+                <OpponentSquadList matchId={existingSession.matchId} coachId={s.userId} />
               </div>
             ) : (
               <div style={{ marginTop: "var(--sp-lg)", padding: "var(--sp-md)", background: "var(--bg2)", borderLeft: "2px solid var(--faith)" }}>
@@ -1389,6 +1444,13 @@ function DrillsEditor({ initialDrills }) {
 }
 
 function SessionBuilder({ effectiveType, existingSession, selectedDay, selectedDateISO, sessionSaved, isEditingSession, selectedType }) {
+  const [plan, setPlan] = useState({
+    name: existingSession?.name || "",
+    category: existingSession?.category || effectiveType,
+    intensity: existingSession?.intensity || "Medium",
+    duration: existingSession?.duration || 90,
+    intent: existingSession?.intent || "",
+  });
   if (effectiveType && effectiveType !== "Match") {
     if (sessionSaved && !isEditingSession) {
       return (
@@ -1536,8 +1598,8 @@ function SessionBuilder({ effectiveType, existingSession, selectedDay, selectedD
             <label className="required">Session name</label>
             <input
               type="text"
-              id="session-name"
-              defaultValue={existingSession?.name || ""}
+              value={plan.name} onChange={(e) => setPlan((f) => ({ ...f, name: e.target.value }))}
+              
               placeholder="e.g. Tuesday technical block"
               style={{
                 padding: "10px 14px",
@@ -1554,8 +1616,8 @@ function SessionBuilder({ effectiveType, existingSession, selectedDay, selectedD
           <div className="fg">
             <label className="required">Category</label>
             <select
-              id="session-category"
-              defaultValue={existingSession?.category || effectiveType}
+              value={plan.category} onChange={(e) => setPlan((f) => ({ ...f, category: e.target.value }))}
+              
               style={{
                 padding: "10px 14px",
                 background: "var(--bg2)",
@@ -1581,8 +1643,8 @@ function SessionBuilder({ effectiveType, existingSession, selectedDay, selectedD
           <div className="fg">
             <label>Intensity</label>
             <select
-              id="session-intensity"
-              defaultValue={existingSession?.intensity || "Medium"}
+              value={plan.intensity} onChange={(e) => setPlan((f) => ({ ...f, intensity: e.target.value }))}
+              
               style={{
                 padding: "10px 14px",
                 background: "var(--bg2)",
@@ -1603,8 +1665,8 @@ function SessionBuilder({ effectiveType, existingSession, selectedDay, selectedD
             <label>Duration (min)</label>
             <input
               type="number"
-              id="session-duration"
-              defaultValue={existingSession?.duration || 90}
+              value={plan.duration} onChange={(e) => setPlan((f) => ({ ...f, duration: e.target.value }))}
+              
               min="15"
               max="180"
               style={{
@@ -1625,8 +1687,8 @@ function SessionBuilder({ effectiveType, existingSession, selectedDay, selectedD
           <label>Coaching intent</label>
           <input
             type="text"
-            id="session-intent"
-            defaultValue={existingSession?.intent || ""}
+            value={plan.intent} onChange={(e) => setPlan((f) => ({ ...f, intent: e.target.value }))}
+            
             placeholder="e.g. Focus on press triggers and compact shape"
             style={{
               padding: "10px 14px",
@@ -1657,7 +1719,7 @@ function SessionBuilder({ effectiveType, existingSession, selectedDay, selectedD
         <DrillsEditor key={selectedDateISO} initialDrills={existingSession?.drills} />
 
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="btn btn-primary" onClick={() => saveSession(selectedDay, selectedDateISO)}>
+          <button className="btn btn-primary" onClick={() => saveSession(selectedDay, selectedDateISO, plan)}>
             <i className="ti ti-send"></i> {sessionSaved ? "Update and notify squad" : "Save and notify squad"}
           </button>
           {isEditingSession ? (
@@ -1708,6 +1770,9 @@ function SessionBuilder({ effectiveType, existingSession, selectedDay, selectedD
 
 // ── INCOMING MATCH REQUEST CARD (bottom of page) ──────────────
 function IncomingMatchCard({ opponentMatchRequest, squadPlayers, matchPhase }) {
+  const [lineup, setLineup] = useState(() =>
+    initialLineup(squadPlayers, opponentMatchRequest?.opponent_player_stats || {}),
+  );
   if (!opponentMatchRequest) return null;
   const matchTab = window._matchTab || "lineup";
 
@@ -1832,7 +1897,7 @@ function IncomingMatchCard({ opponentMatchRequest, squadPlayers, matchPhase }) {
                   )}
                   <button
                     className={`btn btn-sm ${opponentMatchRequest.opponent_lineup_submitted ? "btn-outline" : "btn-primary"}`}
-                    onClick={() => saveOpponentLineup(opponentMatchRequest.id)}
+                    onClick={() => saveOpponentLineup(opponentMatchRequest.id, lineup)}
                   >
                     <i className={`ti ti-${opponentMatchRequest.opponent_lineup_submitted ? "refresh" : "send"}`}></i>{" "}
                     {opponentMatchRequest.opponent_lineup_submitted ? "Update lineup" : "Submit lineup"}
@@ -1842,9 +1907,9 @@ function IncomingMatchCard({ opponentMatchRequest, squadPlayers, matchPhase }) {
 
               <LineupTable
                 squadPlayers={squadPlayers}
-                stats={opponentMatchRequest.opponent_player_stats || {}}
+                values={lineup}
+                onChange={setPlayerField(setLineup)}
                 locked={false}
-                inputClass="opp-lineup-input"
               />
             </>
           )}
@@ -1922,35 +1987,6 @@ function TrainingPlanner({
           ? "Pending"
           : "New";
   const phaseLabel = matchPhase === "pre" ? "Pre-match" : matchPhase === "day" ? "Match day" : "Post-match";
-
-  // mirrors the legacy post-setMain effect: load the opponent squad list
-  useEffect(() => {
-    if (existingSession?.matchId && existingSession?.matchStatus === "confirmed") {
-      const squadEl = document.getElementById("opponent-squad-list");
-      if (squadEl) {
-        db.getOpponentSquad(existingSession.matchId, s.userId).then(({ data: opSquad }) => {
-          if (!opSquad || opSquad.length === 0) {
-            squadEl.innerHTML = `<div style="color:var(--text3);font-size:12px;">No lineup submitted yet.</div>`;
-            return;
-          }
-          squadEl.innerHTML = opSquad
-            .map((p) => {
-              const prof = p.player?.profile || {};
-              const overall = prof.ratings
-                ? Math.round((prof.ratings.speed + prof.ratings.tech + prof.ratings.tact + prof.ratings.phys) / 4)
-                : null;
-              return `
-            <div style="display:flex;align-items:center;gap:var(--sp-md);padding:var(--sp-sm) var(--sp-md);background:var(--bg2);border-left:2px solid var(--faith);margin-bottom:4px;">
-              <div style="font-family:var(--font);font-size:10px;font-weight:700;padding:2px 6px;background:var(--faith-lt);color:var(--faith);">${prof.pos || "?"}</div>
-              <div style="flex:1;font-size:13px;font-weight:600;color:var(--text)">${p.player?.name || "Unknown"}</div>
-              ${overall !== null ? `<div style="font-family:var(--font);font-size:13px;font-weight:700;color:var(--gold)">${overall}%</div>` : ""}
-            </div>`;
-            })
-            .join("");
-        });
-      }
-    }
-  }, [existingSession?.matchId, existingSession?.matchStatus]);
 
   return (
     <>

@@ -1,33 +1,44 @@
-import { checkExistingRating, logSessionRating } from "../../../lib/coach.js";
+import { useEffect, useState } from "react";
+import { hasRatingToday, logSessionRating } from "../../../lib/coach.js";
 import { navTo } from "../../../lib/router.js";
 
-function RatingSlider({ label }) {
-  const key = label.toLowerCase();
+function RatingSlider({ label, value, onChange }) {
   return (
     <div className="bar-row">
       <div className="bar-head">
         <span>{label}</span>
-        <span id={`cv-${key}`} style={{ color: "var(--gold)", fontWeight: 600 }}>
-          7
-        </span>
+        <span style={{ color: "var(--gold)", fontWeight: 600 }}>{value}</span>
       </div>
       <input
         type="range"
         min="1"
         max="10"
-        defaultValue="7"
+        value={value}
+        onChange={(e) => onChange(parseInt(e.target.value))}
         step="1"
         style={{ width: "100%", accentColor: "var(--gold)", marginTop: 4 }}
-        onInput={(e) => {
-          const el = document.getElementById(`cv-${key}`);
-          if (el) el.textContent = e.target.value;
-        }}
       />
     </div>
   );
 }
 
 export default function CoachTracking({ squadPlayers, recentRatings }) {
+  const [playerId, setPlayerId] = useState("");
+  const [sessionType, setSessionType] = useState("");
+  const [notes, setNotes] = useState("");
+  const [ratings, setRatings] = useState({ speed: 7, technical: 7, tactical: 7, physical: 7 });
+  // whether the chosen player already has a rating today (then Save updates it)
+  const [existing, setExisting] = useState(false);
+
+  useEffect(() => {
+    let current = true;
+    setExisting(false);
+    if (playerId) hasRatingToday(playerId).then((has) => current && setExisting(has));
+    return () => {
+      current = false;
+    };
+  }, [playerId]);
+
   if (!squadPlayers || squadPlayers.length === 0) {
     return (
       <div className="card">
@@ -63,7 +74,7 @@ export default function CoachTracking({ squadPlayers, recentRatings }) {
         <div className="form-row">
           <div className="fg">
             <label className="required">Player</label>
-            <select id="tr-player" onChange={() => checkExistingRating()}>
+            <select value={playerId} onChange={(e) => setPlayerId(e.target.value)}>
               <option value="">Select player</option>
               {squadPlayers.map((sp) => (
                 <option key={sp.player_id} value={sp.player_id}>
@@ -74,7 +85,7 @@ export default function CoachTracking({ squadPlayers, recentRatings }) {
           </div>
           <div className="fg">
             <label className="required">Session type</label>
-            <select id="tr-type" onChange={() => checkExistingRating()}>
+            <select value={sessionType} onChange={(e) => setSessionType(e.target.value)}>
               <option value="">Select type</option>
               <option>Technical</option>
               <option>Tactical</option>
@@ -84,14 +95,18 @@ export default function CoachTracking({ squadPlayers, recentRatings }) {
             </select>
           </div>
         </div>
-        {["Speed", "Technical", "Tactical", "Physical"].map((l) => (
-          <RatingSlider key={l} label={l} />
-        ))}
+        {["Speed", "Technical", "Tactical", "Physical"].map((l) => {
+          const key = l.toLowerCase();
+          return (
+            <RatingSlider key={l} label={l} value={ratings[key]} onChange={(v) => setRatings((r) => ({ ...r, [key]: v }))} />
+          );
+        })}
         <div className="fg" style={{ marginTop: 8 }}>
           <label>Notes</label>
           <input
             type="text"
-            id="tr-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
             placeholder="e.g. Strong first touch, work on weak foot"
             style={{
               padding: "10px 14px",
@@ -106,12 +121,27 @@ export default function CoachTracking({ squadPlayers, recentRatings }) {
           />
         </div>
         <button
-          id="tr-save-btn"
           className="btn btn-primary"
           style={{ marginTop: 8 }}
-          onClick={() => logSessionRating()}
+          onClick={() =>
+            logSessionRating({
+              playerId,
+              playerName: squadPlayers.find((sp) => sp.player_id === playerId)?.player?.name || "Player",
+              sessionType,
+              notes,
+              ratings,
+            })
+          }
         >
-          <i className="ti ti-circle-check"></i> Save rating
+          {existing ? (
+            <>
+              <i className="ti ti-refresh"></i> Update rating
+            </>
+          ) : (
+            <>
+              <i className="ti ti-circle-check"></i> Save rating
+            </>
+          )}
         </button>
       </div>
 

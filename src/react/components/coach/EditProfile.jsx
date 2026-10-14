@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { initials } from "../../../lib/utils.js";
 import { contactAdmin, previewAvatar } from "../../../lib/roleUtils.js";
 import { saveProfile } from "../../../lib/coach.js";
@@ -5,6 +6,12 @@ import { navTo } from "../../../lib/router.js";
 
 export default function CoachEditProfile({ session }) {
   const p = session.profile || {};
+  const [form, setForm] = useState({
+    name: session.name || "",
+    licence: p.licence || "",
+    exp: p.exp || "",
+    spec: p.spec || "All-round",
+  });
 
   return (
     <>
@@ -86,8 +93,8 @@ export default function CoachEditProfile({ session }) {
           <label className="required">Full name</label>
           <input
             type="text"
-            id="ep-name"
-            defaultValue={session.name || ""}
+            value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            
             placeholder="Your full name"
             style={{
               padding: "10px 14px",
@@ -104,7 +111,7 @@ export default function CoachEditProfile({ session }) {
         <div className="form-row">
           <div className="fg">
             <label className="required">Coaching licence</label>
-            <select id="ep-licence" defaultValue={p.licence || ""}>
+            <select value={form.licence} onChange={(e) => setForm((f) => ({ ...f, licence: e.target.value }))} >
               <option value="">Select licence</option>
               <option>None yet</option>
               <option>CAF D</option>
@@ -118,8 +125,8 @@ export default function CoachEditProfile({ session }) {
             <label className="required">Years experience</label>
             <input
               type="number"
-              id="ep-exp"
-              defaultValue={p.exp || ""}
+              value={form.exp} onChange={(e) => setForm((f) => ({ ...f, exp: e.target.value }))}
+              
               min="0"
               max="50"
               style={{
@@ -137,7 +144,7 @@ export default function CoachEditProfile({ session }) {
         </div>
         <div className="fg">
           <label>Specialisation</label>
-          <select id="ep-spec" defaultValue={p.spec || "All-round"}>
+          <select value={form.spec} onChange={(e) => setForm((f) => ({ ...f, spec: e.target.value }))} >
             <option>All-round</option>
             <option>Goalkeeper</option>
             <option>Defending</option>
@@ -185,7 +192,7 @@ export default function CoachEditProfile({ session }) {
           </div>
         )}
         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-          <button className="btn btn-primary" onClick={() => saveProfile()}>
+          <button className="btn btn-primary" onClick={() => saveProfile(form)}>
             <i className="ti ti-circle-check"></i> Save changes
           </button>
           <button className="btn btn-outline" onClick={() => navTo("profile")}>

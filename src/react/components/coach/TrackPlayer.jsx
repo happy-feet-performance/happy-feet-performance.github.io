@@ -1,11 +1,10 @@
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { MiniCalendar, MiniChart } from "../shared/index.js";
 import * as db from "../../../lib/db/index.js";
 import { logSessionRating } from "../../../lib/coach.js";
 import { navTo } from "../../../lib/router.js";
 
-function RatingSlider({ label, initial }) {
-  const key = label.toLowerCase();
+function RatingSlider({ label, value, onChange }) {
   return (
     <div style={{ padding: "var(--sp-md)", background: "var(--bg2)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
@@ -21,21 +20,16 @@ function RatingSlider({ label, initial }) {
         >
           {label}
         </span>
-        <span id={`cv-${key}`} style={{ fontFamily: "var(--font)", fontSize: 18, fontWeight: 700, color: "var(--gold)" }}>
-          {initial}
-        </span>
+        <span style={{ fontFamily: "var(--font)", fontSize: 18, fontWeight: 700, color: "var(--gold)" }}>{value}</span>
       </div>
       <input
         type="range"
         min="1"
         max="10"
-        defaultValue={initial}
+        value={value}
+        onChange={(e) => onChange(parseInt(e.target.value))}
         step="1"
         style={{ width: "100%", accentColor: "var(--gold)" }}
-        onInput={(e) => {
-          const el = document.getElementById(`cv-${key}`);
-          if (el) el.textContent = e.target.value;
-        }}
       />
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, color: "var(--text3)", marginTop: 4 }}>
         <span>1</span>
@@ -53,7 +47,11 @@ export default function CoachTrackPlayer({ playerId, playerName, sessions, today
   const sliderInitial = (field) =>
     todayRating ? Math.round((todayRating[field] || 70) / 10) : 7;
 
-  const typeSelectValue = todayRating?.session_type || playerTodayType || "";
+  const [sessionType, setSessionType] = useState(todayRating?.session_type || playerTodayType || "");
+  const [notes, setNotes] = useState("");
+  const [ratings, setRatings] = useState(() =>
+    Object.fromEntries(["speed", "technical", "tactical", "physical"].map((k) => [k, sliderInitial(k)])),
+  );
 
   return (
     <>
@@ -164,8 +162,8 @@ export default function CoachTrackPlayer({ playerId, playerName, sessions, today
         <div className="fg">
           <label className="required">Session type</label>
           <select
-            id="tr-type"
-            defaultValue={typeSelectValue}
+            value={sessionType}
+            onChange={(e) => setSessionType(e.target.value)}
             style={{
               padding: "10px 14px",
               background: "var(--bg2)",
@@ -194,7 +192,12 @@ export default function CoachTrackPlayer({ playerId, playerName, sessions, today
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--sp-md)", margin: "var(--sp-md) 0" }}>
           {["Speed", "Technical", "Tactical", "Physical"].map((l) => (
-            <RatingSlider key={l} label={l} initial={sliderInitial(l.toLowerCase())} />
+            <RatingSlider
+              key={l}
+              label={l}
+              value={ratings[l.toLowerCase()]}
+              onChange={(v) => setRatings((r) => ({ ...r, [l.toLowerCase()]: v }))}
+            />
           ))}
         </div>
 
@@ -202,7 +205,8 @@ export default function CoachTrackPlayer({ playerId, playerName, sessions, today
           <label>Notes</label>
           <input
             type="text"
-            id="tr-notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
             placeholder="e.g. Strong first touch, work on weak foot"
             style={{
               padding: "10px 14px",
@@ -220,7 +224,7 @@ export default function CoachTrackPlayer({ playerId, playerName, sessions, today
         <button
           className="btn btn-primary"
           style={{ marginTop: "var(--sp-md)", width: "100%" }}
-          onClick={() => logSessionRating(playerId, playerName.replace(/'/g, "\\'"))}
+          onClick={() => logSessionRating({ playerId, playerName, sessionType, notes, ratings }, { fromPlayerPage: true })}
         >
           <i className="ti ti-circle-check"></i> {todayRating ? "Update rating" : "Save rating"}
         </button>

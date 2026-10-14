@@ -250,6 +250,8 @@ export default function CoachSquad({
   const p = s.profile || {};
   // the roster row whose actions (jersey, stats, message, remove) are open
   const [openPlayerId, setOpenPlayerId] = useState(null);
+  // jersey numbers being typed, by player id
+  const [jerseys, setJerseys] = useState({});
 
   if (!isVerified) {
     return (
@@ -401,8 +403,9 @@ export default function CoachSquad({
                                 type="number"
                                 min="1"
                                 max="99"
-                                id={`jersey-input-${sp.player_id}`}
-                                defaultValue={sp.jersey_number || ""}
+                                value={jerseys[sp.player_id] ?? (sp.jersey_number || "")}
+                                onChange={(e) => setJerseys((j) => ({ ...j, [sp.player_id]: e.target.value }))}
+                                onClick={(e) => e.stopPropagation()}
                                 placeholder="1–99"
                                 style={{
                                   width: 56,
@@ -422,7 +425,7 @@ export default function CoachSquad({
                                 className="btn btn-outline btn-sm"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  saveJerseyNumber(sp.player_id, safeName);
+                                  saveJerseyNumber(sp.player_id, safeName, jerseys[sp.player_id] ?? (sp.jersey_number || ""));
                                 }}
                               >
                                 <i className="ti ti-circle-check"></i> Assign
