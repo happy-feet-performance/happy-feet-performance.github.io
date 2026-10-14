@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useAppState } from "../../lib/appStore.js";
 import { DEFAULT_ROLE } from "../../lib/activeRole.js";
 import { linkTo, navigate, usePath } from "../../lib/location.js";
-import logo from "../../../hf-logo.jpeg";
+import logo from "../../../hf-logo-tp.png";
 
 // ─── PLACEHOLDER COPY ──────────────────────────────────────
 // Draft text written from what's already in the app. Replace with the real
@@ -35,8 +35,8 @@ const COPY = {
   ],
   values: [
     { icon: "ti-shield-check", title: "Verified", text: "Squads and agencies are reviewed by the HappyFeet team." },
-    { icon: "ti-chart-line", title: "Data-driven", text: "Coach-rated sessions build every player's development record." },
-    { icon: "ti-cross", title: "Faith & purpose", text: "Daily scripture and devotion for players and teams." },
+    { icon: "ti-chart-line", title: "Data-driven", text: "Coach-rated sessions build every player's development record.", data: true },
+    { icon: "ti-cross", title: "Faith & purpose", text: "Daily scripture and devotion for players and teams.", faith: true },
   ],
   ctaTitle: "Ready to get started?",
   ctaSub: "Create a free account as a player, coach or scout.",
@@ -169,7 +169,7 @@ export default function HomePage() {
 
           <div className="home-values">
             {COPY.values.map((v) => (
-              <div key={v.title} className="home-value">
+              <div key={v.title} className={`home-value${v.faith ? " faith" : v.data ? " data" : ""}`}>
                 <i className={`ti ${v.icon}`}></i>
                 <div>
                   <h4>{v.title}</h4>

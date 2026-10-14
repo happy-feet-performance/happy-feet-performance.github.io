@@ -101,11 +101,10 @@
   margin: 0 auto;
 }
 .home-hero-hex {
-  width: 88px;
-  height: 88px;
+  width: 16rem;
+  height: 16rem;
   margin: 0 auto var(--sp-xl);
   overflow: hidden;
-  border: 2px solid var(--gold);
 }
 .home-hero-hex img {
   width: 100%;
@@ -230,12 +229,20 @@
   color: var(--green);
   flex-shrink: 0;
 }
+.home-value.data i {
+  font-size: 22px;
+  color: var(--blue);
+  flex-shrink: 0;
+}
 .home-value h4 {
   font-family: var(--font);
   font-size: var(--font-size-base);
   text-transform: uppercase;
   letter-spacing: 0.04em;
   margin: 0 0 4px;
+}
+.home-value.faith i {
+  color: var(--faith);
 }
 
 /* call to action */
