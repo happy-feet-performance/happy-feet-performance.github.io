@@ -10,6 +10,9 @@ let state = {
   viewKey: 0,
   shellVisible: false,
   session: null,
+  // "guest" while signed out, the user's role while signed in (see roleOf in
+  // activeRole.js). Set from the saved session at boot, so it survives reloads.
+  role: "guest",
   activeView: null,
   // { [view]: { count, color } }
   badges: {},

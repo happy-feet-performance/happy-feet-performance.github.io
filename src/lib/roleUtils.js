@@ -7,7 +7,8 @@ import { showView } from "./views.js";
 import { navTo, refreshSidenavBadge } from "./router.js";
 import { roleModule } from "./roles.js";
 
-const roleHandler = roleModule;
+// looked up at call time: roles.js may still be loading (import cycle)
+const roleHandler = (role) => roleModule(role);
 
 const refreshUnreadBadge = async (userId) => {
   const { data: msgs } = await db.getMessages(userId);

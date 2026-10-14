@@ -4,7 +4,7 @@ import { hashPassword, normalizeContact, validateEmail, validatePhone } from "./
 import { toast } from "./dom.js";
 import * as db from "./db/index.js";
 import { logout } from "./auth.js";
-import { navTo } from "./router.js";
+import { buildSidenav, navTo } from "./router.js";
 
 // Re-checks the signed-in user's current password. Returns true if correct.
 const confirmCurrentPassword = async (session, label) => {
@@ -86,6 +86,8 @@ export const saveSettings = async ({ email, phone, password, role }) => {
   }
 
   db.saveSession(session);
+  // pushes the session (and so the active role) to the store
+  buildSidenav(session);
   toast("Settings updated successfully.", "success");
   navTo("profile#settings");
 };

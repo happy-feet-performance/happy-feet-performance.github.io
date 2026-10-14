@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useAppState } from "../../lib/appStore.js";
-import { getSession } from "../../lib/db/index.js";
+import { DEFAULT_ROLE } from "../../lib/activeRole.js";
 import { linkTo, navigate, usePath } from "../../lib/location.js";
 import logo from "../../../hf-logo.jpeg";
 
@@ -96,12 +96,13 @@ function AccountActions({ session, large }) {
 }
 
 // Public landing page at / (and /about, scrolled to the About section).
-// Signed-in users see the same page with links back into the app.
+// Guests (DEFAULT_ROLE) get Log in / Sign up; signed-in users see the same
+// page with links back into the app.
 export default function HomePage() {
   const path = usePath();
-  // the store has the session once the app has started; on a fresh load of
-  // the home page fall back to the saved session
-  const session = useAppState((s) => s.session) || getSession();
+  const role = useAppState((s) => s.role);
+  const storedSession = useAppState((s) => s.session);
+  const session = role === DEFAULT_ROLE ? null : storedSession;
 
   useEffect(() => {
     if (path === "/about") document.getElementById("about")?.scrollIntoView({ behavior: "smooth", block: "start" });

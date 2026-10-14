@@ -13,10 +13,12 @@ import { toast } from "./dom.js";
 import { getAppState, setAppState } from "./appStore.js";
 import { logout, showScreen } from "./auth.js";
 import { roleModule } from "./roles.js";
+import { DEFAULT_ROLE, roleOf } from "./activeRole.js";
 import { currentPath, navigate, onPathChange } from "./location.js";
 import * as agent from "./agent.js";
 
-const roleHandler = roleModule;
+// looked up at call time: roles.js may still be loading (import cycle)
+const roleHandler = (role) => roleModule(role);
 
 export const currentView = () => getAppState().activeView;
 
@@ -33,8 +35,9 @@ export const refreshSidenavBadge = (view, count, color = "var(--gold)") => {
 // Re-render the sidebar for an updated session (e.g. team size or status
 // changed). Pass `unread` to also reset the messages badge.
 export const buildSidenav = (session, unread) => {
-  // copy: callers mutate the session object in place
-  setAppState({ session: { ...session } });
+  // copy: callers mutate the session object in place (an admin may also have
+  // changed their own role)
+  setAppState({ session: { ...session }, role: roleOf(session) });
   if (unread !== undefined) refreshSidenavBadge("messages", unread, "var(--red)");
 };
 
@@ -55,7 +58,7 @@ export const onIncomingMessage = (listener) => {
 // ─── Switching between the auth screens and the app ───────
 export const showLogin = (message) => {
   sessionStarted = false;
-  setAppState({ shellVisible: false, mobileNavOpen: false, session: null, badges: {} });
+  setAppState({ shellVisible: false, mobileNavOpen: false, session: null, role: DEFAULT_ROLE, badges: {} });
   showScreen("screen-login");
   navigate("/login");
   if (message) setTimeout(() => toast(message, "error"), 300);
@@ -164,7 +167,7 @@ export const launch = async (session) => {
 // sidebar badges, realtime subscriptions and the AI agent.
 const startSession = async (session) => {
   sessionStarted = true;
-  setAppState({ shellVisible: true, mobileNavOpen: false, session, badges: {} });
+  setAppState({ shellVisible: true, mobileNavOpen: false, session, role: roleOf(session), badges: {} });
 
   const isAdmin = session.role === "admin";
 
@@ -420,6 +423,9 @@ const showPath = async (path) => {
 
 // ─── Boot: route the page we were opened on ───────────────
 export const boot = () => {
+  // a saved session (same tab, after a reload) keeps the user's role
+  const session = db.getSession();
+  setAppState({ session, role: roleOf(session) });
   onPathChange(showPath);
   showPath(currentPath());
 };
