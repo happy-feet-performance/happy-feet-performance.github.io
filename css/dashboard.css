@@ -781,3 +781,26 @@
     padding: var(--sp-sm);
   }
 }
+
+/* Home / About links in the app top bar */
+.topbar-links {
+  display: flex;
+  gap: var(--sp-md);
+}
+.topbar-links a {
+  font-family: var(--font);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  text-decoration: none;
+}
+.topbar-links a:hover {
+  color: var(--gold);
+}
+@media (max-width: 768px) {
+  .topbar-links {
+    display: none;
+  }
+}

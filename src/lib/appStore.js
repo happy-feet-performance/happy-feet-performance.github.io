@@ -4,6 +4,10 @@
 import { useSyncExternalStore } from "react";
 
 let state = {
+  // which page the URL shows: "home" | "auth" | "app" (null while booting)
+  page: null,
+  // bumped to re-render the current view without changing the URL
+  viewKey: 0,
   shellVisible: false,
   session: null,
   activeView: null,

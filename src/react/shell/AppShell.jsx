@@ -1,8 +1,11 @@
+import { useEffect } from "react";
 import { useAppState } from "../../lib/appStore.js";
-import { navTo, toggleMobileNav } from "../../lib/router.js";
+import { navTo, renderView, toggleMobileNav } from "../../lib/router.js";
+import { linkTo, navigate } from "../../lib/location.js";
 import { logout } from "../../lib/auth.js";
 import { Avatar } from "../components/shared/index.js";
 import { navItemsFor } from "./navConfig.js";
+import logo from "../../../hf-logo.jpeg";
 
 const ROLE_AVATAR_COLORS = { player: "var(--green)", coach: "var(--gold)" };
 
@@ -13,15 +16,23 @@ function Topbar({ session }) {
       <button className="hamburger" onClick={toggleMobileNav}>
         ☰
       </button>
-      <div className="topbar-brand" onClick={() => navTo("dashboard")}>
+      <div className="topbar-brand" onClick={() => navigate("/")}>
         <div className="topbar-hex topbar-hex-img">
-          <img src="/hf-logo.jpeg" alt="HF" />
+          <img src={logo} alt="HF" />
         </div>
         <div className="topbar-name">
           <em>Happy</em>Feet
         </div>
       </div>
       <div className="topbar-right">
+        <nav className="topbar-links">
+          <a {...linkTo("/")}>
+            Home
+          </a>
+          <a {...linkTo("/about")}>
+            About
+          </a>
+        </nav>
         <div className="topbar-user-info" onClick={() => navTo("profile")}>
           <div className="topbar-meta">
             Signed in as <span className="topbar-role-pill">{role.charAt(0).toUpperCase() + role.slice(1)}</span>
@@ -101,14 +112,29 @@ function Sidenav({ session, activeView, badges, open }) {
   );
 }
 
-// The logged-in app frame. Always mounted (hidden until launch) so that
-// #main-content, where HF_REACT mounts each view, is never replaced.
+// The signed-in app frame, shown on /app/<view>. Each role view is its own
+// React root inside #main-content (see src/react/mount.jsx); this renders
+// the view named in the URL, and again whenever viewKey is bumped.
 export default function AppShell() {
   const visible = useAppState((s) => s.shellVisible);
   const session = useAppState((s) => s.session);
   const activeView = useAppState((s) => s.activeView);
+  const viewKey = useAppState((s) => s.viewKey);
   const badges = useAppState((s) => s.badges);
   const mobileNavOpen = useAppState((s) => s.mobileNavOpen);
+
+  // The view is a separate root, so (un)mount it after this commit finishes:
+  // React can't unmount one root while it's still rendering another.
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => cancelled || renderView(activeView));
+    return () => {
+      cancelled = true;
+    };
+  }, [activeView, viewKey]);
+
+  // leaving the app (e.g. to the home page) unmounts the current view
+  useEffect(() => () => queueMicrotask(() => window.HF_REACT?.unmountAll()), []);
 
   return (
     <div id="app-shell" className={`app-shell${visible ? " visible" : ""}${session ? ` role-${session.role}` : ""}`}>

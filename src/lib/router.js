@@ -1,9 +1,11 @@
-// Session validation, role routing, app shell state, view switching and
-// realtime subscriptions. The shell itself (topbar, sidenav) is rendered by
-// src/react/shell/AppShell.jsx from the app store.
+// URL routing, session start-up, view switching and realtime subscriptions.
 //
-// Route protection: every view switch checks the session; no session sends
-// the user to login.
+// Pages by path:
+//   /, /about          public home page (src/react/home), signed in or not
+//   /login, /signup    auth screens (src/react/auth)
+//   /app/<view>        the app shell (src/react/shell) showing a role view
+// /app without a session redirects to /login; the auth pages redirect a
+// signed-in user to their dashboard.
 //
 // HF_AGENT (js/agent.js) and HF_REACT (src/react/mount.jsx) are globals,
 // looked up at call time.
@@ -12,6 +14,7 @@ import { toast } from "./dom.js";
 import { getAppState, setAppState } from "./appStore.js";
 import { logout, showScreen } from "./auth.js";
 import { roleModule } from "./roles.js";
+import { currentPath, navigate, onPathChange } from "./location.js";
 
 const roleHandler = roleModule;
 
@@ -51,15 +54,20 @@ export const onIncomingMessage = (listener) => {
 
 // ─── Switching between the auth screens and the app ───────
 export const showLogin = (message) => {
-  setAppState({ shellVisible: false, mobileNavOpen: false, authVisible: true });
+  sessionStarted = false;
+  setAppState({ shellVisible: false, mobileNavOpen: false, session: null, badges: {} });
   showScreen("screen-login");
+  navigate("/login");
   if (message) setTimeout(() => toast(message, "error"), 300);
 };
 
 let subscriptionsActive = false;
+// set once startSession() has run for the signed-in user
+let sessionStarted = false;
 
 export const resetSubscriptions = () => {
   subscriptionsActive = false;
+  sessionStarted = false;
   // remove all existing Supabase channels
   db.removeAllChannels();
 };
@@ -79,6 +87,12 @@ const routeTo = (view, session) => {
   if (!handler) return toast("Dashboard not found for this role.", "error");
   window.HF_REACT?.unmountAll();
   handler.render(view, session);
+};
+
+// Called by AppShell whenever the active view (or viewKey) changes.
+export const renderView = (view) => {
+  const session = db.getSession();
+  if (session) routeTo(view || "dashboard", session);
 };
 
 export const navTo = (view, _el, anchor) => {
@@ -115,8 +129,13 @@ export const navTo = (view, _el, anchor) => {
     });
   }
 
-  setAppState({ activeView: routeView, mobileNavOpen: false });
-  routeTo(routeView, session);
+  const path = `/app/${routeView || "dashboard"}`;
+  if (currentPath() === path) {
+    // same view: re-render it (e.g. clicking the current sidebar item)
+    setAppState(({ viewKey }) => ({ viewKey: viewKey + 1, mobileNavOpen: false }));
+  } else {
+    navigate(path);
+  }
   if (routeAnchor || anchor) {
     setTimeout(() => {
       const target = document.getElementById(routeAnchor || anchor);
@@ -135,8 +154,17 @@ const unreadTicketReplies = (tickets) =>
     return msgs[msgs.length - 1]?.is_admin && t.status !== "resolved";
   }).length || 0;
 
+// Sign-in landing: start the session and open the dashboard.
 export const launch = async (session) => {
-  setAppState({ authVisible: false, shellVisible: true, mobileNavOpen: false, session, activeView: "dashboard", badges: {} });
+  await startSession(session);
+  navigate("/app/dashboard");
+};
+
+// Session start-up, once per sign-in (or page load with a saved session):
+// sidebar badges, realtime subscriptions and the AI agent.
+const startSession = async (session) => {
+  sessionStarted = true;
+  setAppState({ shellVisible: true, mobileNavOpen: false, session, badges: {} });
 
   const isAdmin = session.role === "admin";
 
@@ -187,7 +215,6 @@ export const launch = async (session) => {
     });
   }
 
-  routeTo("dashboard", session);
   window.HF_AGENT.show();
 
   // ── Realtime subscriptions (after 1s) ───────────────────────
@@ -367,9 +394,32 @@ const startRealtime = (session) => {
   }
 };
 
-// ─── Boot: check session on page load ─────────────────────
-export const boot = () => {
+// ─── Pages ─────────────────────────────────────────────────
+const AUTH_PATHS = { "/login": "screen-login", "/signup": "screen-signup-role" };
+
+const showPath = async (path) => {
   const session = db.getSession();
-  if (session) launch(session);
-  else showLogin();
+
+  if (path === "/" || path === "/about") return setAppState({ page: "home" });
+
+  if (AUTH_PATHS[path]) {
+    if (session) return navigate("/app/dashboard", { replace: true });
+    showScreen(AUTH_PATHS[path]);
+    return setAppState({ page: "auth", authVisible: true });
+  }
+
+  if (path === "/app" || path.startsWith("/app/")) {
+    if (!session) return navigate("/login", { replace: true });
+    const view = path.slice("/app/".length).split("/")[0] || "dashboard";
+    if (!sessionStarted) await startSession(session);
+    return setAppState({ page: "app", activeView: view, mobileNavOpen: false });
+  }
+
+  navigate("/", { replace: true });
+};
+
+// ─── Boot: route the page we were opened on ───────────────
+export const boot = () => {
+  onPathChange(showPath);
+  showPath(currentPath());
 };

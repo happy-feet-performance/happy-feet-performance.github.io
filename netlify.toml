@@ -9,6 +9,13 @@
 [functions]
   node_bundler = "esbuild"
 
+# Single-page app: /about, /login, /app/... all load index.html and the
+# router (src/lib/router.js) picks the page. Real files are served first.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
 [[headers]]
   for = "/*"
   [headers.values]

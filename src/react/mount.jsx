@@ -2,8 +2,7 @@ import "../lib/legacyBridge.js";
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
 import { boot } from "../lib/router.js";
-import AppShell from "./shell/AppShell.jsx";
-import AuthScreens from "./auth/AuthScreens.jsx";
+import App from "./App.jsx";
 import scoutComponents from "./components/scout/index.js";
 import playerComponents from "./components/player/index.js";
 import coachComponents from "./components/coach/index.js";
@@ -20,7 +19,7 @@ const registry = {
 
 // ─── Views ─────────────────────────────────────────────────
 // Each view is its own root inside the shell's #main-content, mounted by
-// the role dashboards (js/dashboards/*) through window.HF_REACT.
+// the role modules (src/lib/<role>.js) through window.HF_REACT.
 let root = null;
 
 function mount(name, container, props) {
@@ -43,16 +42,8 @@ function unmountAll() {
 
 window.HF_REACT = { mount, unmountAll };
 
-// ─── Auth screens + app shell, then boot ───────────────────
+// ─── Pages, then boot ──────────────────────────────────────
 // Module scripts run after the document is parsed, so #app-root exists.
-// Render synchronously so #main-content is in the DOM before the router
-// launches a dashboard into it.
-flushSync(() =>
-  createRoot(document.getElementById("app-root")).render(
-    <>
-      <AuthScreens />
-      <AppShell />
-    </>,
-  ),
-);
+// boot() routes the current URL; App renders the page it picks.
+flushSync(() => createRoot(document.getElementById("app-root")).render(<App />));
 boot();
