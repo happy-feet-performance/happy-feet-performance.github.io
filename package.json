@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "install": "npm install --prefix functions",
+    "install": "npm install",
     "build": "vite build",
     "preview": "vite preview",
     "start": "netlify dev"
