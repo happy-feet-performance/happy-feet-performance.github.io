@@ -4,8 +4,22 @@ import { navTo } from "../../../lib/router.js";
 import { TagPicker } from "../shared/index.js";
 import { fieldStyle } from "../common/styles.js";
 
-const REGIONS = ["Ghana", "Nigeria", "Senegal", "Ivory Coast", "Cameroon", "West Africa", "All Africa"];
-const LEAGUES = ["Ghana Premier League", "MLS", "Premier League", "Europe", "Gulf"];
+const REGIONS = [
+  "Ghana",
+  "Nigeria",
+  "Senegal",
+  "Ivory Coast",
+  "Cameroon",
+  "West Africa",
+  "All Africa",
+];
+const LEAGUES = [
+  "Ghana Premier League",
+  "MLS",
+  "Premier League",
+  "Europe",
+  "Gulf",
+];
 
 const tagRow = { display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" };
 const tagBox = {
@@ -27,9 +41,11 @@ export default function ResubmitAgency({ session }) {
   return (
     <div className="auth-card" style={{ maxWidth: 480, margin: "0 auto" }}>
       <div className="auth-title">Resubmit agency registration</div>
-      <div className="auth-sub">Update your agency details for verification</div>
+      <div className="auth-sub">
+        Update your agency details for verification
+      </div>
       <div className="fg">
-        <label className="required">Organisation / agency</label>
+        <label className="required">Organization / agency</label>
         <input
           type="text"
           value={agencyName}
@@ -65,7 +81,13 @@ export default function ResubmitAgency({ session }) {
       <div style={{ display: "flex", gap: 8, marginTop: "var(--sp-md)" }}>
         <button
           className="btn btn-primary"
-          onClick={() => submitAgencyResubmission({ agencyName, regionsCovered, targetLeagues })}
+          onClick={() =>
+            submitAgencyResubmission({
+              agencyName,
+              regionsCovered,
+              targetLeagues,
+            })
+          }
         >
           <i className="ti ti-send"></i> Submit for verification
         </button>

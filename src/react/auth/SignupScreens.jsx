@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { useAppState } from "../../lib/appStore.js";
-import { completeSignup, goStep2, goStep3, goToConfirm, selectRole, showScreen } from "../../lib/auth.js";
+import {
+  completeSignup,
+  goStep2,
+  goStep3,
+  goToConfirm,
+  selectRole,
+  showScreen,
+} from "../../lib/auth.js";
 import { validatePhone } from "../../lib/utils.js";
 import {
   AuthLogo,
@@ -16,9 +23,24 @@ import {
 } from "./parts.jsx";
 
 const ROLES = [
-  { role: "player", icon: "ti-ball-football", name: "Player", desc: "Track development & find your team" },
-  { role: "coach", icon: "ti-clipboard-list", name: "Coach", desc: "Manage squad & build sessions" },
-  { role: "scout", icon: "ti-search", name: "Scout", desc: "Discover talent & placements" },
+  {
+    role: "player",
+    icon: "ti-ball-football",
+    name: "Player",
+    desc: "Track development & find your team",
+  },
+  {
+    role: "coach",
+    icon: "ti-clipboard-list",
+    name: "Coach",
+    desc: "Manage squad & build sessions",
+  },
+  {
+    role: "scout",
+    icon: "ti-search",
+    name: "Scout",
+    desc: "Discover talent & placements",
+  },
 ];
 const ROLE_ICONS = Object.fromEntries(ROLES.map((r) => [r.role, r.icon]));
 
@@ -51,7 +73,8 @@ export function SignupRoleScreen({ active }) {
         Continue →
       </button>
       <div className="auth-link">
-        Have an account? <a onClick={() => showScreen("screen-login")}>Sign in</a>
+        Have an account?{" "}
+        <a onClick={() => showScreen("screen-login")}>Sign in</a>
       </div>
     </Screen>
   );
@@ -66,7 +89,14 @@ const ROLE_FIELD_DEFAULTS = {
 const POSITIONS = ["GK", "CB", "LB", "RB", "DM", "CM", "CAM", "LW", "RW", "ST"];
 const TIERS = ["U10", "U12", "U14", "U16", "U18", "U21", "Professional"];
 const LICENCES = ["None yet", "CAF D", "CAF C", "CAF B", "CAF A", "UEFA Pro"];
-const SPECS = ["All-round", "Goalkeeper", "Defending", "Attacking", "Set pieces", "Fitness & conditioning"];
+const SPECS = [
+  "All-round",
+  "Goalkeeper",
+  "Defending",
+  "Attacking",
+  "Set pieces",
+  "Fitness & conditioning",
+];
 const REGIONS = [
   "Ghana",
   "Nigeria",
@@ -101,11 +131,20 @@ function RoleFields({ role, fields, set }) {
         <div className="form-row">
           <div className="fg">
             <label className="required">Position</label>
-            <Select value={fields.pos} onChange={set("pos")} options={POSITIONS} placeholder="Select position" />
+            <Select
+              value={fields.pos}
+              onChange={set("pos")}
+              options={POSITIONS}
+              placeholder="Select position"
+            />
           </div>
           <div className="fg">
             <label>Age tier</label>
-            <Select value={fields.tier} onChange={set("tier")} options={TIERS} />
+            <Select
+              value={fields.tier}
+              onChange={set("tier")}
+              options={TIERS}
+            />
           </div>
         </div>
         <div className="fg">
@@ -125,7 +164,11 @@ function RoleFields({ role, fields, set }) {
         <div className="form-row">
           <div className="fg">
             <label>Coaching licence</label>
-            <Select value={fields.licence} onChange={set("licence")} options={LICENCES} />
+            <Select
+              value={fields.licence}
+              onChange={set("licence")}
+              options={LICENCES}
+            />
           </div>
           <div className="fg">
             <label>Years experience</label>
@@ -158,7 +201,7 @@ function RoleFields({ role, fields, set }) {
     return (
       <>
         <div className="fg">
-          <label className="required">Organisation / Agency</label>
+          <label className="required">Organization / Agency</label>
           <input
             type="text"
             value={fields.org}
@@ -180,7 +223,12 @@ function RoleFields({ role, fields, set }) {
           </div>
           <div className="fg">
             <label className="required">Home region</label>
-            <Select value={fields.region} onChange={set("region")} options={REGIONS} placeholder="Select region" />
+            <Select
+              value={fields.region}
+              onChange={set("region")}
+              options={REGIONS}
+              placeholder="Select region"
+            />
           </div>
         </div>
       </>
@@ -220,12 +268,26 @@ export function SignupInfoScreen({ active }) {
     setRoleFields({ ...(ROLE_FIELD_DEFAULTS[selectedRole] || {}) });
   }
 
-  const setField = (key) => (value) => setRoleFields((f) => ({ ...f, [key]: value }));
+  const setField = (key) => (value) =>
+    setRoleFields((f) => ({ ...f, [key]: value }));
   const submit = async () =>
-    showError(await goStep3({ name, tab, email, countryCode, phone, password, roleFields }));
+    showError(
+      await goStep3({
+        name,
+        tab,
+        email,
+        countryCode,
+        phone,
+        password,
+        roleFields,
+      }),
+    );
   useEnterKey(active, submit);
 
-  const [title, sub] = STEP2_COPY[role] || ["Create your account", "Fill in your details"];
+  const [title, sub] = STEP2_COPY[role] || [
+    "Create your account",
+    "Fill in your details",
+  ];
 
   return (
     <Screen id="screen-signup-info" active={active}>
@@ -262,7 +324,12 @@ export function SignupInfoScreen({ active }) {
       ) : (
         <div className="fg">
           <label>Phone number</label>
-          <PhoneInput countryCode={countryCode} onCountryCode={setCountryCode} phone={phone} onPhone={setPhone} />
+          <PhoneInput
+            countryCode={countryCode}
+            onCountryCode={setCountryCode}
+            phone={phone}
+            onPhone={setPhone}
+          />
           {validatePhone(phone) && (
             <div className="whatsapp-note">
               <span className="wa-icon">
@@ -275,7 +342,11 @@ export function SignupInfoScreen({ active }) {
       )}
       <div className="fg">
         <label>Password</label>
-        <PasswordInput value={password} onChange={setPassword} placeholder="Create a password" />
+        <PasswordInput
+          value={password}
+          onChange={setPassword}
+          placeholder="Create a password"
+        />
         <StrengthMeter password={password} />
       </div>
       <RoleFields role={role} fields={roleFields} set={setField} />
@@ -311,10 +382,17 @@ export function SignupSecurityScreen({ active }) {
     <Screen id="screen-signup-security" active={active}>
       <AuthLogo name="plain" />
       <div className="auth-title">Security question</div>
-      <div className="auth-sub">This will help you recover your account if you forget your password.</div>
+      <div className="auth-sub">
+        This will help you recover your account if you forget your password.
+      </div>
       <div className="fg">
         <label className="required">Security question</label>
-        <Select value={question} onChange={setQuestion} options={SECURITY_QUESTIONS} placeholder="Select a question" />
+        <Select
+          value={question}
+          onChange={setQuestion}
+          options={SECURITY_QUESTIONS}
+          placeholder="Select a question"
+        />
       </div>
       <div className="fg">
         <label className="required">Your answer</label>
@@ -330,7 +408,10 @@ export function SignupSecurityScreen({ active }) {
       <button className="btn btn-primary btn-full mt-sm" onClick={submit}>
         <i className="ti ti-arrow-right"></i> Continue
       </button>
-      <button className="btn btn-outline btn-full mt-sm" onClick={() => showScreen("screen-signup-info")}>
+      <button
+        className="btn btn-outline btn-full mt-sm"
+        onClick={() => showScreen("screen-signup-info")}
+      >
         Back
       </button>
     </Screen>
@@ -351,7 +432,7 @@ const SUMMARY_FIELDS = {
   ],
   scout: (p) => [
     ["Role", "Scout"],
-    ["Organisation", p.org || "-"],
+    ["Organization", p.org || "-"],
     ["Home region", p.region || "-"],
   ],
 };
@@ -363,7 +444,10 @@ export function SignupConfirmScreen({ active }) {
   const rows = summary
     ? [
         ["Name", summary.name],
-        [summary.contactType === "phone" ? "Phone" : "Email", summary.displayContact],
+        [
+          summary.contactType === "phone" ? "Phone" : "Email",
+          summary.displayContact,
+        ],
         ...SUMMARY_FIELDS[summary.role](summary.profile),
       ]
     : [];
@@ -373,10 +457,18 @@ export function SignupConfirmScreen({ active }) {
       <AuthLogo />
       <StepRow steps={["done", "done", "active"]} />
       <div className="section-header">
-        <div className="role-icon">{summary && <i className={`ti ${ROLE_ICONS[summary.role]}`}></i>}</div>
-        <div className="auth-title">{summary ? `You're set, ${summary.name.split(" ")[0]}!` : "You're all set!"}</div>
+        <div className="role-icon">
+          {summary && <i className={`ti ${ROLE_ICONS[summary.role]}`}></i>}
+        </div>
+        <div className="auth-title">
+          {summary
+            ? `You're set, ${summary.name.split(" ")[0]}!`
+            : "You're all set!"}
+        </div>
         <div className="auth-sub">
-          {summary ? `Your ${summary.role} account is ready.` : "Your account is ready."}
+          {summary
+            ? `Your ${summary.role} account is ready.`
+            : "Your account is ready."}
         </div>
       </div>
       <div className="confirm-box">
@@ -390,7 +482,10 @@ export function SignupConfirmScreen({ active }) {
       <button className="btn btn-primary btn-full" onClick={completeSignup}>
         Enter HappyFeet →
       </button>
-      <button className="btn btn-outline btn-full mb-sm" onClick={() => showScreen("screen-signup-info")}>
+      <button
+        className="btn btn-outline btn-full mb-sm"
+        onClick={() => showScreen("screen-signup-info")}
+      >
         ← Edit my details
       </button>
     </Screen>

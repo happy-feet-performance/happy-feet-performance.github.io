@@ -84,8 +84,25 @@ export default function EditProfile({ session }) {
           </label>
         </div>
         <div>
-          <div style={{ fontFamily: "var(--font)", fontSize: 22, fontWeight: 700, color: "#fff" }}>{session.name}</div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,.55)", marginTop: 3 }}>{p.org || "-"}</div>
+          <div
+            style={{
+              fontFamily: "var(--font)",
+              fontSize: 22,
+              fontWeight: 700,
+              color: "#fff",
+            }}
+          >
+            {session.name}
+          </div>
+          <div
+            style={{
+              fontSize: 13,
+              color: "rgba(255,255,255,.55)",
+              marginTop: 3,
+            }}
+          >
+            {p.org || "-"}
+          </div>
         </div>
       </div>
 
@@ -95,10 +112,16 @@ export default function EditProfile({ session }) {
         </div>
         <div className="fg">
           <label className="required">Full name</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" style={fieldInputStyle} />
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your full name"
+            style={fieldInputStyle}
+          />
         </div>
         <div className="fg">
-          <label className="required">Organisation / agency</label>
+          <label className="required">Organization / agency</label>
           <input
             type="text"
             value={org}
@@ -109,7 +132,14 @@ export default function EditProfile({ session }) {
         </div>
         <div className="fg">
           <label className="required">Years experience</label>
-          <input type="number" value={exp} onChange={(e) => setExp(e.target.value)} min="0" max="50" style={fieldInputStyle} />
+          <input
+            type="number"
+            value={exp}
+            onChange={(e) => setExp(e.target.value)}
+            min="0"
+            max="50"
+            style={fieldInputStyle}
+          />
         </div>
         {session.agencyStatus === "verified" ? (
           <div
@@ -122,12 +152,22 @@ export default function EditProfile({ session }) {
               marginBottom: "var(--sp-md)",
             }}
           >
-            <i className="ti ti-circle-check" style={{ marginRight: 6, color: "var(--green)" }}></i>
-            Your agency <strong style={{ color: "var(--green)" }}>{session.profile?.org || ""}</strong> is verified. To
-            change your agency name please{" "}
+            <i
+              className="ti ti-circle-check"
+              style={{ marginRight: 6, color: "var(--green)" }}
+            ></i>
+            Your agency{" "}
+            <strong style={{ color: "var(--green)" }}>
+              {session.profile?.org || ""}
+            </strong>{" "}
+            is verified. To change your agency name please{" "}
             <span
               onClick={() => contactAdmin("scout")}
-              style={{ color: "var(--gold)", cursor: "pointer", textDecoration: "underline" }}
+              style={{
+                color: "var(--gold)",
+                cursor: "pointer",
+                textDecoration: "underline",
+              }}
             >
               contact an administrator
             </span>
@@ -149,7 +189,10 @@ export default function EditProfile({ session }) {
           </div>
         )}
         <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-          <button className="btn btn-primary" onClick={() => saveProfile({ name, org, exp })}>
+          <button
+            className="btn btn-primary"
+            onClick={() => saveProfile({ name, org, exp })}
+          >
             <i className="ti ti-circle-check"></i> Save changes
           </button>
           <button className="btn btn-outline" onClick={() => navTo("profile")}>

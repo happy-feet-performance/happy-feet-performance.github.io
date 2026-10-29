@@ -18,10 +18,13 @@ const VIEW_NAMES = {
   findmytalent: "ScoutFindMyTalent",
 };
 
-export const render = (view, session) => showView(VIEW_NAMES[view] || VIEW_NAMES.dashboard, { session });
+export const render = (view, session) =>
+  showView(VIEW_NAMES[view] || VIEW_NAMES.dashboard, { session });
 export const messages = (s) => render("messages", s);
-export const editProfile = () => showView("ScoutEditProfile", { session: db.getSession() });
-export const resubmitAgency = () => showView("ScoutResubmitAgency", { session: db.getSession() });
+export const editProfile = () =>
+  showView("ScoutEditProfile", { session: db.getSession() });
+export const resubmitAgency = () =>
+  showView("ScoutResubmitAgency", { session: db.getSession() });
 export const generateReport = (scoutId, playerId, playerName) =>
   showView("ScoutGenerateReport", { scoutId, playerId, playerName });
 export const viewReport = (scoutId, playerId, playerName) =>
@@ -33,7 +36,9 @@ export const shareReportViaMessage = (scoutId, playerId, playerName) =>
 export const loadDashboard = async (s) => {
   const [{ data: agentConvos }, { data: prospects }] = await Promise.all([
     db.getAgentConversations(s.userId),
-    s.agencyStatus === "verified" ? db.getScoutProspects(s.userId) : Promise.resolve({ data: null }),
+    s.agencyStatus === "verified"
+      ? db.getScoutProspects(s.userId)
+      : Promise.resolve({ data: null }),
   ]);
   return { agentConvos, prospects };
 };
@@ -49,20 +54,32 @@ export const loadProfileSession = async (s) => {
 };
 
 export const loadDiscover = async (s) => {
-  const [{ data: players }, { data: saved }] = await Promise.all([db.getAllPlayers(), db.getScoutProspects(s.userId)]);
+  const [{ data: players }, { data: saved }] = await Promise.all([
+    db.getAllPlayers(),
+    db.getScoutProspects(s.userId),
+  ]);
   return { players, savedIds: saved?.map((p) => p.player_id) || [] };
 };
 
-export const loadProspects = async (s) => (await db.getScoutProspects(s.userId)).data;
+export const loadProspects = async (s) =>
+  (await db.getScoutProspects(s.userId)).data;
 
 export const loadMessages = async (s) => {
   const [{ data: msgs }, { data: archived }] = await Promise.all([
     db.getMessages(s.userId),
     db.getArchivedMessages(s.userId),
   ]);
-  const senderNames = await db.getUserNamesByIds([...(msgs || []), ...(archived || [])].map((m) => m.from_id));
-  const withSender = (m) => ({ ...m, senderName: senderNames[m.from_id] || "HappyFeet" });
-  return { enriched: (msgs || []).map(withSender), enrichedArchived: (archived || []).map(withSender) };
+  const senderNames = await db.getUserNamesByIds(
+    [...(msgs || []), ...(archived || [])].map((m) => m.from_id),
+  );
+  const withSender = (m) => ({
+    ...m,
+    senderName: senderNames[m.from_id] || "HappyFeet",
+  });
+  return {
+    enriched: (msgs || []).map(withSender),
+    enrichedArchived: (archived || []).map(withSender),
+  };
 };
 
 export const loadFindMyTalent = async (s) => {
@@ -81,18 +98,28 @@ export const loadFindMyTalent = async (s) => {
 
 // Player data shown on (and fed into) the report generator.
 export const loadReportInputs = async (scoutId, playerId) => {
-  const [{ data: player }, { data: sessions }, { data: prospect }] = await Promise.all([
-    db.getUserById(playerId),
-    db.getPlayerSessionRatings(playerId),
-    db.getProspectReport(scoutId, playerId),
-  ]);
+  const [{ data: player }, { data: sessions }, { data: prospect }] =
+    await Promise.all([
+      db.getUserById(playerId),
+      db.getPlayerSessionRatings(playerId),
+      db.getProspectReport(scoutId, playerId),
+    ]);
   const avgOverall = sessions?.length
-    ? Math.round(sessions.reduce((sum, s) => sum + s.overall, 0) / sessions.length)
+    ? Math.round(
+        sessions.reduce((sum, s) => sum + s.overall, 0) / sessions.length,
+      )
     : null;
-  return { profile: player?.profile || {}, sessions: sessions || [], latest: sessions?.[0], avgOverall, prospect };
+  return {
+    profile: player?.profile || {},
+    sessions: sessions || [],
+    latest: sessions?.[0],
+    avgOverall,
+    prospect,
+  };
 };
 
-export const loadReport = async (scoutId, playerId) => (await db.getProspectReport(scoutId, playerId)).data;
+export const loadReport = async (scoutId, playerId) =>
+  (await db.getProspectReport(scoutId, playerId)).data;
 
 // ─── Profile ───────────────────────────────────────────────
 export const saveProfile = async ({ name, org, exp }) => {
@@ -101,7 +128,7 @@ export const saveProfile = async ({ name, org, exp }) => {
   name = name.trim();
   org = org.trim();
   if (!name) return toast("Please enter your full name.", "error");
-  if (!org) return toast("Please enter your organisation name.", "error");
+  if (!org) return toast("Please enter your organization name.", "error");
   if (!exp || parseInt(exp) < 0 || parseInt(exp) > 50)
     return toast("Please enter valid years of experience (0-50).", "error");
 
@@ -134,11 +161,17 @@ export const saveProfile = async ({ name, org, exp }) => {
 };
 
 // ─── Agency resubmission ───────────────────────────────────
-export const submitAgencyResubmission = async ({ agencyName, regionsCovered, targetLeagues }) => {
+export const submitAgencyResubmission = async ({
+  agencyName,
+  regionsCovered,
+  targetLeagues,
+}) => {
   agencyName = agencyName.trim();
   if (!agencyName) return toast("Please enter your agency name.", "error");
-  if (regionsCovered.length === 0) return toast("Please select at least one region.", "error");
-  if (targetLeagues.length === 0) return toast("Please select at least one target league.", "error");
+  if (regionsCovered.length === 0)
+    return toast("Please select at least one region.", "error");
+  if (targetLeagues.length === 0)
+    return toast("Please select at least one target league.", "error");
 
   const session = db.getSession();
   const result = await db.submitAgencyVerification({
@@ -158,7 +191,11 @@ export const submitAgencyResubmission = async ({ agencyName, regionsCovered, tar
 };
 
 // ─── Scouting reports ──────────────────────────────────────
-const reportPrompt = ({ playerName, profile: p, latest, sessions, avgOverall }, obs, org) =>
+const reportPrompt = (
+  { playerName, profile: p, latest, sessions, avgOverall },
+  obs,
+  org,
+) =>
   `You are an expert football scout writing a professional scouting report for an African football talent platform called HappyFeet.
 
 Generate a detailed, professional scouting report for the following player:
@@ -235,11 +272,17 @@ Report generated by ${org}.
 [LOCAL MOCK: Deploy to see real AI report]`;
 
 const isLocal = () =>
-  ["localhost", "127.0.0.1"].includes(window.location.hostname) || window.location.protocol === "file:";
+  ["localhost", "127.0.0.1"].includes(window.location.hostname) ||
+  window.location.protocol === "file:";
 
 // Generates and saves an AI report from the scout's observations, then
 // opens it. Returns false if generation failed.
-export const submitGenerateReport = async (scoutId, playerId, playerName, observations) => {
+export const submitGenerateReport = async (
+  scoutId,
+  playerId,
+  playerName,
+  observations,
+) => {
   const inputs = { playerName, ...(await loadReportInputs(scoutId, playerId)) };
   const org = db.getSession().profile?.org || "HappyFeet Scouting";
   try {
@@ -252,12 +295,17 @@ export const submitGenerateReport = async (scoutId, playerId, playerName, observ
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          system: "You are an expert football scout writing professional scouting reports for African football talent.",
-          messages: [{ role: "user", content: reportPrompt(inputs, observations, org) }],
+          system:
+            "You are an expert football scout writing professional scouting reports for African football talent.",
+          messages: [
+            { role: "user", content: reportPrompt(inputs, observations, org) },
+          ],
         }),
       });
       const data = await response.json();
-      reportText = data.content?.map((c) => c.text || "").join("") || "Report generation failed.";
+      reportText =
+        data.content?.map((c) => c.text || "").join("") ||
+        "Report generation failed.";
     }
 
     await db.saveProspectReport(scoutId, playerId, {
@@ -282,7 +330,13 @@ export const searchCoaches = async (query) => {
   return data?.filter((u) => u.role === "coach") || [];
 };
 
-export const sendReportMessage = async (scoutId, playerId, playerName, toId, note) => {
+export const sendReportMessage = async (
+  scoutId,
+  playerId,
+  playerName,
+  toId,
+  note,
+) => {
   if (!toId) return toast("Please select a recipient.", "error");
   const session = db.getSession();
   const { data } = await db.getProspectReport(scoutId, playerId);
@@ -301,13 +355,21 @@ export const sendReportMessage = async (scoutId, playerId, playerName, toId, not
     "Your scouting report has been shared",
     `${session.name} from ${session.profile?.org || "HappyFeet Scouting"} has shared your scouting report with a coach. Your profile is being actively considered for opportunities.`,
   );
-  await db.updateProspectStatus(scoutId, playerId, { report_shared: true, status: "shared" });
+  await db.updateProspectStatus(scoutId, playerId, {
+    report_shared: true,
+    status: "shared",
+  });
   toast("Report shared with coach!", "success");
   navTo("prospects");
 };
 
 // ─── Report downloads ──────────────────────────────────────
-const fileDate = () => new Date().toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" });
+const fileDate = () =>
+  new Date().toLocaleDateString("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+  });
 const fileName = (playerName, date, ext) =>
   `scouting-report-${playerName.toLowerCase().replace(/\s+/g, "-")}-${date.replace(/\//g, "-")}.${ext}`;
 
@@ -340,7 +402,10 @@ ${report.text.trim()}
 
 *This report was generated by HappyFeet AI and reviewed by ${agency}.*
 `;
-  saveFile(new Blob([md], { type: "text/markdown" }), fileName(playerName, date, "md"));
+  saveFile(
+    new Blob([md], { type: "text/markdown" }),
+    fileName(playerName, date, "md"),
+  );
   toast("Report downloaded!", "success");
 };
 
@@ -372,7 +437,11 @@ export const downloadReportPDF = async (playerName, report) => {
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
   doc.setFont("helvetica", "normal");
-  doc.text(`Generated: ${date}  |  ${report.position || "-"}  |  ${report.tier || "-"}`, margin, y);
+  doc.text(
+    `Generated: ${date}  |  ${report.position || "-"}  |  ${report.tier || "-"}`,
+    margin,
+    y,
+  );
   y += 8;
   doc.setDrawColor(...gold);
   doc.setLineWidth(1);
@@ -382,11 +451,15 @@ export const downloadReportPDF = async (playerName, report) => {
   if (report.avgOverall) {
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
-    doc.text("AVERAGE OVERALL RATING", pageWidth - margin - 80, y - 12, { align: "right" });
+    doc.text("AVERAGE OVERALL RATING", pageWidth - margin - 80, y - 12, {
+      align: "right",
+    });
     doc.setFontSize(28);
     doc.setTextColor(...gold);
     doc.setFont("helvetica", "bold");
-    doc.text(`${report.avgOverall}/100`, pageWidth - margin, y + 4, { align: "right" });
+    doc.text(`${report.avgOverall}/100`, pageWidth - margin, y + 4, {
+      align: "right",
+    });
     y += 20;
   }
 
@@ -394,7 +467,10 @@ export const downloadReportPDF = async (playerName, report) => {
   doc.setFontSize(11);
   doc.setTextColor(30, 30, 30);
   doc.setFont("helvetica", "normal");
-  for (const line of doc.splitTextToSize(report.text || "", pageWidth - margin * 2)) {
+  for (const line of doc.splitTextToSize(
+    report.text || "",
+    pageWidth - margin * 2,
+  )) {
     if (y > pageHeight - margin) {
       doc.addPage();
       doc.setFillColor(...gold);
@@ -419,9 +495,14 @@ export const downloadReportPDF = async (playerName, report) => {
     doc.setPage(i);
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.text(`HappyFeet Performance Hub  |  ${agency}  |  Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 24, {
-      align: "center",
-    });
+    doc.text(
+      `HappyFeet Performance Hub  |  ${agency}  |  Page ${i} of ${pageCount}`,
+      pageWidth / 2,
+      pageHeight - 24,
+      {
+        align: "center",
+      },
+    );
   }
 
   doc.save(fileName(playerName, date, "pdf"));

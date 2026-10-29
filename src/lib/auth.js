@@ -2,10 +2,20 @@
 // screens (src/react/auth). Actions that validate input return an error
 // message for the screen to show, or undefined on success.
 import * as db from "./db/index.js";
-import { hashPassword, normalizeContact, validateEmail, validatePhone } from "./utils.js";
+import {
+  hashPassword,
+  normalizeContact,
+  validateEmail,
+  validatePhone,
+} from "./utils.js";
 import { toast } from "./dom.js";
 import { getAppState, setAppState } from "./appStore.js";
-import { closeMobileNav, launch, resetSubscriptions, showLogin } from "./router.js";
+import {
+  closeMobileNav,
+  launch,
+  resetSubscriptions,
+  showLogin,
+} from "./router.js";
 import * as agent from "./agent.js";
 
 // Signup data accumulated across the signup screens.
@@ -26,14 +36,17 @@ export const showScreen = (id) => {
     forgot = { contact: null, userId: null };
     update.forgotKey = getAppState().forgotKey + 1;
   }
-  if (id === "screen-login" || id === "screen-admin-login") update.forgotFromAdmin = id === "screen-admin-login";
+  if (id === "screen-login" || id === "screen-admin-login")
+    update.forgotFromAdmin = id === "screen-admin-login";
   setAppState(update);
 };
 
 // "Forgot password?" goes back to whichever login screen it came from.
 export const showForgot = () => showScreen("screen-forgot");
 export const backFromForgot = () =>
-  showScreen(getAppState().forgotFromAdmin ? "screen-admin-login" : "screen-login");
+  showScreen(
+    getAppState().forgotFromAdmin ? "screen-admin-login" : "screen-login",
+  );
 
 const makeSession = (user) => ({
   userId: user.id,
@@ -60,7 +73,8 @@ const lockoutError = (user) => {
 
 const failedAttemptError = async (userId, wrongMessage) => {
   const { attempts, lockedUntil } = await db.incrementLoginAttempts(userId);
-  if (lockedUntil) return "Too many failed attempts. Account locked for 15 minutes.";
+  if (lockedUntil)
+    return "Too many failed attempts. Account locked for 15 minutes.";
   return `${wrongMessage}${5 - attempts === 1 ? " 1 attempt remaining before lockout." : ""}`;
 };
 
@@ -75,17 +89,27 @@ export const login = async ({ tab, email, countryCode, phone, password }) => {
   }
   if (!password) return "Please enter your password.";
 
-  const wrong = tab === "phone" ? "Phone number or password incorrect." : "Email or password incorrect.";
+  const wrong =
+    tab === "phone"
+      ? "Phone number or password incorrect."
+      : "Email or password incorrect.";
 
   // fetch user first to check lockout before hashing password
   const userCheck = await db.findUserByContact(contact);
-  if (!userCheck) return tab === "phone" ? "Phone number or password incorrect. Check your country code." : wrong;
+  if (!userCheck)
+    return tab === "phone"
+      ? "Phone number or password incorrect. Check your country code."
+      : wrong;
 
   const locked = lockoutError(userCheck);
   if (locked) return locked;
   if (userCheck.banned)
     return `Your account has been banned. ${userCheck.banReason ? "Reason: " + userCheck.banReason : "Please contact support."}`;
-  if (userCheck.kicked && userCheck.kickedUntil && new Date(userCheck.kickedUntil) > new Date())
+  if (
+    userCheck.kicked &&
+    userCheck.kickedUntil &&
+    new Date(userCheck.kickedUntil) > new Date()
+  )
     return `You have been kicked and cannot sign in until ${new Date(userCheck.kickedUntil).toLocaleTimeString()}.`;
 
   const user = await db.findUser(contact, await hashPassword(password));
@@ -104,12 +128,14 @@ export const adminLogin = async ({ email, password }) => {
   if (!password) return "Please enter your password.";
 
   const userCheck = await db.findUserByContact(email);
-  if (!userCheck || userCheck.role !== "admin") return "Invalid email or password.";
+  if (!userCheck || userCheck.role !== "admin")
+    return "Invalid email or password.";
   const locked = lockoutError(userCheck);
   if (locked) return locked;
 
   const user = await db.findUser(email, await hashPassword(password));
-  if (!user || user.role !== "admin") return failedAttemptError(userCheck.id, "Invalid email or password.");
+  if (!user || user.role !== "admin")
+    return failedAttemptError(userCheck.id, "Invalid email or password.");
 
   await db.resetLoginAttempts(user.id);
   const session = makeSession(user);
@@ -123,7 +149,8 @@ export const selectRole = (role) => setAppState({ signupRole: role });
 
 export const goStep2 = () => {
   const { signupRole, signupRoleKey } = getAppState();
-  if (!signupRole) return toast("Please choose your role to continue.", "error");
+  if (!signupRole)
+    return toast("Please choose your role to continue.", "error");
   signup = {};
   security = { question: "", answer: "" };
   setAppState({ signupRoleKey: signupRoleKey + 1 });
@@ -145,7 +172,8 @@ const buildProfile = async (role, f) => {
       faithStreak: 0,
     };
     if (!profile.pos) return { error: "Please select your position." };
-    if (!profile.hometown) return { error: "Please enter your hometown or region." };
+    if (!profile.hometown)
+      return { error: "Please enter your hometown or region." };
     return { profile };
   }
   if (role === "coach") {
@@ -156,10 +184,14 @@ const buildProfile = async (role, f) => {
       spec: f.spec || "All-round",
       teamSize: 0,
     };
-    if (!profile.licence) return { error: "Please select your coaching licence." };
-    if (profile.exp === "") return { error: "Please enter your years of experience." };
-    if (!isValidExp(profile.exp)) return { error: "Years of experience must be between 0 and 50." };
-    if (!profile.club) return { error: "Please enter your current club or academy." };
+    if (!profile.licence)
+      return { error: "Please select your coaching licence." };
+    if (profile.exp === "")
+      return { error: "Please enter your years of experience." };
+    if (!isValidExp(profile.exp))
+      return { error: "Years of experience must be between 0 and 50." };
+    if (!profile.club)
+      return { error: "Please enter your current club or academy." };
     const existingTeam = await db.checkTeamExists(profile.club);
     if (existingTeam)
       return {
@@ -176,19 +208,32 @@ const buildProfile = async (role, f) => {
     region: f.region || "",
     prospectsTracked: 0,
   };
-  if (!profile.org) return { error: "Please enter your organisation or agency." };
+  if (!profile.org)
+    return { error: "Please enter your Organization or agency." };
   if (!profile.exp) return { error: "Please enter your years of experience." };
-  if (!isValidExp(profile.exp)) return { error: "Years of experience must be between 0 and 50." };
+  if (!isValidExp(profile.exp))
+    return { error: "Years of experience must be between 0 and 50." };
   if (!profile.region) return { error: "Please select your home region." };
   return { profile };
 };
 
-export const goStep3 = async ({ name, tab, email, countryCode, phone, password, roleFields }) => {
+export const goStep3 = async ({
+  name,
+  tab,
+  email,
+  countryCode,
+  phone,
+  password,
+  roleFields,
+}) => {
   closeMobileNav();
   name = name.trim();
   if (!name) return "Please enter your full name.";
 
-  let contact, contactType, displayContact, localPhone = "";
+  let contact,
+    contactType,
+    displayContact,
+    localPhone = "";
   if (tab === "email") {
     const rawEmail = email.trim().toLowerCase();
     if (!validateEmail(rawEmail)) return "Please enter a valid email address.";
@@ -227,7 +272,9 @@ export const goStep3 = async ({ name, tab, email, countryCode, phone, password, 
     role,
     profile,
   };
-  setAppState({ signupSummary: { name, role, contactType, displayContact, profile } });
+  setAppState({
+    signupSummary: { name, role, contactType, displayContact, profile },
+  });
   showScreen("screen-signup-security");
 };
 
@@ -254,7 +301,11 @@ export const completeSignup = async () => {
   }
 
   if (result.user && security.question && security.answer) {
-    await db.setSecurityQuestion(result.user.id, security.question, security.answer);
+    await db.setSecurityQuestion(
+      result.user.id,
+      security.question,
+      security.answer,
+    );
   }
 
   const session = makeSession(result.user);
@@ -264,23 +315,36 @@ export const completeSignup = async () => {
 
   if (signup.role === "coach" || signup.role === "scout") {
     setAppState(({ verifyKey }) => ({
-      verifyPrefill: { team: signup.profile.club || "", agency: signup.profile.org || "" },
+      verifyPrefill: {
+        team: signup.profile.club || "",
+        agency: signup.profile.org || "",
+      },
       verifyKey: verifyKey + 1,
     }));
-    showScreen(signup.role === "coach" ? "screen-squad-verify" : "screen-agency-verify");
+    showScreen(
+      signup.role === "coach" ? "screen-squad-verify" : "screen-agency-verify",
+    );
   } else {
     launch(session);
   }
 };
 
 // ─── Squad / agency verification ───────────────────────────
-export const submitSquadVerification = async ({ teamName, league, year, ground }) => {
+export const submitSquadVerification = async ({
+  teamName,
+  league,
+  year,
+  ground,
+}) => {
   teamName = teamName.trim();
   league = league.trim();
   year = year.trim();
   if (!teamName) return "Please enter your team name.";
   if (!league) return "Please enter your league or division.";
-  if (year && (parseInt(year) < 1600 || parseInt(year) > new Date().getFullYear()))
+  if (
+    year &&
+    (parseInt(year) < 1600 || parseInt(year) > new Date().getFullYear())
+  )
     return `Founding year must be between 1600 and ${new Date().getFullYear()}.`;
 
   const existing = await db.checkTeamExists(teamName);
@@ -314,21 +378,32 @@ export const submitSquadVerification = async ({ teamName, league, year, ground }
 
 const isValidWebsite = (url) => {
   if (!url) return true;
-  const withProtocol = url.startsWith("http://") || url.startsWith("https://") ? url : `https://${url}`;
+  const withProtocol =
+    url.startsWith("http://") || url.startsWith("https://")
+      ? url
+      : `https://${url}`;
   try {
     const { hostname } = new URL(withProtocol);
-    return /^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$/.test(hostname);
+    return /^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}$/.test(
+      hostname,
+    );
   } catch {
     return false;
   }
 };
 
-export const submitAgencyVerification = async ({ agencyName, website, regionsCovered, targetLeagues }) => {
+export const submitAgencyVerification = async ({
+  agencyName,
+  website,
+  regionsCovered,
+  targetLeagues,
+}) => {
   agencyName = agencyName.trim();
   website = website.trim();
   if (!agencyName) return "Please enter your agency name.";
   if (regionsCovered.length === 0) return "Please select at least one region.";
-  if (targetLeagues.length === 0) return "Please select at least one target league.";
+  if (targetLeagues.length === 0)
+    return "Please select at least one target league.";
   if (!website) return "Please enter your agency website.";
   if (!isValidWebsite(website)) return "Please enter a valid website URL.";
 
@@ -358,7 +433,8 @@ export const forgotLookup = async (rawContact) => {
   if (!contact) return { error: "Please enter your email or phone." };
   const { data } = await db.getUserSecurityQuestion(contact);
   if (!data) return { error: "No account found with that contact." };
-  if (!data.security_question) return { error: "No security question set for this account." };
+  if (!data.security_question)
+    return { error: "No security question set for this account." };
   forgot.contact = contact;
   return { question: data.security_question };
 };
@@ -372,9 +448,13 @@ export const forgotVerify = async (answer) => {
 };
 
 export const forgotReset = async (newPass, confirmPass) => {
-  if (!newPass || newPass.length < 6) return "Password must be at least 6 characters.";
+  if (!newPass || newPass.length < 6)
+    return "Password must be at least 6 characters.";
   if (newPass !== confirmPass) return "Passwords do not match.";
-  const result = await db.resetPassword(forgot.userId, await hashPassword(newPass));
+  const result = await db.resetPassword(
+    forgot.userId,
+    await hashPassword(newPass),
+  );
   if (result.error) return result.error;
   forgot = { contact: null, userId: null };
   toast("Password reset successfully! Please log in.", "success");

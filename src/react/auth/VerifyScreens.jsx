@@ -1,8 +1,19 @@
 import { useState } from "react";
 import { useAppState } from "../../lib/appStore.js";
-import { enterApp, submitAgencyVerification, submitSquadVerification } from "../../lib/auth.js";
+import {
+  enterApp,
+  submitAgencyVerification,
+  submitSquadVerification,
+} from "../../lib/auth.js";
 import { TagPicker } from "../components/shared/index.js";
-import { AuthLogo, ErrorMessage, Screen, StepRow, useEnterKey, useTimedError } from "./parts.jsx";
+import {
+  AuthLogo,
+  ErrorMessage,
+  Screen,
+  StepRow,
+  useEnterKey,
+  useTimedError,
+} from "./parts.jsx";
 
 // Remounted (via key) after each signup so they pick up the new prefill.
 export function SquadVerifyScreen({ active }) {
@@ -13,7 +24,10 @@ export function SquadVerifyScreen({ active }) {
   const [ground, setGround] = useState("");
   const [error, showError] = useTimedError(active);
 
-  const submit = async () => showError(await submitSquadVerification({ teamName, league, year, ground }));
+  const submit = async () =>
+    showError(
+      await submitSquadVerification({ teamName, league, year, ground }),
+    );
   useEnterKey(active, submit);
 
   return (
@@ -21,7 +35,9 @@ export function SquadVerifyScreen({ active }) {
       <AuthLogo />
       <StepRow steps={["done", "done", "done", "active"]} />
       <div className="auth-title">Register your squad</div>
-      <div className="auth-sub">Tell us about your team so we can verify it</div>
+      <div className="auth-sub">
+        Tell us about your team so we can verify it
+      </div>
       <ErrorMessage message={error} box />
       <div className="fg">
         <label>
@@ -47,7 +63,13 @@ export function SquadVerifyScreen({ active }) {
       <div className="form-row">
         <div className="fg">
           <label>Founding year</label>
-          <input type="number" min="1600" value={year} onChange={(e) => setYear(e.target.value)} placeholder="e.g. 2005" />
+          <input
+            type="number"
+            min="1600"
+            value={year}
+            onChange={(e) => setYear(e.target.value)}
+            placeholder="e.g. 2005"
+          />
         </div>
         <div className="fg">
           <label>Home ground</label>
@@ -105,7 +127,12 @@ export const SquadPendingScreen = ({ active }) => (
     active={active}
     kind="squad"
     onEnterKey
-    canDo={["View your profile", "Browse Find my team", "Access Faith & devotion", "Send and receive messages"]}
+    canDo={[
+      "View your profile",
+      "Browse Find my team",
+      "Access Faith & devotion",
+      "Send and receive messages",
+    ]}
   />
 );
 
@@ -161,20 +188,35 @@ export function AgencyVerifyScreen({ active }) {
   const [error, showError] = useTimedError(active);
 
   const submit = async () =>
-    showError(await submitAgencyVerification({ agencyName, website, regionsCovered, targetLeagues }));
+    showError(
+      await submitAgencyVerification({
+        agencyName,
+        website,
+        regionsCovered,
+        targetLeagues,
+      }),
+    );
 
   return (
     <Screen id="screen-agency-verify" active={active}>
       <AuthLogo />
       <StepRow steps={["done", "done", "done", "active"]} />
       <div className="auth-title">Register your agency</div>
-      <div className="auth-sub">Tell us about your organisation so we can verify it</div>
+      <div className="auth-sub">
+        Tell us about your Organization so we can verify it
+      </div>
       <ErrorMessage message={error} box />
       <div className="fg">
         <label>
-          Organisation / agency <span className="label-note">(from your profile)</span>
+          Organization / agency{" "}
+          <span className="label-note">(from your profile)</span>
         </label>
-        <input type="text" className="input-disabled" value={agencyName} readOnly />
+        <input
+          type="text"
+          className="input-disabled"
+          value={agencyName}
+          readOnly
+        />
       </div>
       <div className="fg">
         <label className="required">Regions you cover</label>
@@ -188,7 +230,12 @@ export function AgencyVerifyScreen({ active }) {
       </div>
       <div className="fg">
         <label className="required">Target leagues / destinations</label>
-        <TagPicker options={AGENCY_LEAGUES} selected={targetLeagues} onChange={setLeagues} buttonClass="league-tag" />
+        <TagPicker
+          options={AGENCY_LEAGUES}
+          selected={targetLeagues}
+          onChange={setLeagues}
+          buttonClass="league-tag"
+        />
       </div>
       <div className="fg">
         <label className="required">Website</label>

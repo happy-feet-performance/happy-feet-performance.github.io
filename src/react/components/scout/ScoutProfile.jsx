@@ -23,7 +23,9 @@ export default function ScoutProfile({ session, onEdit }) {
           gap: "var(--sp-lg)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-lg)" }}>
+        <div
+          style={{ display: "flex", alignItems: "center", gap: "var(--sp-lg)" }}
+        >
           <div
             style={{
               width: 72,
@@ -60,7 +62,13 @@ export default function ScoutProfile({ session, onEdit }) {
             >
               {session.name}
             </div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,.55)", marginTop: 3 }}>
+            <div
+              style={{
+                fontSize: 13,
+                color: "rgba(255,255,255,.55)",
+                marginTop: 3,
+              }}
+            >
               {p.org || "-"}
             </div>
             <div style={{ marginTop: 8 }}>
@@ -72,7 +80,13 @@ export default function ScoutProfile({ session, onEdit }) {
 
       <div className="card">
         <div className="card-title" style={{ justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-sm)" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--sp-sm)",
+            }}
+          >
             <div className="card-dot"></div>Scout details
           </div>
           <button className="btn btn-outline btn-sm" onClick={onEdit}>
@@ -81,7 +95,7 @@ export default function ScoutProfile({ session, onEdit }) {
         </div>
         <div className="info-grid">
           <div className="info-cell">
-            <div className="info-label">Organisation</div>
+            <div className="info-label">Organization</div>
             <div className="info-val">{p.org || "-"}</div>
           </div>
           <div className="info-cell">
@@ -97,16 +111,27 @@ export default function ScoutProfile({ session, onEdit }) {
             <div className="info-val">{leaguesDisplay}</div>
           </div>
           <div className="info-cell">
-            <div className="info-label">{session.contactType === "phone" ? "Phone" : "Email"}</div>
-            <div className="info-val">{session.displayContact || session.contact}</div>
+            <div className="info-label">
+              {session.contactType === "phone" ? "Phone" : "Email"}
+            </div>
+            <div className="info-val">
+              {session.displayContact || session.contact}
+            </div>
           </div>
           <div className="info-cell">
             <div className="info-label">Agency status</div>
             <div
               className="info-val"
-              style={{ color: session.agencyStatus === "verified" ? "var(--green)" : "var(--text2)" }}
+              style={{
+                color:
+                  session.agencyStatus === "verified"
+                    ? "var(--green)"
+                    : "var(--text2)",
+              }}
             >
-              {session.agencyStatus === "verified" ? "Verified" : session.agencyStatus || "Unregistered"}
+              {session.agencyStatus === "verified"
+                ? "Verified"
+                : session.agencyStatus || "Unregistered"}
             </div>
           </div>
         </div>
