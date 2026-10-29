@@ -24,6 +24,12 @@ const PRAYERS = [
   },
 ];
 
+// The morning ids match togglePrayer's morning devotion in src/lib/roleUtils.js.
+const PRAYER_GROUPS = [
+  { title: "Morning devotion", ids: ["morning", "prematch", "struggle"] },
+  { title: "Evening", ids: ["evening"] },
+];
+
 const SCRIPTURE_MOMENTS = [
   ["When you doubt yourself", '"For I know the plans I have for you," declares the LORD. ~ Jeremiah 29:11'],
   ["Before a big match", "Have I not commanded you? Be strong and courageous. ~ Joshua 1:9"],
@@ -34,6 +40,68 @@ const SCRIPTURE_MOMENTS = [
 export default function PlayerFaith({ session: s, checked }) {
   const allChecked = PRAYERS.every((p) => checked[p.id]);
   const verse = getTodayScripture();
+
+  const renderPrayer = (p) => {
+    const isChecked = !!checked[p.id];
+    return (
+      <div
+        key={p.id}
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: "var(--sp-md)",
+          padding: "var(--sp-md)",
+          background: "var(--bg2)",
+          borderLeft: `2px solid ${isChecked ? "var(--green)" : "var(--faith)"}`,
+          marginBottom: "var(--sp-sm)",
+          cursor: "pointer",
+          transition: "var(--trans)",
+        }}
+        onClick={() => togglePrayer(p.id, "player")}
+      >
+        <div
+          style={{
+            width: 20,
+            height: 20,
+            border: `2px solid ${isChecked ? "var(--green)" : "var(--faith)"}`,
+            background: isChecked ? "var(--green)" : "transparent",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            marginTop: 2,
+          }}
+        >
+          {isChecked && <i className="ti ti-check" style={{ fontSize: 12, color: "#fff" }}></i>}
+        </div>
+        <div>
+          <div
+            style={{
+              fontFamily: "var(--font)",
+              fontSize: 13,
+              fontWeight: 600,
+              color: isChecked ? "var(--green)" : "var(--faith)",
+              marginBottom: 4,
+              textDecoration: isChecked ? "line-through" : "none",
+            }}
+          >
+            {p.title}
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              color: "var(--text2)",
+              fontStyle: "normal",
+              lineHeight: 1.5,
+              opacity: isChecked ? 0.5 : 1,
+            }}
+          >
+            {p.desc}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -73,64 +141,35 @@ export default function PlayerFaith({ session: s, checked }) {
           )}
         </div>
 
-        {PRAYERS.map((p) => {
-          const isChecked = !!checked[p.id];
+        {PRAYER_GROUPS.map((group, i) => {
+          const prayers = PRAYERS.filter((p) => group.ids.includes(p.id));
+          const done = prayers.filter((p) => checked[p.id]).length;
           return (
             <div
-              key={p.id}
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "var(--sp-md)",
-                padding: "var(--sp-md)",
-                background: "var(--bg2)",
-                borderLeft: `2px solid ${isChecked ? "var(--green)" : "var(--faith)"}`,
-                marginBottom: "var(--sp-sm)",
-                cursor: "pointer",
-                transition: "var(--trans)",
-              }}
-              onClick={() => togglePrayer(p.id, "player")}
+              key={group.title}
+              style={i > 0 ? { borderTop: "0.5px solid var(--border)", marginTop: "var(--sp-md)", paddingTop: "var(--sp-md)" } : undefined}
             >
               <div
                 style={{
-                  width: 20,
-                  height: 20,
-                  border: `2px solid ${isChecked ? "var(--green)" : "var(--faith)"}`,
-                  background: isChecked ? "var(--green)" : "transparent",
                   display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  marginTop: 2,
+                  justifyContent: "space-between",
+                  fontFamily: "var(--font)",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  color: done === prayers.length ? "var(--green)" : "var(--text3)",
+                  marginBottom: "var(--sp-sm)",
                 }}
               >
-                {isChecked && <i className="ti ti-check" style={{ fontSize: 12, color: "#fff" }}></i>}
+                <span>{group.title}</span>
+                {prayers.length > 1 && (
+                  <span>
+                    {done}/{prayers.length}
+                  </span>
+                )}
               </div>
-              <div>
-                <div
-                  style={{
-                    fontFamily: "var(--font)",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: isChecked ? "var(--green)" : "var(--faith)",
-                    marginBottom: 4,
-                    textDecoration: isChecked ? "line-through" : "none",
-                  }}
-                >
-                  {p.title}
-                </div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text2)",
-                    fontStyle: "normal",
-                    lineHeight: 1.5,
-                    opacity: isChecked ? 0.5 : 1,
-                  }}
-                >
-                  {p.desc}
-                </div>
-              </div>
+              {prayers.map(renderPrayer)}
             </div>
           );
         })}

@@ -1,6 +1,6 @@
-import { AccountSettings, Avatar, Badge, WdlRecord } from "../shared/index.js";
+import { Avatar, Badge, WdlRecord } from "../shared/index.js";
 
-export default function CoachProfile({ session: s, wdl, onEdit, onSettings }) {
+export default function CoachProfile({ session: s, wdl, onEdit }) {
   const p = s.profile || {};
 
   return (
@@ -46,14 +46,9 @@ export default function CoachProfile({ session: s, wdl, onEdit, onSettings }) {
           <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-sm)" }}>
             <div className="card-dot"></div>Coaching details
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="btn btn-outline btn-sm" onClick={onEdit}>
-              <i className="ti ti-edit"></i> Edit
-            </button>
-            <button className="btn btn-outline btn-sm" onClick={onSettings}>
-              <i className="ti ti-settings"></i> Settings
-            </button>
-          </div>
+          <button className="btn btn-outline btn-sm" onClick={onEdit}>
+            <i className="ti ti-edit"></i> Edit
+          </button>
         </div>
         <div className="info-grid">
           <div className="info-cell">
@@ -94,8 +89,6 @@ export default function CoachProfile({ session: s, wdl, onEdit, onSettings }) {
           <WdlRecord W={wdl.W} D={wdl.D} L={wdl.L} />
         </div>
       </div>
-
-      <AccountSettings session={s} />
     </>
   );
 }

@@ -2,11 +2,9 @@ import { useEffect } from "react";
 import { useAppState } from "../../lib/appStore.js";
 import { DEFAULT_ROLE } from "../../lib/activeRole.js";
 import { linkTo, navigate, usePath } from "../../lib/location.js";
+import UserMenu from "../shell/UserMenu.jsx";
 import logo from "../../../hf-logo-tp.png";
 
-// ─── PLACEHOLDER COPY ──────────────────────────────────────
-// Draft text written from what's already in the app. Replace with the real
-// HappyFeet wording; the layout doesn't depend on the exact length.
 const COPY = {
   heroTitle: "Changing the narrative of African football",
   heroSub:
@@ -121,14 +119,18 @@ export default function HomePage() {
             About
           </a>
         </nav>
-        <div className="home-header-actions">
-          {session && (
-            <span className="home-signed-in">
-              Signed in as <strong>{session.name}</strong>
-            </span>
+        <div className={`home-header-actions${session ? " signed-in" : ""}`}>
+          {session ? (
+            <>
+              <ThemeToggle />
+              <UserMenu session={session} />
+            </>
+          ) : (
+            <>
+              <AccountActions session={session} />
+              <ThemeToggle />
+            </>
           )}
-          <AccountActions session={session} />
-          <ThemeToggle />
         </div>
       </header>
 

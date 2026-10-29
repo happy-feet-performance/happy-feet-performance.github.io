@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAppState } from "../../lib/appStore.js";
 import { completeSignup, goStep2, goStep3, goToConfirm, selectRole, showScreen } from "../../lib/auth.js";
+import { validatePhone } from "../../lib/utils.js";
 import {
   AuthLogo,
   ErrorMessage,
@@ -262,12 +263,14 @@ export function SignupInfoScreen({ active }) {
         <div className="fg">
           <label>Phone number</label>
           <PhoneInput countryCode={countryCode} onCountryCode={setCountryCode} phone={phone} onPhone={setPhone} />
-          <div className="whatsapp-note">
-            <span className="wa-icon">
-              <i className="ti ti-message"></i>
-            </span>
-            Your WhatsApp number works perfectly for sign-in.
-          </div>
+          {validatePhone(phone) && (
+            <div className="whatsapp-note">
+              <span className="wa-icon">
+                <i className="ti ti-message"></i>
+              </span>
+              Your WhatsApp number works perfectly for sign-in.
+            </div>
+          )}
         </div>
       )}
       <div className="fg">

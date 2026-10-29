@@ -12,6 +12,7 @@ import { showView } from "./views.js";
 const VIEW_NAMES = {
   dashboard: "PlayerDashboard",
   profile: "PlayerProfile",
+  settings: "Settings",
   stats: "PlayerStats",
   training: "PlayerTraining",
   health: "PlayerHealth",

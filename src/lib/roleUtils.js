@@ -317,7 +317,8 @@ export const togglePrayer = (prayerId, role) => {
       toast("Full day devotion complete! 🙏", "success");
       launchConfetti();
     }, 100);
-  } else if (allMorningDone) {
+  } else if (allMorningDone && morningIds.includes(prayerId) && checklist[prayerId]) {
+    // only on the tick that completes the morning set
     setTimeout(() => toast("Morning devotion complete! 🙏", "success"), 100);
   }
 };

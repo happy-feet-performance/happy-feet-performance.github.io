@@ -1,7 +1,7 @@
 import { calcRating, initials } from "../../../lib/utils.js";
-import { AccountSettings, Badge, RatingBar } from "../shared/index.js";
+import { Badge, RatingBar } from "../shared/index.js";
 
-export default function PlayerProfile({ session: s, ms, jerseyNumber, onEdit, onSettings, onLeaveTeam }) {
+export default function PlayerProfile({ session: s, ms, jerseyNumber, onEdit, onLeaveTeam }) {
   const p = s.profile || {};
   const r = p.ratings || {};
   const overall = calcRating(r);
@@ -137,9 +137,6 @@ export default function PlayerProfile({ session: s, ms, jerseyNumber, onEdit, on
             <button className="btn btn-outline btn-sm" onClick={onEdit}>
               <i className="ti ti-edit"></i> Edit
             </button>
-            <button className="btn btn-outline btn-sm" onClick={onSettings}>
-              <i className="ti ti-settings"></i> Settings
-            </button>
             {p.club && p.status !== "unattached" && (
               <button className="btn btn-danger btn-sm" onClick={onLeaveTeam}>
                 <i className="ti ti-logout"></i> Leave team
@@ -250,8 +247,6 @@ export default function PlayerProfile({ session: s, ms, jerseyNumber, onEdit, on
           </div>
         )}
       </div>
-
-      <AccountSettings session={s} />
 
       {/* ── ABILITY RATINGS ── */}
       <div className="card">

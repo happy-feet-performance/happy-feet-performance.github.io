@@ -4,6 +4,7 @@ import MessageThread from "./MessageThread.jsx";
 import MessageUser from "./MessageUser.jsx";
 import MyTickets from "./MyTickets.jsx";
 import NewTicket from "./NewTicket.jsx";
+import Settings from "./Settings.jsx";
 import TicketThread from "./TicketThread.jsx";
 import UserProfile from "./UserProfile.jsx";
 
@@ -16,6 +17,7 @@ export default {
   MessageUser,
   MyTickets,
   NewTicket,
+  Settings,
   TicketThread,
   UserProfile,
 };

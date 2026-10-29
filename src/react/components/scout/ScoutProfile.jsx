@@ -1,7 +1,7 @@
 import { initials } from "../../../lib/utils.js";
-import { AccountSettings, Badge } from "../shared/index.js";
+import { Badge } from "../shared/index.js";
 
-export default function ScoutProfile({ session, onEdit, onSettings }) {
+export default function ScoutProfile({ session, onEdit }) {
   const p = session.profile || {};
   const regionsDisplay = Array.isArray(p.regionsCovered)
     ? p.regionsCovered.join(", ")
@@ -75,17 +75,9 @@ export default function ScoutProfile({ session, onEdit, onSettings }) {
           <div style={{ display: "flex", alignItems: "center", gap: "var(--sp-sm)" }}>
             <div className="card-dot"></div>Scout details
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              className="btn btn-outline btn-sm"
-              onClick={onEdit}
-            >
-              <i className="ti ti-edit"></i> Edit
-            </button>
-            <button className="btn btn-outline btn-sm" onClick={onSettings}>
-              <i className="ti ti-settings"></i> Settings
-            </button>
-          </div>
+          <button className="btn btn-outline btn-sm" onClick={onEdit}>
+            <i className="ti ti-edit"></i> Edit
+          </button>
         </div>
         <div className="info-grid">
           <div className="info-cell">
@@ -119,8 +111,6 @@ export default function ScoutProfile({ session, onEdit, onSettings }) {
           </div>
         </div>
       </div>
-
-      <AccountSettings session={session} />
     </>
   );
 }

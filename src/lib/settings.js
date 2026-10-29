@@ -89,7 +89,7 @@ export const saveSettings = async ({ email, phone, password, role }) => {
   // pushes the session (and so the active role) to the store
   buildSidenav(session);
   toast("Settings updated successfully.", "success");
-  navTo("profile#settings");
+  navTo("settings");
 };
 
 export const deleteAccount = async () => {

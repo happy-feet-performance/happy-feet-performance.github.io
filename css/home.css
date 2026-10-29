@@ -77,13 +77,8 @@
   color: #fff;
   border-color: rgba(255, 255, 255, 0.3);
 }
-.home-signed-in {
-  font-size: var(--font-size-xs);
-  color: rgba(255, 255, 255, 0.5);
-  margin-right: var(--sp-sm);
-}
-.home-signed-in strong {
-  color: #fff;
+.home-header-actions.signed-in {
+  gap: var(--sp-lg);
 }
 .home a.btn {
   text-decoration: none;
@@ -178,7 +173,7 @@
   font-size: var(--font-size-md);
   line-height: 1.7;
   color: var(--text2);
-  max-width: 720px;
+  max-width: 960px;
   margin: 0 0 var(--sp-lg);
 }
 .home-roles {
@@ -293,8 +288,10 @@
     width: 100%;
     margin-left: 0;
   }
-  .home-signed-in {
-    display: none;
+  /* keep the menu at the right edge so its dropdown stays on screen */
+  .home-header-actions.signed-in {
+    width: auto;
+    margin-left: auto;
   }
   .home-hero {
     padding: 48px var(--sp-lg) 32px;

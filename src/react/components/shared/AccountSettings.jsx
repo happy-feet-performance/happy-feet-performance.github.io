@@ -8,8 +8,7 @@ const ROLES = [
   ["admin", "Admin"],
 ];
 
-// Rendered at the bottom of each Profile view. id="settings" is the target
-// of the header's settings shortcut (navTo("profile#settings")).
+// The body of the Settings page (src/react/components/common/Settings.jsx).
 export default function AccountSettings({ session }) {
   const current = session.displayContact || session.contact;
   const [email, setEmail] = useState(session.contactType === "email" ? current : "");

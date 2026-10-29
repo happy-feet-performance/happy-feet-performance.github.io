@@ -186,8 +186,6 @@ const buildProfile = async (role, f) => {
 export const goStep3 = async ({ name, tab, email, countryCode, phone, password, roleFields }) => {
   closeMobileNav();
   name = name.trim();
-  if (!password) return "Please enter a password.";
-  if (password.length < 6) return "Password must be at least 6 characters.";
   if (!name) return "Please enter your full name.";
 
   let contact, contactType, displayContact, localPhone = "";
@@ -211,6 +209,9 @@ export const goStep3 = async ({ name, tab, email, countryCode, phone, password, 
     return contactType === "phone"
       ? "This phone number is already registered."
       : "This email address is already registered.";
+
+  if (!password) return "Please enter a password.";
+  if (password.length < 6) return "Password must be at least 6 characters.";
 
   const role = getAppState().signupRole;
   const { profile, error } = await buildProfile(role, roleFields);

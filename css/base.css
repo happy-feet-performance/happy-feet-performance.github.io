@@ -442,28 +442,6 @@ img {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.topbar-icon-btn {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
-  min-height: 40px;
-  padding: 0;
-  background: transparent;
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0;
-}
-.topbar-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.3);
-}
-.topbar-icon-btn i {
-  font-size: 16px;
-  line-height: 1;
-}
 .btn-danger {
   background: var(--red-lt);
   color: var(--red);
@@ -731,72 +709,6 @@ img {
   border: 2px solid var(--gold);
 }
 
-/* ── ACTIVITY FEED ── */
-.activity-item {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--sp-md);
-  padding: var(--sp-md) 0;
-  border-bottom: 0.5px solid var(--border);
-}
-.activity-item:last-child {
-  border-bottom: none;
-}
-.activity-icon {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  flex-shrink: 0;
-  background: var(--bg2);
-}
-.activity-title {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  margin-bottom: 2px;
-}
-.activity-text {
-  font-size: var(--font-size-sm);
-  color: var(--text2);
-  line-height: 1.4;
-}
-.activity-time {
-  font-size: var(--font-size-xs);
-  color: var(--text3);
-  margin-top: 3px;
-}
-
-/* ── ACHIEVEMENTS ── */
-.achievement {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-md);
-  padding: var(--sp-md);
-  background: var(--bg2);
-  border-left: 2px solid var(--gold);
-  margin-bottom: var(--sp-sm);
-}
-.achievement-icon {
-  font-size: 20px;
-  flex-shrink: 0;
-}
-.achievement-title {
-  font-size: var(--font-size-base);
-  font-weight: 600;
-}
-.achievement-sub {
-  font-size: var(--font-size-sm);
-  color: var(--text2);
-  margin-top: 2px;
-}
-.achievement-date {
-  font-size: var(--font-size-xs);
-  color: var(--text3);
-  margin-left: auto;
-  white-space: nowrap;
-}
 
 /* ── MESSAGES ── */
 .msg-item {
@@ -998,30 +910,6 @@ img {
   margin-top: 3px;
 }
 
-/* ── PROFILE HERO ── */
-.profile-hero {
-  background: #0f0f0d;
-  border-left: 4px solid var(--gold);
-  padding: var(--sp-2xl);
-  margin-bottom: var(--sp-lg);
-  display: flex;
-  align-items: center;
-  gap: var(--sp-lg);
-}
-.profile-name {
-  font-family: var(--font);
-  font-size: var(--font-size-xl);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #fff;
-}
-.profile-meta {
-  font-size: var(--font-size-base);
-  color: rgba(255, 255, 255, 0.55);
-  margin-top: 3px;
-}
-
 /* ── PROSPECT ROW ── */
 .prospect-row {
   display: flex;
@@ -1037,14 +925,6 @@ img {
 }
 .prospect-row:hover {
   border-left-color: var(--gold);
-}
-
-/* ── PHONE NOTE ── */
-.phone-note {
-  font-size: var(--font-size-xs);
-  color: var(--text2);
-  margin-top: 5px;
-  line-height: 1.5;
 }
 
 /* ── RESPONSIVE ── */
@@ -1091,15 +971,6 @@ img {
   }
   .welcome-title {
     font-size: var(--font-size-xl);
-  }
-
-  .profile-hero {
-    flex-direction: column;
-    gap: var(--sp-md);
-    padding: var(--sp-lg);
-  }
-  .profile-name {
-    font-size: var(--font-size-lg);
   }
 
   .table-wrap {
@@ -1157,10 +1028,6 @@ img {
   .prospect-row {
     padding: var(--sp-sm);
     gap: var(--sp-sm);
-  }
-
-  .achievement-date {
-    display: none;
   }
 }
 

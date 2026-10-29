@@ -9,6 +9,7 @@ import { showView } from "./views.js";
 const VIEW_NAMES = {
   dashboard: "ScoutDashboard",
   profile: "ScoutProfile",
+  settings: "Settings",
   discover: "ScoutDiscover",
   prospects: "ScoutProspects",
   reports: "ScoutReports",

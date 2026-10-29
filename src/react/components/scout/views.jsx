@@ -10,7 +10,6 @@ import {
   loadReport,
   loadReportInputs,
 } from "../../../lib/scout.js";
-import { navTo } from "../../../lib/router.js";
 import { Loaded } from "../shared/index.js";
 import Dashboard from "./Dashboard.jsx";
 import Discover from "./Discover.jsx";
@@ -28,7 +27,7 @@ export const DashboardView = ({ session }) => (
 
 export const ProfileView = ({ session }) => (
   <Loaded load={() => loadProfileSession(session)}>
-    {(s) => <ScoutProfile session={s} onEdit={editProfile} onSettings={() => navTo("profile#settings")} />}
+    {(s) => <ScoutProfile session={s} onEdit={editProfile} />}
   </Loaded>
 );
 

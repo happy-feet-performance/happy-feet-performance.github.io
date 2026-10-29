@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "install": "npm install --prefix functions",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "netlify dev"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",

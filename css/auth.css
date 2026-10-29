@@ -184,7 +184,6 @@
   border: 0.5px solid var(--border);
   min-height: 44px;
 }
-.tag-pill,
 .region-tag {
   font-family: var(--font);
   font-size: 10px;
@@ -197,12 +196,10 @@
   color: var(--text2);
   cursor: pointer;
 }
-.tag-pill:hover,
 .region-tag:hover {
   background: var(--bg);
   border-color: var(--text);
 }
-.tag-pill.selected,
 .region-tag.selected {
   background: var(--gold);
   color: #0f0f0d;
@@ -389,6 +386,28 @@
 
 .password-toggle:hover {
   color: var(--text);
+}
+
+/* ── PASSWORD STRENGTH ── */
+.strength-bar {
+  height: 3px;
+  background: var(--border);
+  margin-top: 6px;
+}
+
+.strength-fill {
+  height: 100%;
+  width: 0%;
+  transition: all 0.3s;
+}
+
+.strength-label {
+  font-size: 10px;
+  font-family: var(--font-head);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 4px;
+  color: var(--text3);
 }
 
 /* ── RESPONSIVE ── */

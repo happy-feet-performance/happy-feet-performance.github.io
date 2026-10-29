@@ -35,9 +35,11 @@ const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 // ─── Views ─────────────────────────────────────────────────
 export const render = (view, session) => {
-  const views = { dashboard, profile, squad, training, tracking, health, messages, faith, findmyteam };
+  const views = { dashboard, profile, settings, squad, training, tracking, health, messages, faith, findmyteam };
   (views[view] || dashboard)(session);
 };
+
+const settings = (s) => showView("Settings", { session: s });
 
 export const dashboard = async (s) => {
   const [{ data: freshStatus }, { data: readiness }, { data: agentConvos }] = await Promise.all([
@@ -56,7 +58,7 @@ export const dashboard = async (s) => {
 
 export const profile = async (s) => {
   const wdl = await db.getCoachWDL(s.userId);
-  showView("CoachProfile", { session: s, wdl, onEdit: editProfile, onSettings: () => navTo("profile#settings") });
+  showView("CoachProfile", { session: s, wdl, onEdit: editProfile });
 };
 
 export const editProfile = () => showView("CoachEditProfile", { session: db.getSession() });

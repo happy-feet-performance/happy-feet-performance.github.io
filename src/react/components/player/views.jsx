@@ -18,7 +18,6 @@ import {
   respondInvite,
   toggleSessionComplete,
 } from "../../../lib/player.js";
-import { navTo } from "../../../lib/router.js";
 import { Loaded } from "../shared/index.js";
 import Achievements from "./Achievements.jsx";
 import Dashboard from "./Dashboard.jsx";
@@ -43,7 +42,6 @@ export const ProfileView = ({ session }) => (
       <Profile
         {...data}
         onEdit={editProfile}
-        onSettings={() => navTo("profile#settings")}
         onLeaveTeam={thenReload(reload, leaveTeam)}
       />
     )}
