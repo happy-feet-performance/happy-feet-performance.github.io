@@ -142,7 +142,7 @@ export const messages = async (s) => {
 };
 
 export const faith = (s) => {
-  const checked = JSON.parse(localStorage.getItem(`hf_faith_checklist_${s.userId}_${db.localDate()}`) || "[]");
+  const checked = JSON.parse(localStorage.getItem(`hf_faith_checklist_${s.userId}_${db.localDate()}`) || "{}");
   showView("CoachFaith", { checked });
 };
 

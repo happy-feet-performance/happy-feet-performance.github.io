@@ -281,6 +281,13 @@ export const previewAvatar = (input) => {
 
 // ── PRAYERS ────────────────────────────────────────────────
 
+// Prayer ids that make up each role's morning set; "evening" is shared.
+// Must match the PRAYERS ids in components/{player,coach}/Faith.jsx.
+const MORNING_PRAYER_IDS = {
+  player: ["morning", "prematch", "struggle"],
+  coach: ["patience", "leading", "perseverance"],
+};
+
 export const togglePrayer = (prayerId, role) => {
   const session = db.getSession();
   const today = db.localDate();
@@ -290,12 +297,12 @@ export const togglePrayer = (prayerId, role) => {
   checklist[prayerId] = !checklist[prayerId];
   localStorage.setItem(key, JSON.stringify(checklist));
 
-  const morningIds = ["morning", "prematch", "struggle"];
+  const morningIds = MORNING_PRAYER_IDS[role] || MORNING_PRAYER_IDS.player;
   const allMorningDone = morningIds.every((id) => checklist[id]);
   const allEveningDone = !!checklist["evening"];
 
-  // save streak
-  if (allMorningDone) {
+  // save streak (players only; it feeds the dashboard and faith achievements)
+  if (allMorningDone && role === "player") {
     const p = session.profile || {};
     const lastFaith = p.lastFaithDate;
     const yesterday = db.localDateOffset(-1);

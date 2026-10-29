@@ -25,7 +25,7 @@ const PRAYERS = [
 ];
 
 export default function CoachFaith({ checked }) {
-  const allChecked = PRAYERS.every((p) => checked.includes(p.id));
+  const allChecked = PRAYERS.every((p) => checked[p.id]);
   const today = getTodayScripture();
 
   const howTo = [
@@ -71,12 +71,12 @@ export default function CoachFaith({ checked }) {
             </span>
           ) : (
             <span style={{ fontFamily: "var(--font)", fontSize: 10, color: "var(--text3)" }}>
-              {checked.length}/{PRAYERS.length} completed
+              {PRAYERS.filter((p) => checked[p.id]).length}/{PRAYERS.length} completed
             </span>
           )}
         </div>
         {PRAYERS.map((p) => {
-          const isChecked = checked.includes(p.id);
+          const isChecked = !!checked[p.id];
           return (
             <div
               key={p.id}
